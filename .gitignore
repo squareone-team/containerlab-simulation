@@ -1,0 +1,23 @@
+# ContainerLab generated files
+clab-*/
+*.bak
+.clab.yml.bak
+
+# Runtime / state
+*.log
+*.pcap
+*.pid
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Ansible retry files
+*.retry

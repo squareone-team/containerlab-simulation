@@ -1,0 +1,187 @@
+name: esi-datacenter
+
+topology:
+
+  # ============================================================
+  # SPINE SWITCHES  (ASN 65000 — shared)
+  # Role: backbone + EVPN route reflectors
+  # ============================================================
+  nodes:
+    spine-01:
+      kind: linux
+      image: frrouting/frr:latest
+      binds:
+        - configs/spine-01/daemons:/etc/frr/daemons
+        - configs/spine-01/frr.conf:/etc/frr/frr.conf
+
+    spine-02:
+      kind: linux
+      image: frrouting/frr:latest
+      binds:
+        - configs/spine-02/daemons:/etc/frr/daemons
+        - configs/spine-02/frr.conf:/etc/frr/frr.conf
+
+  # ============================================================
+  # ACCESS LEAF SWITCHES
+  # ============================================================
+    leaf-01:                        # Pedagogical zone  — ASN 65001
+      kind: linux
+      image: frrouting/frr:latest
+      binds:
+        - configs/leaf-01/daemons:/etc/frr/daemons
+        - configs/leaf-01/frr.conf:/etc/frr/frr.conf
+
+    leaf-02:                        # Research zone     — ASN 65002
+      kind: linux
+      image: frrouting/frr:latest
+      binds:
+        - configs/leaf-02/daemons:/etc/frr/daemons
+        - configs/leaf-02/frr.conf:/etc/frr/frr.conf
+
+    leaf-03:                        # Services zone     — ASN 65003
+      kind: linux
+      image: frrouting/frr:latest
+      binds:
+        - configs/leaf-03/daemons:/etc/frr/daemons
+        - configs/leaf-03/frr.conf:/etc/frr/frr.conf
+
+    leaf-04:                        # AI zone           — ASN 65004
+      kind: linux
+      image: frrouting/frr:latest
+      binds:
+        - configs/leaf-04/daemons:/etc/frr/daemons
+        - configs/leaf-04/frr.conf:/etc/frr/frr.conf
+
+  # ============================================================
+  # BORDER LEAF SWITCHES  (ASN 65005 — shared)
+  # Role: external uplinks (Algérie Télécom + FH satellite)
+  # ============================================================
+    border-01:
+      kind: linux
+      image: frrouting/frr:latest
+      binds:
+        - configs/border-01/daemons:/etc/frr/daemons
+        - configs/border-01/frr.conf:/etc/frr/frr.conf
+
+    border-02:
+      kind: linux
+      image: frrouting/frr:latest
+      binds:
+        - configs/border-02/daemons:/etc/frr/daemons
+        - configs/border-02/frr.conf:/etc/frr/frr.conf
+
+  # ============================================================
+  # SERVER CONTAINERS
+  # VNI 10010  TP-SERVERS      → 192.168.10.0/24  GW .1
+  # VNI 10020  STUDENT-PROJ    → 192.168.20.0/24  GW .1
+  # VNI 10030  RESEARCH-COMPUTE→ 192.168.30.0/24  GW .1
+  # VNI 10040  RESEARCH-SIMUL  → 192.168.40.0/24  GW .1
+  # VNI 10050  INTERNAL-WEB    → 192.168.50.0/24  GW .1
+  # VNI 10060  LMS-PLATFORM    → 192.168.60.0/24  GW .1
+  # VNI 10080  AI-GPU-CLUSTER  → 192.168.80.0/24  GW .1
+  # ============================================================
+
+    # --- leaf-01 servers (Pedagogical zone) ---
+    server-ped-01:
+      kind: linux
+      image: alpine:latest
+      exec:
+        - ip addr add 192.168.10.10/24 dev eth1
+        - ip route del default 
+        - ip route add default via 192.168.10.1 dev eth1
+
+    server-ped-02:
+      kind: linux
+      image: alpine:latest
+      exec:
+        - ip addr add 192.168.20.10/24 dev eth1
+        - ip route del default 
+        - ip route add default via 192.168.20.1 dev eth1
+
+    # --- leaf-02 servers (Research zone) ---
+    server-res-01:
+      kind: linux
+      image: alpine:latest
+      exec:
+        - ip addr add 192.168.30.10/24 dev eth1
+        - ip route del default 
+        - ip route add default via 192.168.30.1 dev eth1
+
+    server-res-02:
+      kind: linux
+      image: alpine:latest
+      exec:
+        - ip addr add 192.168.40.10/24 dev eth1
+        - ip route del default 
+        - ip route add default via 192.168.40.1 dev eth1
+
+    # --- leaf-03 servers (Services zone) ---
+    server-svc-01:
+      kind: linux
+      image: alpine:latest
+      exec:
+        - ip addr add 192.168.50.10/24 dev eth1
+        - ip route del default 
+        - ip route add default via 192.168.50.1 dev eth1
+
+    server-svc-02:
+      kind: linux
+      image: alpine:latest
+      exec:
+        - ip addr add 192.168.60.10/24 dev eth1
+        - ip route del default 
+        - ip route add default via 192.168.60.1 dev eth1
+
+    # --- leaf-04 servers (AI zone) ---
+    server-ai-01:
+      kind: linux
+      image: alpine:latest
+      exec:
+        - ip addr add 192.168.80.10/24 dev eth1
+        - ip route del default 
+        - ip route add default via 192.168.80.1 dev eth1
+
+    server-ai-02:
+      kind: linux
+      image: alpine:latest
+      exec:
+        - ip addr add 192.168.80.20/24 dev eth1
+        - ip route del default 
+        - ip route add default via 192.168.80.1 dev eth1
+
+  # ============================================================
+  # LINKS
+  # Naming convention: L<n> matches architecture document §3.2
+  #
+  # Spine uplinks  — eth1/eth2 on all switches
+  # Server downlinks — eth3/eth4 on access leafs
+  # ============================================================
+  links:
+    # --- Spine-01 uplinks (L1–L6) ---
+    - endpoints: ["spine-01:eth1", "leaf-01:eth1"]    # L1
+    - endpoints: ["spine-01:eth2", "leaf-02:eth1"]    # L2
+    - endpoints: ["spine-01:eth3", "leaf-03:eth1"]    # L3
+    - endpoints: ["spine-01:eth4", "leaf-04:eth1"]    # L4
+    - endpoints: ["spine-01:eth5", "border-01:eth1"]  # L5
+    - endpoints: ["spine-01:eth6", "border-02:eth1"]  # L6
+
+    # --- Spine-02 uplinks (L7–L12) ---
+    - endpoints: ["spine-02:eth1", "leaf-01:eth2"]    # L7
+    - endpoints: ["spine-02:eth2", "leaf-02:eth2"]    # L8
+    - endpoints: ["spine-02:eth3", "leaf-03:eth2"]    # L9
+    - endpoints: ["spine-02:eth4", "leaf-04:eth2"]    # L10
+    - endpoints: ["spine-02:eth5", "border-01:eth2"]  # L11
+    - endpoints: ["spine-02:eth6", "border-02:eth2"]  # L12
+
+    # --- Server downlinks (access leafs eth3/eth4) ---
+    - endpoints: ["leaf-01:eth3", "server-ped-01:eth1"]
+    - endpoints: ["leaf-01:eth4", "server-ped-02:eth1"]
+
+    - endpoints: ["leaf-02:eth3", "server-res-01:eth1"]
+    - endpoints: ["leaf-02:eth4", "server-res-02:eth1"]
+
+    - endpoints: ["leaf-03:eth3", "server-svc-01:eth1"]
+    - endpoints: ["leaf-03:eth4", "server-svc-02:eth1"]
+
+    - endpoints: ["leaf-04:eth3", "server-ai-01:eth1"]
+    - endpoints: ["leaf-04:eth4", "server-ai-02:eth1"]
