@@ -30,6 +30,9 @@ topology:
       binds:
         - configs/leaf-01/daemons:/etc/frr/daemons
         - configs/leaf-01/frr.conf:/etc/frr/frr.conf
+        - configs/leaf-01/startup.sh:/startup.sh
+      exec:
+      - bash /startup.sh
 
     leaf-02:                        # Research zone     — ASN 65002
       kind: linux
@@ -37,6 +40,9 @@ topology:
       binds:
         - configs/leaf-02/daemons:/etc/frr/daemons
         - configs/leaf-02/frr.conf:/etc/frr/frr.conf
+        - configs/leaf-02/startup.sh:/startup.sh
+      exec:
+      - bash /startup.sh
 
     leaf-03:                        # Services zone     — ASN 65003
       kind: linux
@@ -44,6 +50,9 @@ topology:
       binds:
         - configs/leaf-03/daemons:/etc/frr/daemons
         - configs/leaf-03/frr.conf:/etc/frr/frr.conf
+        - configs/leaf-03/startup.sh:/startup.sh
+      exec:
+      - bash /startup.sh
 
     leaf-04:                        # AI zone           — ASN 65004
       kind: linux
@@ -51,6 +60,9 @@ topology:
       binds:
         - configs/leaf-04/daemons:/etc/frr/daemons
         - configs/leaf-04/frr.conf:/etc/frr/frr.conf
+        - configs/leaf-04/startup.sh:/startup.sh
+      exec:
+      - bash /startup.sh
 
   # ============================================================
   # BORDER LEAF SWITCHES  (ASN 65005 — shared)
@@ -62,14 +74,18 @@ topology:
       binds:
         - configs/border-01/daemons:/etc/frr/daemons
         - configs/border-01/frr.conf:/etc/frr/frr.conf
-
+        - configs/border-01/startup.sh:/startup.sh
+      exec:
+      - bash /startup.sh
     border-02:
       kind: linux
       image: frrouting/frr:latest
       binds:
         - configs/border-02/daemons:/etc/frr/daemons
         - configs/border-02/frr.conf:/etc/frr/frr.conf
-
+        - configs/border-02/startup.sh:/startup.sh
+      exec:
+      - bash /startup.sh
   # ============================================================
   # SERVER CONTAINERS
   # VNI 10010  TP-SERVERS      → 192.168.10.0/24  GW .1

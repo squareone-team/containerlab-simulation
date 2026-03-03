@@ -53,6 +53,7 @@ esi-datacenter/
 ├── configs/
 │   ├── spine-01/                   # Per-node FRR config
 │   │   ├── daemons                 #   enabled routing daemons
+│   │   ├── startup.sh                #   startup script to set up interfaces, VLANs, VXLANs (FRR control plane is within linux kernel)
 │   │   └── frr.conf                #   FRR running configuration
 │   ├── spine-02/
 │   ├── leaf-01/
