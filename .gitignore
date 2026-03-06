@@ -23,3 +23,7 @@ context.md
 
 # Ansible retry files
 *.retry
+
+# Keep the initial snapshot
+!.config-backups/
+!.config-backups/initial/
