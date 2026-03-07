@@ -1,0 +1,118 @@
+! spine-02 -- ASN 65000 | Route Reflector
+hostname spine-02
+!
+service routing protocols model multi-agent
+!
+no aaa root
+username admin privilege 15 role network-admin secret admin
+!
+management api http-commands
+   protocol https
+   no shutdown
+!
+interface Loopback0
+   description VTEP/Router-ID
+   ip address 10.1.0.2/32
+!
+interface Ethernet1
+   description P2P to leaf-01
+   no switchport
+   ip address 10.0.0.16/31
+   bfd interval 300 min-rx 300 multiplier 3
+   no shutdown
+!
+interface Ethernet2
+   description P2P to leaf-02
+   no switchport
+   ip address 10.0.0.18/31
+   bfd interval 300 min-rx 300 multiplier 3
+   no shutdown
+!
+interface Ethernet3
+   description P2P to leaf-03
+   no switchport
+   ip address 10.0.0.20/31
+   bfd interval 300 min-rx 300 multiplier 3
+   no shutdown
+!
+interface Ethernet4
+   description P2P to leaf-04
+   no switchport
+   ip address 10.0.0.22/31
+   bfd interval 300 min-rx 300 multiplier 3
+   no shutdown
+!
+interface Ethernet5
+   description P2P to border-01
+   no switchport
+   ip address 10.0.0.24/31
+   bfd interval 300 min-rx 300 multiplier 3
+   no shutdown
+!
+interface Ethernet6
+   description P2P to border-02
+   no switchport
+   ip address 10.0.0.26/31
+   bfd interval 300 min-rx 300 multiplier 3
+   no shutdown
+!
+ip routing
+!
+router bgp 65000
+   router-id 10.1.0.2
+   bgp log-neighbor-changes
+   maximum-paths 6
+   neighbor FABRIC peer group
+   neighbor FABRIC bfd
+   neighbor FABRIC timers 3 9
+   neighbor FABRIC send-community extended
+   neighbor FABRIC maximum-routes 12000
+   neighbor EVPN-OVERLAY peer group
+   neighbor EVPN-OVERLAY next-hop-unchanged
+   neighbor EVPN-OVERLAY update-source Loopback0
+   neighbor EVPN-OVERLAY ebgp-multihop 3
+   neighbor EVPN-OVERLAY send-community extended
+   neighbor EVPN-OVERLAY maximum-routes 0
+   neighbor 10.0.0.17 peer group FABRIC
+   neighbor 10.0.0.17 remote-as 65001
+   neighbor 10.0.0.17 description leaf-01
+   neighbor 10.0.0.19 peer group FABRIC
+   neighbor 10.0.0.19 remote-as 65002
+   neighbor 10.0.0.19 description leaf-02
+   neighbor 10.0.0.21 peer group FABRIC
+   neighbor 10.0.0.21 remote-as 65003
+   neighbor 10.0.0.21 description leaf-03
+   neighbor 10.0.0.23 peer group FABRIC
+   neighbor 10.0.0.23 remote-as 65004
+   neighbor 10.0.0.23 description leaf-04
+   neighbor 10.0.0.25 peer group FABRIC
+   neighbor 10.0.0.25 remote-as 65005
+   neighbor 10.0.0.25 description border-01
+   neighbor 10.0.0.27 peer group FABRIC
+   neighbor 10.0.0.27 remote-as 65005
+   neighbor 10.0.0.27 description border-02
+   neighbor 10.1.0.11 peer group EVPN-OVERLAY
+   neighbor 10.1.0.11 remote-as 65001
+   neighbor 10.1.0.11 description leaf-01-evpn
+   neighbor 10.1.0.12 peer group EVPN-OVERLAY
+   neighbor 10.1.0.12 remote-as 65002
+   neighbor 10.1.0.12 description leaf-02-evpn
+   neighbor 10.1.0.13 peer group EVPN-OVERLAY
+   neighbor 10.1.0.13 remote-as 65003
+   neighbor 10.1.0.13 description leaf-03-evpn
+   neighbor 10.1.0.14 peer group EVPN-OVERLAY
+   neighbor 10.1.0.14 remote-as 65004
+   neighbor 10.1.0.14 description leaf-04-evpn
+   neighbor 10.1.0.21 peer group EVPN-OVERLAY
+   neighbor 10.1.0.21 remote-as 65005
+   neighbor 10.1.0.21 description border-01-evpn
+   neighbor 10.1.0.22 peer group EVPN-OVERLAY
+   neighbor 10.1.0.22 remote-as 65005
+   neighbor 10.1.0.22 description border-02-evpn
+   address-family ipv4
+      neighbor FABRIC activate
+      network 10.1.0.2/32
+   address-family evpn
+      neighbor EVPN-OVERLAY activate
+!
+end
