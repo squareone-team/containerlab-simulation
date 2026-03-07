@@ -115,12 +115,14 @@ node_files() {
   local impl=$1
   local node=$2
   case "$impl" in
-    frr-containerlab|arista-containerlab)
+    frr-containerlab)
       case "$node" in
         spine-*)  echo "daemons frr.conf" ;;
         leaf-*)   echo "daemons frr.conf startup.sh" ;;
         border-*) echo "daemons frr.conf startup.sh" ;;
       esac ;;
+    arista-containerlab)
+      echo "startup-config" ;;
   esac
 }
 

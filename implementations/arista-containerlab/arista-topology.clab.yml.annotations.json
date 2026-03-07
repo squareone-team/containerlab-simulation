@@ -1,0 +1,29 @@
+{
+  "freeTextAnnotations": [],
+  "freeShapeAnnotations": [],
+  "groupStyleAnnotations": [],
+  "networkNodeAnnotations": [],
+  "nodeAnnotations": [
+    { "id": "spine-01", "position": { "x": 300, "y": 100 } },
+    { "id": "spine-02", "position": { "x": 500, "y": 100 } },
+
+    { "id": "leaf-01", "position": { "x": 100, "y": 300 } },
+    { "id": "leaf-02", "position": { "x": 300, "y": 300 } },
+    { "id": "leaf-03", "position": { "x": 500, "y": 300 } },
+    { "id": "leaf-04", "position": { "x": 700, "y": 300 } },
+    { "id": "border-01", "position": { "x": 850, "y": 300 } },
+    { "id": "border-02", "position": { "x": 950, "y": 300 } },
+
+    { "id": "server-ped-01", "position": { "x": 80, "y": 500 } },
+    { "id": "server-ped-02", "position": { "x": 120, "y": 550 } },
+    { "id": "server-res-01", "position": { "x": 280, "y": 500 } },
+    { "id": "server-res-02", "position": { "x": 320, "y": 550 } },
+    { "id": "server-svc-01", "position": { "x": 480, "y": 500 } },
+    { "id": "server-svc-02", "position": { "x": 520, "y": 550 } },
+    { "id": "server-ai-01", "position": { "x": 680, "y": 500 } },
+    { "id": "server-ai-02", "position": { "x": 720, "y": 550 } }
+  ],
+  "edgeAnnotations": [],
+  "aliasEndpointAnnotations": [],
+  "viewerSettings": {}
+}
