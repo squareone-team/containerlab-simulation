@@ -1,0 +1,182 @@
+name: esi-arista
+
+topology:
+
+  defaults:
+    kind: arista_ceos
+    image: ceos:latest
+
+  # ============================================================
+  # SPINE SWITCHES  (ASN 65000 — Route Reflectors)
+  # ============================================================
+  nodes:
+    spine-01:
+      kind: arista_ceos
+      image: ceos:latest
+      binds:
+        - configs/spine-01/startup-config:/mnt/flash/startup-config
+      exec:
+        - printf 'configure replace flash:startup-config\ny\n' | Cli -p 15
+
+    spine-02:
+      kind: arista_ceos
+      image: ceos:latest
+      binds:
+        - configs/spine-02/startup-config:/mnt/flash/startup-config
+      exec:
+        - printf 'configure replace flash:startup-config\ny\n' | Cli -p 15
+
+  # ============================================================
+  # ACCESS LEAF SWITCHES
+  # ============================================================
+    leaf-01:
+      kind: arista_ceos
+      image: ceos:latest
+      binds:
+        - configs/leaf-01/startup-config:/mnt/flash/startup-config
+      exec:
+        - printf 'configure replace flash:startup-config\ny\n' | Cli -p 15
+
+    leaf-02:
+      kind: arista_ceos
+      image: ceos:latest
+      binds:
+        - configs/leaf-02/startup-config:/mnt/flash/startup-config
+      exec:
+        - printf 'configure replace flash:startup-config\ny\n' | Cli -p 15
+
+    leaf-03:
+      kind: arista_ceos
+      image: ceos:latest
+      binds:
+        - configs/leaf-03/startup-config:/mnt/flash/startup-config
+      exec:
+        - printf 'configure replace flash:startup-config\ny\n' | Cli -p 15
+
+    leaf-04:
+      kind: arista_ceos
+      image: ceos:latest
+      binds:
+        - configs/leaf-04/startup-config:/mnt/flash/startup-config
+      exec:
+        - printf 'configure replace flash:startup-config\ny\n' | Cli -p 15
+
+  # ============================================================
+  # BORDER LEAF SWITCHES  (ASN 65005)
+  # ============================================================
+    border-01:
+      kind: arista_ceos
+      image: ceos:latest
+      binds:
+        - configs/border-01/startup-config:/mnt/flash/startup-config
+      exec:
+        - printf 'configure replace flash:startup-config\ny\n' | Cli -p 15
+
+    border-02:
+      kind: arista_ceos
+      image: ceos:latest
+      binds:
+        - configs/border-02/startup-config:/mnt/flash/startup-config
+      exec:
+        - printf 'configure replace flash:startup-config\ny\n' | Cli -p 15
+
+  # ============================================================
+  # SERVER CONTAINERS  (Alpine — lightweight endpoints)
+  # ============================================================
+    server-ped-01:
+      kind: linux
+      image: alpine:latest
+      exec:
+        - ip addr add 192.168.10.10/24 dev eth1
+        - ip route del default
+        - ip route add default via 192.168.10.1 dev eth1
+
+    server-ped-02:
+      kind: linux
+      image: alpine:latest
+      exec:
+        - ip addr add 192.168.20.10/24 dev eth1
+        - ip route del default
+        - ip route add default via 192.168.20.1 dev eth1
+
+    server-res-01:
+      kind: linux
+      image: alpine:latest
+      exec:
+        - ip addr add 192.168.30.10/24 dev eth1
+        - ip route del default
+        - ip route add default via 192.168.30.1 dev eth1
+
+    server-res-02:
+      kind: linux
+      image: alpine:latest
+      exec:
+        - ip addr add 192.168.40.10/24 dev eth1
+        - ip route del default
+        - ip route add default via 192.168.40.1 dev eth1
+
+    server-svc-01:
+      kind: linux
+      image: alpine:latest
+      exec:
+        - ip addr add 192.168.50.10/24 dev eth1
+        - ip route del default
+        - ip route add default via 192.168.50.1 dev eth1
+
+    server-svc-02:
+      kind: linux
+      image: alpine:latest
+      exec:
+        - ip addr add 192.168.60.10/24 dev eth1
+        - ip route del default
+        - ip route add default via 192.168.60.1 dev eth1
+
+    server-ai-01:
+      kind: linux
+      image: alpine:latest
+      exec:
+        - ip addr add 192.168.80.10/24 dev eth1
+        - ip route del default
+        - ip route add default via 192.168.80.1 dev eth1
+
+    server-ai-02:
+      kind: linux
+      image: alpine:latest
+      exec:
+        - ip addr add 192.168.80.20/24 dev eth1
+        - ip route del default
+        - ip route add default via 192.168.80.1 dev eth1
+
+  # ============================================================
+  # LINKS
+  # Ethernet numbering on cEOS starts at Ethernet1
+  # ============================================================
+  links:
+    # Spine-01 uplinks
+    - endpoints: ["spine-01:eth1", "leaf-01:eth1"]
+    - endpoints: ["spine-01:eth2", "leaf-02:eth1"]
+    - endpoints: ["spine-01:eth3", "leaf-03:eth1"]
+    - endpoints: ["spine-01:eth4", "leaf-04:eth1"]
+    - endpoints: ["spine-01:eth5", "border-01:eth1"]
+    - endpoints: ["spine-01:eth6", "border-02:eth1"]
+
+    # Spine-02 uplinks
+    - endpoints: ["spine-02:eth1", "leaf-01:eth2"]
+    - endpoints: ["spine-02:eth2", "leaf-02:eth2"]
+    - endpoints: ["spine-02:eth3", "leaf-03:eth2"]
+    - endpoints: ["spine-02:eth4", "leaf-04:eth2"]
+    - endpoints: ["spine-02:eth5", "border-01:eth2"]
+    - endpoints: ["spine-02:eth6", "border-02:eth2"]
+
+    # Server downlinks
+    - endpoints: ["leaf-01:eth3", "server-ped-01:eth1"]
+    - endpoints: ["leaf-01:eth4", "server-ped-02:eth1"]
+
+    - endpoints: ["leaf-02:eth3", "server-res-01:eth1"]
+    - endpoints: ["leaf-02:eth4", "server-res-02:eth1"]
+
+    - endpoints: ["leaf-03:eth3", "server-svc-01:eth1"]
+    - endpoints: ["leaf-03:eth4", "server-svc-02:eth1"]
+
+    - endpoints: ["leaf-04:eth3", "server-ai-01:eth1"]
+    - endpoints: ["leaf-04:eth4", "server-ai-02:eth1"]

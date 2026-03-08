@@ -1,0 +1,122 @@
+! border-02 -- ASN 65005 | External uplink: FH Microwave
+hostname border-02
+!
+service routing protocols model multi-agent
+!
+no aaa root
+username admin privilege 15 role network-admin secret admin
+!
+management api http-commands
+   protocol https
+   no shutdown
+!
+vrf instance VRF-PEDAGOGY
+vrf instance VRF-RESEARCH
+vrf instance VRF-SERVICES
+vrf instance VRF-AI
+!
+ip routing
+ip routing vrf VRF-PEDAGOGY
+ip routing vrf VRF-RESEARCH
+ip routing vrf VRF-SERVICES
+ip routing vrf VRF-AI
+!
+interface Loopback0
+   description VTEP/Router-ID
+   ip address 10.1.0.22/32
+!
+interface Ethernet1
+   description P2P to spine-01
+   no switchport
+   ip address 10.0.0.11/31
+   bfd interval 300 min-rx 300 multiplier 3
+   no shutdown
+!
+interface Ethernet2
+   description P2P to spine-02
+   no switchport
+   ip address 10.0.0.27/31
+   bfd interval 300 min-rx 300 multiplier 3
+   no shutdown
+!
+interface Ethernet3
+   description External -- FH Microwave Link (simulated)
+   no switchport
+   ip address 203.0.113.5/30
+   no shutdown
+!
+interface Vxlan1
+   vxlan source-interface Loopback0
+   vxlan udp-port 4789
+   vxlan vrf VRF-PEDAGOGY vni 50001
+   vxlan vrf VRF-RESEARCH  vni 50002
+   vxlan vrf VRF-SERVICES  vni 50003
+   vxlan vrf VRF-AI        vni 50004
+!
+router bgp 65005
+   router-id 10.1.0.22
+   bgp log-neighbor-changes
+   maximum-paths 2
+   neighbor 10.0.0.10 remote-as 65000
+   neighbor 10.0.0.10 description spine-01
+   neighbor 10.0.0.10 bfd
+   neighbor 10.0.0.10 timers 3 9
+   neighbor 10.0.0.10 send-community extended
+   neighbor 10.0.0.10 maximum-routes 12000
+   neighbor 10.0.0.26 remote-as 65000
+   neighbor 10.0.0.26 description spine-02
+   neighbor 10.0.0.26 bfd
+   neighbor 10.0.0.26 timers 3 9
+   neighbor 10.0.0.26 send-community extended
+   neighbor 10.0.0.26 maximum-routes 12000
+   neighbor EVPN-OVERLAY peer group
+   neighbor EVPN-OVERLAY update-source Loopback0
+   neighbor EVPN-OVERLAY ebgp-multihop 3
+   neighbor EVPN-OVERLAY send-community extended
+   neighbor EVPN-OVERLAY maximum-routes 0
+   neighbor 10.1.0.1 peer group EVPN-OVERLAY
+   neighbor 10.1.0.1 remote-as 65000
+   neighbor 10.1.0.1 description spine-01-evpn
+   neighbor 10.1.0.2 peer group EVPN-OVERLAY
+   neighbor 10.1.0.2 remote-as 65000
+   neighbor 10.1.0.2 description spine-02-evpn
+   address-family ipv4
+      neighbor 10.0.0.10 activate
+      neighbor 10.0.0.26 activate
+      network 10.1.0.22/32
+   address-family evpn
+      neighbor EVPN-OVERLAY activate
+   vrf VRF-PEDAGOGY
+      rd 10.1.0.22:50001
+      route-target import evpn 65000:50001
+      route-target import evpn 65000:50002
+      route-target import evpn 65000:50003
+      route-target import evpn 65000:50004
+      route-target export evpn 65000:50001
+      redistribute connected
+   vrf VRF-RESEARCH
+      rd 10.1.0.22:50002
+      route-target import evpn 65000:50001
+      route-target import evpn 65000:50002
+      route-target import evpn 65000:50003
+      route-target import evpn 65000:50004
+      route-target export evpn 65000:50002
+      redistribute connected
+   vrf VRF-SERVICES
+      rd 10.1.0.22:50003
+      route-target import evpn 65000:50001
+      route-target import evpn 65000:50002
+      route-target import evpn 65000:50003
+      route-target import evpn 65000:50004
+      route-target export evpn 65000:50003
+      redistribute connected
+   vrf VRF-AI
+      rd 10.1.0.22:50004
+      route-target import evpn 65000:50001
+      route-target import evpn 65000:50002
+      route-target import evpn 65000:50003
+      route-target import evpn 65000:50004
+      route-target export evpn 65000:50004
+      redistribute connected
+!
+end
