@@ -1,0 +1,121 @@
+! leaf-01 -- ASN 65001 | Pedagogical Zone
+hostname leaf-01
+!
+service routing protocols model multi-agent
+!
+no aaa root
+username admin privilege 15 role network-admin secret admin
+!
+management api http-commands
+   protocol https
+   no shutdown
+!
+vrf instance VRF-PEDAGOGY
+!
+ip routing
+ip routing vrf VRF-PEDAGOGY
+!
+interface Loopback0
+   description VTEP/Router-ID
+   ip address 10.1.0.11/32
+!
+interface Ethernet1
+   description P2P to spine-01
+   no switchport
+   ip address 10.0.0.1/31
+   bfd interval 300 min-rx 300 multiplier 3
+   no shutdown
+!
+interface Ethernet2
+   description P2P to spine-02
+   no switchport
+   ip address 10.0.0.17/31
+   bfd interval 300 min-rx 300 multiplier 3
+   no shutdown
+!
+interface Ethernet3
+   description server-ped-01
+   switchport mode access
+   switchport access vlan 10
+   no shutdown
+!
+interface Ethernet4
+   description server-ped-02
+   switchport mode access
+   switchport access vlan 20
+   no shutdown
+!
+vlan 10
+   name TP-SERVERS
+!
+vlan 20
+   name STUDENT-PROJ
+!
+vlan 90
+   name OOB-MGMT-OVERLAY
+!
+interface Vlan10
+   description TP-SERVERS gateway
+   vrf VRF-PEDAGOGY
+   ip address virtual 192.168.10.1/24
+   no shutdown
+!
+interface Vlan20
+   description STUDENT-PROJ gateway
+   vrf VRF-PEDAGOGY
+   ip address virtual 192.168.20.1/24
+   no shutdown
+!
+interface Vxlan1
+   vxlan source-interface Loopback0
+   vxlan udp-port 4789
+   vxlan vlan 10 vni 10010
+   vxlan vlan 20 vni 10020
+   vxlan vlan 90 vni 10090
+   vxlan vrf VRF-PEDAGOGY vni 50001
+!
+ip virtual-router mac-address 00:00:00:11:11:11
+!
+router bgp 65001
+   router-id 10.1.0.11
+   bgp log-neighbor-changes
+   maximum-paths 2
+   neighbor 10.0.0.0  remote-as 65000
+   neighbor 10.0.0.0  description spine-01
+   neighbor 10.0.0.0  bfd
+   neighbor 10.0.0.0  timers 3 9
+   neighbor 10.0.0.0  send-community extended
+   neighbor 10.0.0.0  maximum-routes 12000
+   neighbor 10.0.0.16 remote-as 65000
+   neighbor 10.0.0.16 description spine-02
+   neighbor 10.0.0.16 bfd
+   neighbor 10.0.0.16 timers 3 9
+   neighbor 10.0.0.16 send-community extended
+   neighbor 10.0.0.16 maximum-routes 12000
+   neighbor EVPN-OVERLAY peer group
+   neighbor EVPN-OVERLAY update-source Loopback0
+   neighbor EVPN-OVERLAY ebgp-multihop 3
+   neighbor EVPN-OVERLAY send-community extended
+   neighbor EVPN-OVERLAY maximum-routes 0
+   neighbor 10.1.0.1 peer group EVPN-OVERLAY
+   neighbor 10.1.0.1 remote-as 65000
+   neighbor 10.1.0.1 description spine-01-evpn
+   neighbor 10.1.0.2 peer group EVPN-OVERLAY
+   neighbor 10.1.0.2 remote-as 65000
+   neighbor 10.1.0.2 description spine-02-evpn
+   address-family ipv4
+      neighbor 10.0.0.0  activate
+      neighbor 10.0.0.16 activate
+      network 10.1.0.11/32
+   address-family evpn
+      neighbor EVPN-OVERLAY activate
+   vrf VRF-PEDAGOGY
+      rd 10.1.0.11:50001
+      route-target import evpn 65000:50001
+      route-target import evpn 65000:50002
+      route-target import evpn 65000:50003
+      route-target import evpn 65000:50004
+      route-target export evpn 65000:50001
+      redistribute connected
+!
+end
