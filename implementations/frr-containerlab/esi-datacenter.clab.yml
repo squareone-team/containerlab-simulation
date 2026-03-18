@@ -1,0 +1,301 @@
+name: esi-datacenter
+
+topology:
+  nodes:
+    spine-01:
+      kind: linux
+      image: frrouting/frr:latest
+      binds:
+        - configs/spine-01/daemons:/etc/frr/daemons
+        - configs/spine-01/frr.conf:/etc/frr/frr.conf
+        - configs/spine-01/startup.sh:/startup.sh
+      exec:
+        - bash /startup.sh
+
+    spine-02:
+      kind: linux
+      image: frrouting/frr:latest
+      binds:
+        - configs/spine-02/daemons:/etc/frr/daemons
+        - configs/spine-02/frr.conf:/etc/frr/frr.conf
+        - configs/spine-02/startup.sh:/startup.sh
+      exec:
+        - bash /startup.sh
+
+    leaf-01:
+      kind: linux
+      image: frrouting/frr:latest
+      binds:
+        - configs/leaf-01/daemons:/etc/frr/daemons
+        - configs/leaf-01/frr.conf:/etc/frr/frr.conf
+        - configs/leaf-01/startup.sh:/startup.sh
+      exec:
+        - bash /startup.sh
+
+    leaf-02:
+      kind: linux
+      image: frrouting/frr:latest
+      binds:
+        - configs/leaf-02/daemons:/etc/frr/daemons
+        - configs/leaf-02/frr.conf:/etc/frr/frr.conf
+        - configs/leaf-02/startup.sh:/startup.sh
+      exec:
+        - bash /startup.sh
+
+    leaf-03:
+      kind: linux
+      image: frrouting/frr:latest
+      binds:
+        - configs/leaf-03/daemons:/etc/frr/daemons
+        - configs/leaf-03/frr.conf:/etc/frr/frr.conf
+        - configs/leaf-03/startup.sh:/startup.sh
+      exec:
+        - bash /startup.sh
+
+    leaf-04:
+      kind: linux
+      image: frrouting/frr:latest
+      binds:
+        - configs/leaf-04/daemons:/etc/frr/daemons
+        - configs/leaf-04/frr.conf:/etc/frr/frr.conf
+        - configs/leaf-04/startup.sh:/startup.sh
+      exec:
+        - bash /startup.sh
+
+    leaf-05:
+      kind: linux
+      image: frrouting/frr:latest
+      binds:
+        - configs/leaf-05/daemons:/etc/frr/daemons
+        - configs/leaf-05/frr.conf:/etc/frr/frr.conf
+        - configs/leaf-05/startup.sh:/startup.sh
+      exec:
+        - bash /startup.sh
+
+    leaf-06:
+      kind: linux
+      image: frrouting/frr:latest
+      binds:
+        - configs/leaf-06/daemons:/etc/frr/daemons
+        - configs/leaf-06/frr.conf:/etc/frr/frr.conf
+        - configs/leaf-06/startup.sh:/startup.sh
+      exec:
+        - bash /startup.sh
+
+    leaf-07:
+      kind: linux
+      image: frrouting/frr:latest
+      binds:
+        - configs/leaf-07/daemons:/etc/frr/daemons
+        - configs/leaf-07/frr.conf:/etc/frr/frr.conf
+        - configs/leaf-07/startup.sh:/startup.sh
+      exec:
+        - bash /startup.sh
+
+    leaf-08:
+      kind: linux
+      image: frrouting/frr:latest
+      binds:
+        - configs/leaf-08/daemons:/etc/frr/daemons
+        - configs/leaf-08/frr.conf:/etc/frr/frr.conf
+        - configs/leaf-08/startup.sh:/startup.sh
+      exec:
+        - bash /startup.sh
+
+    leaf-09:
+      kind: linux
+      image: frrouting/frr:latest
+      binds:
+        - configs/leaf-09/daemons:/etc/frr/daemons
+        - configs/leaf-09/frr.conf:/etc/frr/frr.conf
+        - configs/leaf-09/startup.sh:/startup.sh
+      exec:
+        - bash /startup.sh
+
+    leaf-10:
+      kind: linux
+      image: frrouting/frr:latest
+      binds:
+        - configs/leaf-10/daemons:/etc/frr/daemons
+        - configs/leaf-10/frr.conf:/etc/frr/frr.conf
+        - configs/leaf-10/startup.sh:/startup.sh
+      exec:
+        - bash /startup.sh
+
+    isp-router-01:
+      kind: linux
+      image: frrouting/frr:latest
+      binds:
+        - configs/isp-router-01/daemons:/etc/frr/daemons
+        - configs/isp-router-01/frr.conf:/etc/frr/frr.conf
+
+    isp-router-02:
+      kind: linux
+      image: frrouting/frr:latest
+      binds:
+        - configs/isp-router-02/daemons:/etc/frr/daemons
+        - configs/isp-router-02/frr.conf:/etc/frr/frr.conf
+
+    isp-router-03:
+      kind: linux
+      image: frrouting/frr:latest
+      binds:
+        - configs/isp-router-03/daemons:/etc/frr/daemons
+        - configs/isp-router-03/frr.conf:/etc/frr/frr.conf
+
+    server-student-01:
+      kind: linux
+      image: alpine:3.20
+      exec:
+        - ip addr add 192.168.10.10/24 dev eth1
+        - ip route del default
+        - ip route add default via 192.168.10.1 dev eth1
+
+    server-student-02:
+      kind: linux
+      image: alpine:3.20
+      exec:
+        - ip addr add 192.168.20.10/24 dev eth1
+        - ip route del default
+        - ip route add default via 192.168.20.1 dev eth1
+
+    server-admin-01:
+      kind: linux
+      image: alpine:3.20
+      exec:
+        - ip addr add 192.168.50.10/24 dev eth1
+        - ip route del default
+        - ip route add default via 192.168.50.1 dev eth1
+
+    server-admin-02:
+      kind: linux
+      image: alpine:3.20
+      exec:
+        - ip addr add 192.168.60.10/24 dev eth1
+        - ip route del default
+        - ip route add default via 192.168.60.1 dev eth1
+
+    server-hpc-01:
+      kind: linux
+      image: alpine:3.20
+      exec:
+        - ip addr add 192.168.70.10/24 dev eth1
+        - ip route del default
+        - ip route add default via 192.168.70.1 dev eth1
+
+    server-hpc-02:
+      kind: linux
+      image: alpine:3.20
+      exec:
+        - ip addr add 192.168.70.20/24 dev eth1
+        - ip route del default
+        - ip route add default via 192.168.70.1 dev eth1
+
+    server-storage-01:
+      kind: linux
+      image: alpine:3.20
+      exec:
+        - ip addr add 192.168.80.10/24 dev eth1
+        - ip route del default
+        - ip route add default via 192.168.80.1 dev eth1
+
+    server-dmz-01:
+      kind: linux
+      image: alpine:3.20
+      exec:
+        - ip addr add 192.168.100.10/24 dev eth1
+        - ip route del default
+        - ip route add default via 192.168.100.1 dev eth1
+
+    firewall-01:
+      kind: linux
+      image: alpine:3.20
+    firewall-02:
+      kind: linux
+      image: alpine:3.20
+    bastion-01:
+      kind: linux
+      image: alpine:3.20
+    ids-01:
+      kind: linux
+      image: alpine:3.20
+    ntp-server:
+      kind: linux
+      image: alpine:3.20
+    dns-server:
+      kind: linux
+      image: alpine:3.20
+    dhcp-server:
+      kind: linux
+      image: alpine:3.20
+    ftp-server:
+      kind: linux
+      image: alpine:3.20
+    zabbix-server:
+      kind: linux
+      image: alpine:3.20
+    prometheus:
+      kind: linux
+      image: alpine:3.20
+    syslog-server:
+      kind: linux
+      image: alpine:3.20
+    wifi-controller:
+      kind: linux
+      image: alpine:3.20
+    bp-sw:
+      kind: linux
+      image: alpine:3.20
+    oob-sw:
+      kind: linux
+      image: alpine:3.20
+
+  links:
+    - endpoints: ["spine-01:eth1", "leaf-01:eth1"]
+    - endpoints: ["spine-01:eth2", "leaf-02:eth1"]
+    - endpoints: ["spine-01:eth3", "leaf-03:eth1"]
+    - endpoints: ["spine-01:eth4", "leaf-04:eth1"]
+    - endpoints: ["spine-01:eth5", "leaf-05:eth1"]
+    - endpoints: ["spine-01:eth6", "leaf-06:eth1"]
+    - endpoints: ["spine-01:eth7", "leaf-07:eth1"]
+    - endpoints: ["spine-01:eth8", "leaf-08:eth1"]
+    - endpoints: ["spine-01:eth9", "leaf-09:eth1"]
+    - endpoints: ["spine-01:eth10", "leaf-10:eth1"]
+
+    - endpoints: ["spine-02:eth1", "leaf-01:eth2"]
+    - endpoints: ["spine-02:eth2", "leaf-02:eth2"]
+    - endpoints: ["spine-02:eth3", "leaf-03:eth2"]
+    - endpoints: ["spine-02:eth4", "leaf-04:eth2"]
+    - endpoints: ["spine-02:eth5", "leaf-05:eth2"]
+    - endpoints: ["spine-02:eth6", "leaf-06:eth2"]
+    - endpoints: ["spine-02:eth7", "leaf-07:eth2"]
+    - endpoints: ["spine-02:eth8", "leaf-08:eth2"]
+    - endpoints: ["spine-02:eth9", "leaf-09:eth2"]
+    - endpoints: ["spine-02:eth10", "leaf-10:eth2"]
+
+    - endpoints: ["leaf-01:eth3", "isp-router-01:eth1"]
+    - endpoints: ["leaf-02:eth3", "isp-router-02:eth1"]
+    - endpoints: ["leaf-01:eth4", "isp-router-03:eth1"]
+
+    - endpoints: ["leaf-01:eth5", "firewall-01:eth1"]
+    - endpoints: ["leaf-02:eth5", "firewall-02:eth1"]
+    - endpoints: ["leaf-01:eth6", "ids-01:eth1"]
+
+    - endpoints: ["leaf-09:eth3", "server-student-01:eth1"]
+    - endpoints: ["leaf-09:eth4", "server-student-02:eth1"]
+    - endpoints: ["leaf-03:eth3", "server-admin-01:eth1"]
+    - endpoints: ["leaf-03:eth4", "server-admin-02:eth1"]
+    - endpoints: ["leaf-05:eth3", "server-hpc-01:eth1"]
+    - endpoints: ["leaf-05:eth4", "server-hpc-02:eth1"]
+    - endpoints: ["leaf-07:eth3", "server-storage-01:eth1"]
+    - endpoints: ["leaf-01:eth7", "server-dmz-01:eth1"]
+
+    - endpoints: ["leaf-01:eth9", "leaf-02:eth9"]
+    - endpoints: ["leaf-03:eth9", "leaf-04:eth9"]
+    - endpoints: ["leaf-05:eth9", "leaf-06:eth9"]
+    - endpoints: ["leaf-07:eth9", "leaf-08:eth9"]
+    - endpoints: ["leaf-09:eth9", "leaf-10:eth9"]
+
+    - endpoints: ["bp-sw:eth1", "leaf-09:eth7"]
+    - endpoints: ["bp-sw:eth2", "leaf-10:eth7"]
+    - endpoints: ["bastion-01:eth1", "oob-sw:eth1"]
