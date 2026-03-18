@@ -1,115 +1,59 @@
-# ESI Datacenter — Spine-Leaf Lab
+# ESI Datacenter Lab
 
-Modern Spine-Leaf datacenter topology for **ESI (École Nationale Supérieure d'Informatique)**, built with [ContainerLab](https://containerlab.dev) and designed for future automation via **Ansible**.
+EVPN/VXLAN spine-leaf datacenter simulation for ESI using ContainerLab and FRR.
 
-## Objective
+## Current Implementation
 
-Deploy and validate a production-grade EVPN/VXLAN Spine-Leaf fabric in a lightweight, reproducible container environment — serving as the foundation for campus network services across pedagogical, research, services, and AI zones.
+- Active implementation: `implementations/frr-containerlab/`
+- Topology file: `implementations/frr-containerlab/esi-datacenter.clab.yml`
+- Fabric nodes: 2 spines, 10 leafs (border/admin/hpc/storage/student), 3 ISP routers
+- Services: Alpine-based server and infrastructure placeholders for later theme work
 
----
+## Phase 1 Status
 
-## Topology Overview
+Phase 1 baseline is implemented and validated with the current verifier:
 
-```
-                ┌───────────┐   ┌───────────┐
-                │  spine-01 │   │  spine-02 │    ASN 65000 (Route Reflectors)
-                └─┬──┬──┬──┘   └──┬──┬──┬──┘
-                  │  │  │  ╲    ╱  │  │  │
-       ┌──────────┘  │  │   ╲╱    │  │  └──────────┐
-       │     ┌───────┘  │   ╱╲    │  └───────┐     │
-       │     │    ┌─────┘  ╱  ╲   └─────┐    │     │
-       ▼     ▼    ▼                      ▼    ▼     ▼
-   ┌──────┬──────┬──────┬──────┬──────────┬──────────┐
-   │leaf  │leaf  │leaf  │leaf  │ border   │ border   │
-   │ -01  │ -02  │ -03  │ -04  │  -01     │  -02     │
-   │65001 │65002 │65003 │65004 │  65005   │  65005   │
-   └──┬───┴──┬───┴──┬───┴──┬───┴──────────┴──────────┘
-      │      │      │      │
-   Pedagogy Research Svc   AI         External uplinks
-```
-
-| Zone | Leaf | ASN | VNIs | Subnets |
-|------|------|-----|------|---------|
-| Pedagogical | leaf-01 | 65001 | VNI 10010, 10020 | 192.168.10.0/24, 192.168.20.0/24 |
-| Research    | leaf-02 | 65002 | VNI 10030, 10040 | 192.168.30.0/24, 192.168.40.0/24 |
-| Services    | leaf-03 | 65003 | VNI 10050, 10060 | 192.168.50.0/24, 192.168.60.0/24 |
-| AI / GPU    | leaf-04 | 65004 | VNI 10080        | 192.168.80.0/24                   |
-| Border      | border-01/02 | 65005 | —          | External uplinks                  |
-
----
-
-## Tools & Images
-
-| Component | Image | Size | Purpose |
-|-----------|-------|------|---------|
-| Switches (spines, leaves, borders) | `frrouting/frr:latest` | ~150 MB | Full routing stack — BGP, EVPN, VXLAN |
-| Servers (end-hosts) | `alpine:latest` | ~5 MB | Lightweight traffic endpoints |
-
-**ContainerLab** orchestrates the full topology (nodes, links, bind-mounts) from a single YAML file.
-**Ansible** will be used in a later phase to push routing configurations (BGP underlay, EVPN overlay, VXLAN tunnels) to all FRR nodes programmatically.
-
----
-
-## Repository Structure
-
-```
-esi-datacenter/
-├── implementations/
-│   ├── frr-containerlab/               #   Active — FRR + ContainerLab
-│   │   ├── spin-topology.clab.yml      #   ContainerLab topology definition
-│   │   ├── spin-topology.clab.yml.annotations  # topology graph (post-deploy)
-│   │   └── configs/
-│   │       ├── spine-01/               # Per-node FRR config
-│   │       │   ├── daemons             #   enabled routing daemons
-│   │       │   ├── frr.conf            #   FRR running configuration
-│   │       │   └── startup.sh          #   interface / VLAN / VXLAN setup
-│   │       ├── spine-02/
-│   │       ├── leaf-01/ … leaf-04/
-│   │       └── border-01/ border-02/
-│   ├── arista-containerlab/            # Planned — Arista 
-│   └── arista-ansible/                 # Planned — Ansible automation
-├── scripts/
-│   ├── reset.sh                        # Reset all configs to initial state
-│   └── reorganise.sh                   # One-time repo migration script
-├── docs/
-└── README.md
-```
-
----
+- Verification script: `implementations/frr-containerlab/tests/phase1-verify.sh`
+- Latest result: `35 passed / 0 failed` (`Phase 1 STABLE`)
 
 ## Quick Start
 
-> **Prerequisites:** Docker + ContainerLab installed ([install guide](https://containerlab.dev/install/)).
-> On Windows, use WSL2.
+Prerequisites: Docker + ContainerLab.
 
 ```bash
-# 1. Deploy the lab
 cd implementations/frr-containerlab
-sudo containerlab deploy -t spin-topology.clab.yml
 
-# 2. Verify all nodes are up
-sudo containerlab inspect -t spin-topology.clab.yml
+# Deploy
+sudo containerlab deploy -t esi-datacenter.clab.yml
 
-# 3. Access a switch
-docker exec -it clab-esi-datacenter-spine-01 vtysh
+# Run baseline validation
+bash tests/phase1-verify.sh
 
-# 4. Access a server
-docker exec -it clab-esi-datacenter-server-ped-01 sh
+# Inspect
+sudo containerlab inspect -t esi-datacenter.clab.yml
 
-# 5. Destroy the lab (configs are preserved for fast redeploy)
-sudo containerlab destroy -t spin-topology.clab.yml
+# Destroy
+sudo containerlab destroy -t esi-datacenter.clab.yml --cleanup
 ```
 
----
+## Repository Layout
 
+```text
+esi-datacenter/
+├── context.md
+├── implementations/
+│   ├── frr-containerlab/                # Active implementation
+│   │   ├── esi-datacenter.clab.yml
+│   │   ├── configs/
+│   │   └── tests/
+│   ├── arista-containerlab/             # Alternate implementation path
+│   ├── arista-containerlab-lightweight/ # Alternate implementation path
+│   └── arista-ansible/                  # Automation path
+└── scripts/
+```
 
-## Implementations
+## Notes
 
-| Folder | Stack | Status |
-|--------|-------|--------|
-| `implementations/frr-containerlab/` | FRR + ContainerLab | Active |
-| `implementations/arista-containerlab/` | Arista cEOS + ContainerLab |Planned |
-| `implementations/arista-ansible/` | Arista + Ansible | Planned |
-
----
+- `context.md` is the authoritative collaboration and architecture contract for this project.
+- Theme work (T1-T4) must branch from the validated Phase 1 baseline.
 
