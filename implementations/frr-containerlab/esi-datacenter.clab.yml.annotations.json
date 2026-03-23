@@ -1,0 +1,58 @@
+{
+  "freeTextAnnotations": [],
+  "freeShapeAnnotations": [],
+  "trafficRateAnnotations": [],
+  "groupStyleAnnotations": [],
+  "networkNodeAnnotations": [],
+  "nodeAnnotations": [
+    { "id": "isp-router-01", "position": { "x": 400, "y": 0 } },
+    { "id": "isp-router-02", "position": { "x": 600, "y": 0 } },
+    { "id": "isp-router-03", "position": { "x": 800, "y": 0 } },
+
+    { "id": "spine-01", "position": { "x": 450, "y": 150 } },
+    { "id": "spine-02", "position": { "x": 750, "y": 150 } },
+
+    { "id": "leaf-01", "position": { "x": 100, "y": 350 } },
+    { "id": "leaf-02", "position": { "x": 200, "y": 350 } },
+
+    { "id": "leaf-03", "position": { "x": 350, "y": 350 } },
+    { "id": "leaf-04", "position": { "x": 450, "y": 350 } },
+
+    { "id": "leaf-05", "position": { "x": 600, "y": 350 } },
+    { "id": "leaf-06", "position": { "x": 700, "y": 350 } },
+
+    { "id": "leaf-07", "position": { "x": 850, "y": 350 } },
+    { "id": "leaf-08", "position": { "x": 950, "y": 350 } },
+
+    { "id": "leaf-09", "position": { "x": 1100, "y": 350 } },
+    { "id": "leaf-10", "position": { "x": 1200, "y": 350 } },
+
+    { "id": "firewall-01", "position": { "x": 100, "y": 500 } },
+    { "id": "firewall-02", "position": { "x": 200, "y": 500 } },
+    { "id": "ids-01", "position": { "x": 50, "y": 500 } },
+    { "id": "bp-sw", "position": { "x": 1150, "y": 500 } },
+
+    { "id": "server-dmz-01", "position": { "x": 150, "y": 700 } },
+    { "id": "server-admin-01", "position": { "x": 350, "y": 700 } },
+    { "id": "server-admin-02", "position": { "x": 450, "y": 700 } },
+    { "id": "server-hpc-01", "position": { "x": 600, "y": 700 } },
+    { "id": "server-hpc-02", "position": { "x": 700, "y": 700 } },
+    { "id": "server-storage-01", "position": { "x": 900, "y": 700 } },
+    { "id": "server-student-01", "position": { "x": 1100, "y": 700 } },
+    { "id": "server-student-02", "position": { "x": 1200, "y": 700 } },
+
+    { "id": "oob-sw", "position": { "x": 650, "y": 850 } },
+    { "id": "bastion-01", "position": { "x": 200, "y": 950 } },
+    { "id": "ntp-server", "position": { "x": 350, "y": 950 } },
+    { "id": "dns-server", "position": { "x": 450, "y": 950 } },
+    { "id": "dhcp-server", "position": { "x": 550, "y": 950 } },
+    { "id": "ftp-server", "position": { "x": 650, "y": 950 } },
+    { "id": "zabbix-server", "position": { "x": 800, "y": 950 } },
+    { "id": "prometheus", "position": { "x": 900, "y": 950 } },
+    { "id": "syslog-server", "position": { "x": 1000, "y": 950 } },
+    { "id": "wifi-controller", "position": { "x": 1150, "y": 950 } }
+  ],
+  "edgeAnnotations": [],
+  "aliasEndpointAnnotations": [],
+  "viewerSettings": {}
+}
