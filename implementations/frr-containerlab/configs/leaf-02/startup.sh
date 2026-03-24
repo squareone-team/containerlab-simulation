@@ -27,6 +27,20 @@ ip link set eth5 up
 ip link set eth9 up
 ip addr add 192.168.1.253/24 dev br-fw-ha
 
+# Policy routing for packets returning from firewall transit segment.
+# br-fw-ha lives in default namespace; steer based on source subnet
+# into tenant VRF route tables to avoid default-mgmt path.
+ip rule add iif br-fw-ha to 192.168.10.0/24 lookup 30 prio 10000 || true
+ip rule add iif br-fw-ha to 192.168.20.0/24 lookup 30 prio 10001 || true
+ip rule add iif br-fw-ha to 192.168.50.0/24 lookup 20 prio 10002 || true
+ip rule add iif br-fw-ha to 192.168.60.0/24 lookup 20 prio 10003 || true
+ip rule add iif br-fw-ha from 192.168.50.0/24 lookup 30 prio 10010 || true
+ip rule add iif br-fw-ha from 192.168.60.0/24 lookup 30 prio 10011 || true
+ip rule add iif br-fw-ha from 192.168.10.0/24 lookup 20 prio 10012 || true
+ip rule add iif br-fw-ha from 192.168.20.0/24 lookup 20 prio 10013 || true
+ip rule add iif br-fw-ha from 192.168.70.0/24 lookup 20 prio 10014 || true
+ip rule add iif br-fw-ha from 192.168.80.0/24 lookup 20 prio 10015 || true
+
 ip link add br0 type bridge vlan_filtering 1 vlan_default_pvid 0
 ip link set br0 mtu 9000
 ip link set br0 up

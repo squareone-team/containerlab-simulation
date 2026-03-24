@@ -18,6 +18,9 @@ echo "[*] Configuring eth1 (Ring 1 interface)..."
 ip addr add 192.168.1.1/24 dev eth1
 ip link set eth1 up
 
+# Route traffic back to datacenter networks via border leaf transit bridge
+ip route replace 192.168.0.0/16 via 192.168.1.252 dev eth1
+
 # Configure eth2-eth4 for traffic traversal (no IP needed, just up)
 echo "[*] Bringing up additional interfaces..."
 for i in 2 3 4 5 6 7 8 9; do
