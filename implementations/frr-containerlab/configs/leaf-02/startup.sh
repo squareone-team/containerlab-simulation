@@ -9,6 +9,8 @@ done
 sysctl -w net.ipv4.fib_multipath_hash_policy=1
 
 iptables -A INPUT -p tcp --dport 179 -s 10.0.0.0/16 -j ACCEPT
+iptables -A INPUT -p tcp --dport 179 -s 203.0.113.0/24 -j ACCEPT
+iptables -A INPUT -p tcp --dport 179 -s 203.0.114.0/30 -j ACCEPT
 iptables -A INPUT -p tcp --dport 179 -j DROP
 
 for BFD_PORT in 3784 3785 4784; do
