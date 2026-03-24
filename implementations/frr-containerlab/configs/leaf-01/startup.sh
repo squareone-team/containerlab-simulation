@@ -16,7 +16,7 @@ ip link add VRF-ORIENTATION type vrf table 50
 ip link set VRF-ORIENTATION up
 ip link add VRF-WIFI-CTRL type vrf table 60
 ip link set VRF-WIFI-CTRL up
-for IFACE in eth3 eth4 eth5 eth6 eth8; do
+for IFACE in eth3 eth4 eth5 eth6 eth8 eth9; do
   ip link set dev $IFACE mtu 9000 || true
 done
 
@@ -24,6 +24,14 @@ ip link set eth8 master VRF-WIFI-CTRL
 ip addr add 10.200.0.1/30 dev eth8
 ip link set eth8 up
 ip route add 192.168.10.100/32 via 10.200.0.2 vrf VRF-WIFI-CTRL
+ip link add br-fw-ha type bridge vlan_filtering 1 vlan_default_pvid 1
+ip link set br-fw-ha mtu 9000
+ip link set br-fw-ha up
+ip link set eth5 master br-fw-ha
+ip link set eth9 master br-fw-ha
+ip link set eth5 up
+ip link set eth9 up
+ip addr add 192.168.1.252/24 dev br-fw-ha
 
 ip link add br0 type bridge vlan_filtering 1 vlan_default_pvid 0
 ip link set br0 mtu 9000

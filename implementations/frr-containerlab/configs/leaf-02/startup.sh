@@ -14,9 +14,18 @@ ip link add VRF-PUBLIC type vrf table 40
 ip link set VRF-PUBLIC up
 ip link add VRF-ORIENTATION type vrf table 50
 ip link set VRF-ORIENTATION up
-for IFACE in eth3 eth4 eth5 eth6; do
+for IFACE in eth3 eth4 eth5 eth6 eth9; do
   ip link set dev $IFACE mtu 9000 || true
 done
+
+ip link add br-fw-ha type bridge vlan_filtering 1 vlan_default_pvid 1
+ip link set br-fw-ha mtu 9000
+ip link set br-fw-ha up
+ip link set eth5 master br-fw-ha
+ip link set eth9 master br-fw-ha
+ip link set eth5 up
+ip link set eth9 up
+ip addr add 192.168.1.253/24 dev br-fw-ha
 
 ip link add br0 type bridge vlan_filtering 1 vlan_default_pvid 0
 ip link set br0 mtu 9000
