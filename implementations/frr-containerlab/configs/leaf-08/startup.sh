@@ -8,6 +8,17 @@ for IFACE in eth1 eth2; do
 done
 sysctl -w net.ipv4.fib_multipath_hash_policy=1
 
+iptables -A INPUT -p tcp --dport 179 -s 10.0.0.0/16 -j ACCEPT
+iptables -A INPUT -p tcp --dport 179 -j DROP
+
+for BFD_PORT in 3784 3785 4784; do
+  iptables -A INPUT -p udp --dport "$BFD_PORT" -s 10.0.0.0/16 -j ACCEPT
+  iptables -A INPUT -p udp --dport "$BFD_PORT" -j DROP
+done
+
+iptables -A INPUT -p tcp --dport 22 -s 172.16.0.50 -j ACCEPT
+iptables -A INPUT -p tcp --dport 22 -j DROP
+
 for AUTH_VTEP in 10.1.0.1 10.1.0.2 10.1.0.11 10.1.0.12 10.1.0.13 10.1.0.14 10.1.0.15 10.1.0.16 10.1.0.17 10.1.0.18 10.1.0.19 10.1.0.20; do
   iptables -A INPUT -p udp --dport 4789 -s "$AUTH_VTEP" -j ACCEPT
 done
