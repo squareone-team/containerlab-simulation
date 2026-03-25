@@ -52,7 +52,7 @@ ip addr add 192.168.40.1/24 dev vlan40
 ip link set vlan40 up
 
 ip link add vlan50 link br0 type vlan id 50
-ip link set vlan50 master VRF-STAFF
+# ip link set vlan50 master VRF-STAFF
 ip link set vlan50 address $ANYCAST_MAC || true
 ip addr add 192.168.50.1/24 dev vlan50
 ip link set vlan50 up
@@ -62,3 +62,17 @@ ip link set vlan4020 master VRF-STAFF
 ip link set vlan4020 up
 
 # === END PHASE 1 — Phase 2 appends below ===
+
+# Add eth5 to bridge (L2)
+ip link set vlan50 up
+ip link set eth5 master br0
+bridge vlan add vid 50 dev eth5 pvid untagged
+
+
+# === NTP CLIENT ===
+apk add --no-cache chrony
+cat > /etc/chrony.conf << 'EOF'
+server 192.168.50.20 iburst prefer
+local stratum 10
+EOF
+chronyd -f /etc/chrony.conf

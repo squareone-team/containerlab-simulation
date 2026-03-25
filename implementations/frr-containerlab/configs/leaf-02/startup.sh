@@ -45,3 +45,11 @@ ip link set vlan4030 master VRF-PEDAGOGY
 ip link set vlan4030 up
 
 # === END PHASE 1 — Phase 2 appends below ===
+
+# === NTP CLIENT ===
+apk add --no-cache chrony
+cat > /etc/chrony.conf << 'EOF'
+server 192.168.50.20 iburst prefer
+local stratum 10
+EOF
+chronyd -f /etc/chrony.conf

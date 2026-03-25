@@ -10,7 +10,7 @@ topology:
         - configs/spine-01/frr.conf:/etc/frr/frr.conf
         - configs/spine-01/startup.sh:/startup.sh
       exec:
-        - bash /startup.sh
+        - sh /startup.sh
 
     spine-02:
       kind: linux
@@ -20,7 +20,7 @@ topology:
         - configs/spine-02/frr.conf:/etc/frr/frr.conf
         - configs/spine-02/startup.sh:/startup.sh
       exec:
-        - bash /startup.sh
+        - sh /startup.sh
 
     leaf-01:
       kind: linux
@@ -30,7 +30,7 @@ topology:
         - configs/leaf-01/frr.conf:/etc/frr/frr.conf
         - configs/leaf-01/startup.sh:/startup.sh
       exec:
-        - bash /startup.sh
+        - sh /startup.sh
 
     leaf-02:
       kind: linux
@@ -40,7 +40,7 @@ topology:
         - configs/leaf-02/frr.conf:/etc/frr/frr.conf
         - configs/leaf-02/startup.sh:/startup.sh
       exec:
-        - bash /startup.sh
+        - sh /startup.sh
 
     leaf-03:
       kind: linux
@@ -50,7 +50,7 @@ topology:
         - configs/leaf-03/frr.conf:/etc/frr/frr.conf
         - configs/leaf-03/startup.sh:/startup.sh
       exec:
-        - bash /startup.sh
+        - sh /startup.sh
 
     leaf-04:
       kind: linux
@@ -60,7 +60,7 @@ topology:
         - configs/leaf-04/frr.conf:/etc/frr/frr.conf
         - configs/leaf-04/startup.sh:/startup.sh
       exec:
-        - bash /startup.sh
+        - sh /startup.sh
 
     leaf-05:
       kind: linux
@@ -70,7 +70,7 @@ topology:
         - configs/leaf-05/frr.conf:/etc/frr/frr.conf
         - configs/leaf-05/startup.sh:/startup.sh
       exec:
-        - bash /startup.sh
+        - sh /startup.sh
 
     leaf-06:
       kind: linux
@@ -80,7 +80,7 @@ topology:
         - configs/leaf-06/frr.conf:/etc/frr/frr.conf
         - configs/leaf-06/startup.sh:/startup.sh
       exec:
-        - bash /startup.sh
+        - sh /startup.sh
 
     leaf-07:
       kind: linux
@@ -90,7 +90,7 @@ topology:
         - configs/leaf-07/frr.conf:/etc/frr/frr.conf
         - configs/leaf-07/startup.sh:/startup.sh
       exec:
-        - bash /startup.sh
+        - sh /startup.sh
 
     leaf-08:
       kind: linux
@@ -100,7 +100,7 @@ topology:
         - configs/leaf-08/frr.conf:/etc/frr/frr.conf
         - configs/leaf-08/startup.sh:/startup.sh
       exec:
-        - bash /startup.sh
+        - sh /startup.sh
 
     leaf-09:
       kind: linux
@@ -110,7 +110,7 @@ topology:
         - configs/leaf-09/frr.conf:/etc/frr/frr.conf
         - configs/leaf-09/startup.sh:/startup.sh
       exec:
-        - bash /startup.sh
+        - sh /startup.sh
 
     leaf-10:
       kind: linux
@@ -120,7 +120,7 @@ topology:
         - configs/leaf-10/frr.conf:/etc/frr/frr.conf
         - configs/leaf-10/startup.sh:/startup.sh
       exec:
-        - bash /startup.sh
+        - sh /startup.sh
 
     isp-router-01:
       kind: linux
@@ -147,65 +147,113 @@ topology:
       kind: linux
       image: alpine:3.20
       exec:
+        - apk add --no-cache chrony
         - ip addr add 192.168.10.10/24 dev eth1
         - ip route del default
         - ip route add default via 192.168.10.1 dev eth1
+        # NTP client
+        - sh -c "echo 'server 192.168.50.20 iburst prefer' > /etc/chrony.conf && echo 'local stratum 10' >> /etc/chrony.conf"
+        - chronyd -f /etc/chrony.conf
 
     server-student-02:
       kind: linux
       image: alpine:3.20
       exec:
+        - apk add --no-cache chrony
         - ip addr add 192.168.20.10/24 dev eth1
         - ip route del default
         - ip route add default via 192.168.20.1 dev eth1
+        # NTP client
+        - sh -c "echo 'server 192.168.50.20 iburst prefer' > /etc/chrony.conf && echo 'local stratum 10' >> /etc/chrony.conf"
+        - chronyd -f /etc/chrony.conf
 
     server-admin-01:
       kind: linux
       image: alpine:3.20
       exec:
+        - apk add --no-cache chrony
         - ip addr add 192.168.50.10/24 dev eth1
         - ip route del default
         - ip route add default via 192.168.50.1 dev eth1
+        # NTP client
+        - sh -c "echo 'server 192.168.50.20 iburst prefer' > /etc/chrony.conf && echo 'local stratum 10' >> /etc/chrony.conf"
+        - chronyd -f /etc/chrony.conf
 
     server-admin-02:
       kind: linux
       image: alpine:3.20
       exec:
+        - apk add --no-cache chrony
         - ip addr add 192.168.60.10/24 dev eth1
         - ip route del default
         - ip route add default via 192.168.60.1 dev eth1
+        # NTP client
+        - sh -c "echo 'server 192.168.50.20 iburst prefer' > /etc/chrony.conf && echo 'local stratum 10' >> /etc/chrony.conf"
+        - chronyd -f /etc/chrony.conf
 
     server-hpc-01:
       kind: linux
       image: alpine:3.20
       exec:
+        - apk add --no-cache chrony
         - ip addr add 192.168.70.10/24 dev eth1
         - ip route del default
         - ip route add default via 192.168.70.1 dev eth1
+        # NTP client
+        - sh -c "echo 'server 192.168.50.20 iburst prefer' > /etc/chrony.conf && echo 'local stratum 10' >> /etc/chrony.conf"
+        - chronyd -f /etc/chrony.conf
 
     server-hpc-02:
       kind: linux
       image: alpine:3.20
       exec:
+        - apk add --no-cache chrony
         - ip addr add 192.168.70.20/24 dev eth1
         - ip route del default
         - ip route add default via 192.168.70.1 dev eth1
+        # NTP client
+        - sh -c "echo 'server 192.168.50.20 iburst prefer' > /etc/chrony.conf && echo 'local stratum 10' >> /etc/chrony.conf"
+        - chronyd -f /etc/chrony.conf
 
     server-storage-01:
       kind: linux
       image: alpine:3.20
       exec:
+        - apk add --no-cache chrony
         - ip addr add 192.168.80.10/24 dev eth1
         - ip route del default
         - ip route add default via 192.168.80.1 dev eth1
+        # NTP client
+        - sh -c "echo 'server 192.168.50.20 iburst prefer' > /etc/chrony.conf && echo 'local stratum 10' >> /etc/chrony.conf"
+        - chronyd -f /etc/chrony.conf
 
     server-dmz-01:
       kind: linux
       image: alpine:3.20
       exec:
+        - apk add --no-cache chrony
         - ip addr add 192.168.100.10/24 dev eth1
         - ip route del default
         - ip route add default via 192.168.100.1 dev eth1
+        # NTP client
+        - sh -c "echo 'server 192.168.50.20 iburst prefer' > /etc/chrony.conf && echo 'local stratum 10' >> /etc/chrony.conf"
+        - chronyd -f /etc/chrony.conf
+
+    lms-staff:
+      kind: linux
+      image: alpine:3.20
+      exec:
+        - ip addr add 192.168.30.10/24 dev eth1
+        - ip route del default
+        - ip route add default via 192.168.30.1 dev eth1
+
+    services-web:
+      kind: linux
+      image: alpine:3.20
+      exec:
+        - ip addr add 192.168.40.10/24 dev eth1
+        - ip route del default
+        - ip route add default via 192.168.40.1 dev eth1
 
     lms-staff:
       kind: linux
@@ -235,9 +283,14 @@ topology:
     ids-01:
       kind: linux
       image: alpine:3.20
+
     ntp-server:
       kind: linux
       image: alpine:3.20
+      binds:
+        - configs/ntp-server/startup.sh:/startup.sh
+      cmd: sh /startup.sh
+
     dns-server:
       kind: linux
       image: alpine:3.20
@@ -316,3 +369,4 @@ topology:
     - endpoints: [ "campus-bp:eth3", "leaf-01:eth8" ]
     - endpoints: [ "firewall-01:eth3", "firewall-02:eth3" ]
     - endpoints: [ "bastion-01:eth1", "oob-sw:eth1" ]
+    - endpoints: ["leaf-03:eth5", "ntp-server:eth1"]
