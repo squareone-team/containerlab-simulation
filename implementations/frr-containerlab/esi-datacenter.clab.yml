@@ -283,19 +283,20 @@ topology:
 
     - endpoints: ["leaf-09:eth3", "server-student-01:eth1"]
     - endpoints: ["leaf-09:eth4", "server-student-02:eth1"]
+    - endpoints: ["leaf-10:eth3", "server-student-01:eth2"] # Nouveau lien ESI
+    - endpoints: ["leaf-10:eth4", "server-student-02:eth2"] # Nouveau lien ESI
     - endpoints: ["leaf-03:eth3", "server-admin-01:eth1"]
     - endpoints: ["leaf-03:eth4", "server-admin-02:eth1"]
+    - endpoints: ["leaf-04:eth3", "server-admin-01:eth2"] # Nouveau lien ESI
+    - endpoints: ["leaf-04:eth4", "server-admin-02:eth2"] # Nouveau lien ESI
     - endpoints: ["leaf-05:eth3", "server-hpc-01:eth1"]
     - endpoints: ["leaf-05:eth4", "server-hpc-02:eth1"]
+    - endpoints: ["leaf-06:eth3", "server-hpc-01:eth2"]   # Nouveau lien ESI
+    - endpoints: ["leaf-06:eth4", "server-hpc-02:eth2"]   # Nouveau lien ESI
     - endpoints: ["leaf-07:eth3", "server-storage-01:eth1"]
+    - endpoints: ["leaf-08:eth3", "server-storage-01:eth2"] # Nouveau lien ESI
     - endpoints: ["leaf-01:eth7", "server-dmz-01:eth1"]
-
-    - endpoints: ["leaf-01:eth9", "leaf-02:eth9"]
-    - endpoints: ["leaf-03:eth9", "leaf-04:eth9"]
-    - endpoints: ["leaf-05:eth9", "leaf-06:eth9"]
-    - endpoints: ["leaf-07:eth9", "leaf-08:eth9"]
-    - endpoints: ["leaf-09:eth9", "leaf-10:eth9"]
-
+    - endpoints: ["leaf-02:eth7", "server-dmz-01:eth2"] # Nouveau lien ESI
     - endpoints: ["bp-sw:eth1", "leaf-09:eth7"]
     - endpoints: ["bp-sw:eth2", "leaf-10:eth7"]
     - endpoints: ["bastion-01:eth1", "oob-sw:eth1"]
