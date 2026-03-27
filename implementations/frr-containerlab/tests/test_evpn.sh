@@ -1,74 +1,119 @@
 #!/bin/bash
 # =======================================================
-# EVPN Multi-Homing Validation Script
+# Full EVPN Multi-Homing & Fabric Validation Script
 # Lab : Ikram Datacenter (Containerlab + FRR)
 # =======================================================
 
 LAB_PREFIX="clab-esi-datacenter"
+PASS=0
+FAIL=0
+
+# Couleurs
+GREEN='\033[0;32m'
+RED='\033[0;31m'
+YELLOW='\033[1;33m'
+NC='\033[0m' 
 
 echo "-------------------------------------------------------"
-echo "🚀 DEBUT DES TESTS MULTI-HOMING EVPN - Ikram Datacenter"
+echo -e "🚀 ${YELLOW}DEBUT DU TEST GLOBAL FABRIC & ESI${NC}"
 echo "-------------------------------------------------------"
 
-# -------------------------------------------------------
-# TEST 1 : Vérification de l'état ESI sur Leaf-03
-# -------------------------------------------------------
-echo -e "\n🔍 [TEST 1] Vérification de l'état ESI sur Leaf-03..."
-
-if sudo docker exec ${LAB_PREFIX}-leaf-03 vtysh -c "show evpn es detail" >/dev/null 2>&1; then
-    sudo docker exec ${LAB_PREFIX}-leaf-03 vtysh -c "show evpn es detail" \
-        | grep -E "ESI|State|Mode|eth3|eth4" \
-        || echo "⚠️ Aucune ESI détectée."
-else
-    echo "❌ Impossible d'exécuter vtysh sur Leaf-03."
-fi
+# Fonction de résultat
+result() {
+    if [ $1 -eq 0 ]; then
+        echo -e "${GREEN}[PASS]${NC} $2"
+        ((PASS++))
+    else
+        echo -e "${RED}[FAIL]${NC} $2"
+        ((FAIL++))
+    fi
+}
 
 # -------------------------------------------------------
-# TEST 2 : Ping Inter-VLAN (Student-01 → Student-02)
+# TEST 1 : Vérification de l'état ESI sur TOUS les Leafs
 # -------------------------------------------------------
-echo -e "\n🔍 [TEST 2] Ping entre Student-01 et Student-02 (Inter-VLAN)..."
-sudo docker exec ${LAB_PREFIX}-server-student-01 ping -c 3 192.168.20.10
+echo -e "\n🔍 [SECTION 1] Vérification ESI sur tous les Leafs..."
+LEAFS=("leaf-01" "leaf-02" "leaf-03" "leaf-04" "leaf-05" "leaf-06" "leaf-07" "leaf-08" "leaf-09" "leaf-10")
+
+for LEAF in "${LEAFS[@]}"; do
+    ESI_COUNT=$(sudo docker exec ${LAB_PREFIX}-${LEAF} vtysh -c "show evpn mh es" 2>/dev/null | grep -c "ESI")
+    if [ "$ESI_COUNT" -gt 0 ]; then
+        result 0 "ESI active sur ${LEAF} ($ESI_COUNT segment(s) détecté(s))"
+    else
+        # Note: Certains leafs pourraient ne pas avoir d'ESI par design
+        echo -e "${YELLOW}[INFO]${NC} Pas d'ESI configurée sur ${LEAF}"
+    fi
+done
 
 # -------------------------------------------------------
-# TEST 3 : Test de résilience (coupure de lien)
+# TEST 2 : Sessions BGP EVPN (Voisinage avec Spines)
 # -------------------------------------------------------
-echo -e "\n🔥 [TEST 3] Simulation de coupure de lien sur Student-01..."
+echo -e "\n🔍 [SECTION 2] Sessions BGP L2VPN EVPN..."
+for LEAF in "${LEAFS[@]}"; do
+    BGP_STATE=$(sudo docker exec ${LAB_PREFIX}-${LEAF} vtysh -c "show bgp l2vpn evpn summary" 2>/dev/null | grep -c "Established")
+    if [ "$BGP_STATE" -gt 0 ]; then
+        result 0 "Sessions EVPN Established sur ${LEAF}"
+    else
+        result 1 "BGP EVPN DOWN sur ${LEAF}"
+    fi
+done
 
-# Lancement du ping en arrière-plan
-sudo docker exec ${LAB_PREFIX}-server-student-01 ping -i 0.2 192.168.10.1 > ping_test.txt &
+# -------------------------------------------------------
+# TEST 3 : Connectivité Inter-VLAN (Overlay)
+# -------------------------------------------------------
+echo -e "\n🔍 [SECTION 3] Ping Inter-VLAN (Student-01 -> Student-02)..."
+sudo docker exec ${LAB_PREFIX}-server-student-01 ping -c 3 -W 1 192.168.20.10 > /dev/null 2>&1
+result $? "Connectivité 192.168.10.x -> 192.168.20.x"
+
+# -------------------------------------------------------
+# TEST 4 : Résilience ESI (Basculement de lien)
+# -------------------------------------------------------
+echo -e "\n🔥 [SECTION 4] Test de résilience ESI (Coupure eth1)..."
+sudo docker exec ${LAB_PREFIX}-server-student-01 ping -i 0.2 -W 1 192.168.10.1 > res_test.txt 2>&1 &
 PING_PID=$!
 
 sleep 1
-echo "--- Coupure du lien eth1 (vers Leaf) ---"
 sudo docker exec ${LAB_PREFIX}-server-student-01 ip link set eth1 down
-
-sleep 3
-echo "--- Rétablissement du lien eth1 ---"
+sleep 2
 sudo docker exec ${LAB_PREFIX}-server-student-01 ip link set eth1 up
-
 sleep 1
-sudo kill $PING_PID 2>/dev/null
 
-echo "--- Résultat du ping pendant la coupure ---"
-if [ -f ping_test.txt ]; then
-    grep -E "packet loss|unreachable" ping_test.txt || echo "✅ Pas de perte significative détectée."
-    rm ping_test.txt
+kill $PING_PID 2>/dev/null
+LOSS=$(grep -c "unreachable" res_test.txt)
+rm -f res_test.txt
+
+if [ "$LOSS" -eq 0 ]; then
+    result 0 "Basculement ESI transparent (0 perte)"
 else
-    echo "❌ Erreur : fichier de log du ping absent."
+    result 1 "Coupure détectée lors du basculement ($LOSS paquets)"
 fi
 
 # -------------------------------------------------------
-# TEST 4 : Vérification LACP / Bonding côté serveur
+# TEST 5 : LACP / Bonding Serveur
 # -------------------------------------------------------
-echo -e "\n🔍 [TEST 4] État du Bond sur Storage-01..."
-
+echo -e "\n🔍 [SECTION 5] État LACP sur Storage-01..."
 if sudo docker exec ${LAB_PREFIX}-server-storage-01 test -f /proc/net/bonding/bond0; then
-    sudo docker exec ${LAB_PREFIX}-server-storage-01 \
-        cat /proc/net/bonding/bond0 | grep -A 10 "802.3ad"
+    BOND_MODE=$(sudo docker exec ${LAB_PREFIX}-server-storage-01 cat /proc/net/bonding/bond0 | grep -c "802.3ad")
+    if [ "$BOND_MODE" -gt 0 ]; then
+        result 0 "LACP 802.3ad est actif sur Storage-01"
+    else
+        result 1 "Bond présent mais n'est pas en mode 802.3ad"
+    fi
 else
-    echo "⚠️ Aucun bond LACP détecté sur Storage-01."
+    result 1 "Interface bond0 absente sur Storage-01"
 fi
 
+# -------------------------------------------------------
+# BILAN FINAL
+# -------------------------------------------------------
 echo -e "\n-------------------------------------------------------"
-echo "✅ TESTS TERMINÉS"
+echo -e "📊 BILAN FINAL : ${GREEN}$PASS Reussis${NC} / ${RED}$FAIL Echecs${NC}"
 echo "-------------------------------------------------------"
+
+if [ $FAIL -eq 0 ]; then
+    echo -e "${GREEN}✅ TOUTE LA FABRIC ET L'ESI SONT OPÉRATIONNELS !${NC}"
+    exit 0
+else
+    echo -e "${RED}❌ DES ERREURS DOIVENT ÊTRE CORRIGÉES.${NC}"
+    exit 1
+fi

@@ -15,8 +15,11 @@ ip link add br0 type bridge vlan_filtering 1 vlan_default_pvid 0
 ip link set br0 mtu 9000
 ip link set br0 up
 
-ip link set eth3 master br0
-bridge vlan add vid 50 dev eth3 pvid untagged
+# ip link set eth3 master br0
+#bridge vlan add vid 50 dev eth3 pvid untagged
+
+ip link set eth3 up
+ip link set eth4 up
 
 for V in 10050; do
   ip link add vxlan$V type vxlan id $V local $VTEP_IP dstport 4789 nolearning tos inherit
