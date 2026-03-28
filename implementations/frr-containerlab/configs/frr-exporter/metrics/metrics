@@ -1,0 +1,4 @@
+# HELP frr_bgp_session_up Simulated BGP session state for border observability.
+# TYPE frr_bgp_session_up gauge
+frr_bgp_session_up{node="leaf-01",peer="203.0.113.2"} 1
+frr_bgp_session_up{node="leaf-02",peer="203.0.113.6"} 1

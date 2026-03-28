@@ -5,52 +5,386 @@
   "groupStyleAnnotations": [],
   "networkNodeAnnotations": [],
   "nodeAnnotations": [
-    { "id": "isp-router-01", "position": { "x": 400, "y": 0 } },
-    { "id": "isp-router-02", "position": { "x": 600, "y": 0 } },
-    { "id": "isp-router-03", "position": { "x": 800, "y": 0 } },
-
-    { "id": "spine-01", "position": { "x": 450, "y": 150 } },
-    { "id": "spine-02", "position": { "x": 750, "y": 150 } },
-
-    { "id": "leaf-01", "position": { "x": 100, "y": 350 } },
-    { "id": "leaf-02", "position": { "x": 200, "y": 350 } },
-
-    { "id": "leaf-03", "position": { "x": 350, "y": 350 } },
-    { "id": "leaf-04", "position": { "x": 450, "y": 350 } },
-
-    { "id": "leaf-05", "position": { "x": 600, "y": 350 } },
-    { "id": "leaf-06", "position": { "x": 700, "y": 350 } },
-
-    { "id": "leaf-07", "position": { "x": 850, "y": 350 } },
-    { "id": "leaf-08", "position": { "x": 950, "y": 350 } },
-
-    { "id": "leaf-09", "position": { "x": 1100, "y": 350 } },
-    { "id": "leaf-10", "position": { "x": 1200, "y": 350 } },
-
-    { "id": "firewall-01", "position": { "x": 100, "y": 500 } },
-    { "id": "firewall-02", "position": { "x": 200, "y": 500 } },
-    { "id": "ids-01", "position": { "x": 50, "y": 500 } },
-    { "id": "bp-sw", "position": { "x": 1150, "y": 500 } },
-
-    { "id": "server-dmz-01", "position": { "x": 150, "y": 700 } },
-    { "id": "server-admin-01", "position": { "x": 350, "y": 700 } },
-    { "id": "server-admin-02", "position": { "x": 450, "y": 700 } },
-    { "id": "server-hpc-01", "position": { "x": 600, "y": 700 } },
-    { "id": "server-hpc-02", "position": { "x": 700, "y": 700 } },
-    { "id": "server-storage-01", "position": { "x": 900, "y": 700 } },
-    { "id": "server-student-01", "position": { "x": 1100, "y": 700 } },
-    { "id": "server-student-02", "position": { "x": 1200, "y": 700 } },
-
-    { "id": "oob-sw", "position": { "x": 650, "y": 850 } },
-    { "id": "bastion-01", "position": { "x": 200, "y": 950 } },
-    { "id": "ntp-server", "position": { "x": 350, "y": 950 } },
-    { "id": "dns-server", "position": { "x": 450, "y": 950 } },
-    { "id": "dhcp-server", "position": { "x": 550, "y": 950 } },
-    { "id": "ftp-server", "position": { "x": 650, "y": 950 } },
-    { "id": "zabbix-server", "position": { "x": 800, "y": 950 } },
-    { "id": "prometheus", "position": { "x": 900, "y": 950 } },
-    { "id": "syslog-server", "position": { "x": 1000, "y": 950 } },
-    { "id": "wifi-controller", "position": { "x": 1150, "y": 950 } }
+    {
+      "id": "isp-router-01",
+      "position": {
+        "x": 100,
+        "y": -100
+      }
+    },
+    {
+      "id": "isp-router-02",
+      "position": {
+        "x": 1400,
+        "y": -220
+      }
+    },
+    {
+      "id": "isp-router-03",
+      "position": {
+        "x": 100,
+        "y": 140
+      }
+    },
+    {
+      "id": "spine-01",
+      "position": {
+        "x": 450,
+        "y": 150
+      },
+      "icon": "spine"
+    },
+    {
+      "id": "spine-02",
+      "position": {
+        "x": 750,
+        "y": 150
+      },
+      "icon": "spine"
+    },
+    {
+      "id": "leaf-01",
+      "position": {
+        "x": 500,
+        "y": -120
+      },
+      "icon": "leaf",
+      "iconColor": "#1fe91c",
+      "iconCornerRadius": 10
+    },
+    {
+      "id": "leaf-02",
+      "position": {
+        "x": 700,
+        "y": -120
+      },
+      "icon": "leaf",
+      "iconColor": "#1fe91c",
+      "iconCornerRadius": 10
+    },
+    {
+      "id": "leaf-03",
+      "position": {
+        "x": 350,
+        "y": 350
+      },
+      "icon": "leaf"
+    },
+    {
+      "id": "leaf-04",
+      "position": {
+        "x": 450,
+        "y": 350
+      },
+      "icon": "leaf",
+      "iconCornerRadius": 0
+    },
+    {
+      "id": "leaf-05",
+      "position": {
+        "x": 600,
+        "y": 350
+      },
+      "icon": "leaf"
+    },
+    {
+      "id": "leaf-06",
+      "position": {
+        "x": 700,
+        "y": 350
+      },
+      "icon": "leaf"
+    },
+    {
+      "id": "leaf-07",
+      "position": {
+        "x": 850,
+        "y": 350
+      },
+      "icon": "leaf"
+    },
+    {
+      "id": "leaf-08",
+      "position": {
+        "x": 950,
+        "y": 350
+      },
+      "icon": "leaf"
+    },
+    {
+      "id": "leaf-09",
+      "position": {
+        "x": 1120,
+        "y": 340
+      },
+      "icon": "leaf"
+    },
+    {
+      "id": "leaf-10",
+      "position": {
+        "x": 1200,
+        "y": 340
+      },
+      "icon": "leaf"
+    },
+    {
+      "id": "firewall-01",
+      "position": {
+        "x": 580,
+        "y": -280
+      },
+      "icon": "controller",
+      "iconColor": "#e91c3a",
+      "iconCornerRadius": 0
+    },
+    {
+      "id": "firewall-02",
+      "position": {
+        "x": 700,
+        "y": -300
+      },
+      "icon": "controller",
+      "iconColor": "#e91c3a",
+      "iconCornerRadius": 0
+    },
+    {
+      "id": "ids-01",
+      "position": {
+        "x": 620,
+        "y": -220
+      },
+      "icon": "controller"
+    },
+    {
+      "id": "bp-sw",
+      "position": {
+        "x": 1220,
+        "y": 500
+      },
+      "icon": "switch"
+    },
+    {
+      "id": "server-dmz-01",
+      "position": {
+        "x": 460,
+        "y": -260
+      },
+      "icon": "server",
+      "iconColor": "#000000"
+    },
+    {
+      "id": "server-admin-01",
+      "position": {
+        "x": 350,
+        "y": 700
+      },
+      "icon": "server",
+      "iconColor": "#000000",
+      "iconCornerRadius": 5
+    },
+    {
+      "id": "server-admin-02",
+      "position": {
+        "x": 450,
+        "y": 700
+      },
+      "icon": "server",
+      "iconColor": "#000000",
+      "iconCornerRadius": 5
+    },
+    {
+      "id": "server-hpc-01",
+      "position": {
+        "x": 600,
+        "y": 700
+      },
+      "icon": "server",
+      "iconColor": "#000000",
+      "iconCornerRadius": 5
+    },
+    {
+      "id": "server-hpc-02",
+      "position": {
+        "x": 700,
+        "y": 700
+      },
+      "icon": "server",
+      "iconColor": "#000000",
+      "iconCornerRadius": 5
+    },
+    {
+      "id": "server-storage-01",
+      "position": {
+        "x": 900,
+        "y": 700
+      },
+      "icon": "server",
+      "iconColor": "#000000",
+      "iconCornerRadius": 0
+    },
+    {
+      "id": "server-student-01",
+      "position": {
+        "x": 1100,
+        "y": 700
+      },
+      "icon": "server",
+      "iconColor": "#000000",
+      "iconCornerRadius": 0
+    },
+    {
+      "id": "server-student-02",
+      "position": {
+        "x": 1200,
+        "y": 700
+      },
+      "icon": "server",
+      "iconColor": "#000000",
+      "iconCornerRadius": 0
+    },
+    {
+      "id": "oob-sw",
+      "position": {
+        "x": 650,
+        "y": 850
+      }
+    },
+    {
+      "id": "bastion-01",
+      "position": {
+        "x": 200,
+        "y": 950
+      }
+    },
+    {
+      "id": "ntp-server",
+      "position": {
+        "x": 350,
+        "y": 950
+      }
+    },
+    {
+      "id": "dns-server",
+      "position": {
+        "x": 450,
+        "y": 950
+      }
+    },
+    {
+      "id": "dhcp-server",
+      "position": {
+        "x": 550,
+        "y": 950
+      }
+    },
+    {
+      "id": "ftp-server",
+      "position": {
+        "x": 650,
+        "y": 950
+      }
+    },
+    {
+      "id": "zabbix-server",
+      "position": {
+        "x": 800,
+        "y": 950
+      }
+    },
+    {
+      "id": "prometheus",
+      "position": {
+        "x": 900,
+        "y": 950
+      }
+    },
+    {
+      "id": "syslog-server",
+      "position": {
+        "x": 1000,
+        "y": 950
+      }
+    },
+    {
+      "id": "wifi-controller",
+      "position": {
+        "x": 1150,
+        "y": 950
+      }
+    },
+    {
+      "id": "isp-router-04",
+      "position": {
+        "x": 100,
+        "y": -380
+      },
+      "icon": "router",
+      "interfacePattern": "e1-{n}"
+    },
+    {
+      "id": "frr-exporter",
+      "position": {
+        "x": 900,
+        "y": 1140
+      }
+    },
+    {
+      "id": "grafana",
+      "position": {
+        "x": 800,
+        "y": 1140
+      }
+    },
+    {
+      "id": "internet-client-02",
+      "position": {
+        "x": 300,
+        "y": -500
+      },
+      "icon": "client",
+      "iconCornerRadius": 0
+    },
+    {
+      "id": "internet-client-01",
+      "position": {
+        "x": -320,
+        "y": -480
+      },
+      "icon": "client",
+      "iconCornerRadius": 0
+    },
+    {
+      "id": "internet-router-02",
+      "position": {
+        "x": 300,
+        "y": -400
+      }
+    },
+    {
+      "id": "internet-router-01",
+      "position": {
+        "x": -100,
+        "y": -380
+      }
+    },
+    {
+      "id": "student-bp-01",
+      "position": {
+        "x": 1440,
+        "y": 640
+      },
+      "icon": "client",
+      "iconCornerRadius": 0
+    },
+    {
+      "id": "internet-web-01",
+      "position": {
+        "x": -340,
+        "y": -400
+      },
+      "icon": "cloud",
+      "iconCornerRadius": 0
+    }
   ],
   "edgeAnnotations": [],
   "aliasEndpointAnnotations": [],
