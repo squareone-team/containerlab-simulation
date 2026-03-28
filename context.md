@@ -32,8 +32,8 @@ This section resolves mismatches between older implementation docs and the full 
 
 | Topic | Final Decision for This Repository | Reason |
 |------|------------------------------------|--------|
-| WiFi controller mgmt IP | `192.168.10.100` (in `VRF-PEDAGOGY`) | Used consistently in EVPN Type-5 `/32` examples and test blocks; avoids split addressing across branches |
-| WiFi mgmt ingress path | Single dedicated campus uplink to border-leaf-01 in `VRF-WIFI-CTRL` with only one `/32` route | Matches the architecture's strict micro-VRF model |
+| WiFi controller mgmt IP | `192.168.10.100` hosted on wifi-controller in `VRF-PEDAGOGY` | Matches architecture hosting model; keeps a single canonical controller IP across branches |
+| WiFi mgmt ingress path | Campus ingress is only via border-leaf-01 in `VRF-WIFI-CTRL`, with one static `/32` to `192.168.10.100` | Matches architecture micro-VRF isolation while preserving reachability to controller hosted in `VRF-PEDAGOGY` |
 | Border uplink port naming | In simulation, use the dedicated campus port already wired in YAML (currently `leaf-01:eth8`) | Keeps current lab stable while preserving single-port design intent from physical spec |
 | PIM in fabric | **Excluded** from this project baseline; EVPN BUM remains HER only | `architecture_spec_full.md` states no multicast routing in the fabric |
 | Firewall HA nuance | Active/Active is mandatory. Dedicated state-sync link remains mandatory. Session sync implementation may be staged by T3 without changing Ring 1 ownership boundaries | Keeps transition safe for in-flight branches while preserving architecture intent |
