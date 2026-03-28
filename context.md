@@ -200,6 +200,7 @@ A leak of the external secret cannot compromise the internal fabric control plan
 
 **Simulation impact:**
 - New YAML link: `campus-bp:eth3 → leaf-01:eth8` (simulation mapping of physical design intent: border-leaf-01 campus uplink port)
+- Removed YAML links: `campus-bp:ethX → leaf-09/10:ethY` (no direct BP-to-student-leaf connection, to be added by Ikram on her tests)
 - New VRF-WIFI-CTRL on leaf-01 with only a static /32 to wifi-controller's IP
 - VRF-WIFI-CTRL has no default route, no export to other VRFs
 - The /32 is resolved via EVPN Type-5 across the fabric to student-leaf
