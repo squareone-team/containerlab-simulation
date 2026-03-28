@@ -1235,6 +1235,7 @@ c) configs/leaf-01/frr.conf
 d) configs/leaf-03/frr.conf and configs/leaf-04/frr.conf
 e) tests/phase1-verify.sh and theme test block
 ```
+make sure that the rebase results doesn't remove any of your intended changes, but only adjusts them to fit the new baseline (e.g. VNI 10030/10040 moved from leaf-01 to leaf-03/04, new links added in YAML, bp-sw renamed to campus-sw, etc.)
 
 4. Re-run baseline then theme checks before push:
 
@@ -1243,11 +1244,6 @@ bash implementations/frr-containerlab/tests/phase1-verify.sh
 bash implementations/frr-containerlab/tests/theme-TX-verify.sh
 ```
 
-5. Push safely:
-
-```bash
-git push --force-with-lease
-```
 
 ### 7.11 Compatibility Guardrails During Transition
 

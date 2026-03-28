@@ -8,8 +8,8 @@
     {
       "id": "isp-router-01",
       "position": {
-        "x": 100,
-        "y": -100
+        "x": -220,
+        "y": -120
       }
     },
     {
@@ -22,8 +22,8 @@
     {
       "id": "isp-router-03",
       "position": {
-        "x": 100,
-        "y": 140
+        "x": -240,
+        "y": 40
       }
     },
     {
@@ -130,8 +130,8 @@
     {
       "id": "firewall-01",
       "position": {
-        "x": 580,
-        "y": -280
+        "x": 700,
+        "y": -460
       },
       "icon": "controller",
       "iconColor": "#e91c3a",
@@ -156,18 +156,18 @@
       "icon": "controller"
     },
     {
-      "id": "bp-sw",
+      "id": "lms-staff",
       "position": {
-        "x": 1220,
-        "y": 500
+        "x": 240,
+        "y": 560
       },
       "icon": "switch"
     },
     {
       "id": "server-dmz-01",
       "position": {
-        "x": 460,
-        "y": -260
+        "x": 500,
+        "y": -300
       },
       "icon": "server",
       "iconColor": "#000000"
@@ -245,8 +245,8 @@
     {
       "id": "oob-sw",
       "position": {
-        "x": 650,
-        "y": 850
+        "x": 200,
+        "y": 1100
       }
     },
     {
@@ -287,8 +287,8 @@
     {
       "id": "zabbix-server",
       "position": {
-        "x": 800,
-        "y": 950
+        "x": 600,
+        "y": 1060
       }
     },
     {
@@ -301,21 +301,23 @@
     {
       "id": "syslog-server",
       "position": {
-        "x": 1000,
-        "y": 950
+        "x": 420,
+        "y": 1060
       }
     },
     {
       "id": "wifi-controller",
       "position": {
-        "x": 1150,
-        "y": 950
-      }
+        "x": 380,
+        "y": -260
+      },
+      "icon": "rgw",
+      "iconCornerRadius": 0
     },
     {
       "id": "isp-router-04",
       "position": {
-        "x": 100,
+        "x": -220,
         "y": -380
       },
       "icon": "router",
@@ -347,8 +349,8 @@
     {
       "id": "internet-client-01",
       "position": {
-        "x": -320,
-        "y": -480
+        "x": 180,
+        "y": -600
       },
       "icon": "client",
       "iconCornerRadius": 0
@@ -363,15 +365,15 @@
     {
       "id": "internet-router-01",
       "position": {
-        "x": -100,
-        "y": -380
+        "x": 60,
+        "y": -480
       }
     },
     {
       "id": "student-bp-01",
       "position": {
-        "x": 1440,
-        "y": 640
+        "x": -20,
+        "y": 160
       },
       "icon": "client",
       "iconCornerRadius": 0
@@ -379,11 +381,25 @@
     {
       "id": "internet-web-01",
       "position": {
-        "x": -340,
-        "y": -400
+        "x": 60,
+        "y": -680
       },
       "icon": "cloud",
       "iconCornerRadius": 0
+    },
+    {
+      "id": "campus-bp",
+      "position": {
+        "x": 200,
+        "y": 160
+      }
+    },
+    {
+      "id": "services-web",
+      "position": {
+        "x": 500,
+        "y": 580
+      }
     }
   ],
   "edgeAnnotations": [],
