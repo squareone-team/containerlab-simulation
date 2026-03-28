@@ -16,14 +16,19 @@ ip link set br0 mtu 9000
 ip link set br0 up
 
 if ip link show eth3 >/dev/null 2>&1; then ip link set eth3 master br0; bridge vlan add vid 50 dev eth3 pvid untagged; fi
+if ip link show eth4 >/dev/null 2>&1; then ip link set eth4 master br0; bridge vlan add vid 40 dev eth4 pvid untagged; fi
 
-for V in 10050; do
+for V in 10030 10040 10050; do
   ip link add vxlan$V type vxlan id $V local $VTEP_IP dstport 4789 nolearning tos inherit
   ip link set vxlan$V mtu 9000
   ip link set vxlan$V master br0
   ip link set vxlan$V up
 done
+bridge vlan add vid 30 dev vxlan10030 pvid untagged
+bridge vlan add vid 40 dev vxlan10040 pvid untagged
 bridge vlan add vid 50 dev vxlan10050 pvid untagged
+bridge vlan add vid 30 dev br0 self
+bridge vlan add vid 40 dev br0 self
 bridge vlan add vid 50 dev br0 self
 bridge vlan add vid 4020 dev br0 self
 
@@ -32,6 +37,18 @@ ip link set vxlan50020 mtu 9000
 ip link set vxlan50020 master br0
 ip link set vxlan50020 up
 bridge vlan add vid 4020 dev vxlan50020 pvid untagged
+
+ip link add vlan30 link br0 type vlan id 30
+ip link set vlan30 master VRF-STAFF
+ip link set vlan30 address $ANYCAST_MAC || true
+ip addr add 192.168.30.1/24 dev vlan30
+ip link set vlan30 up
+
+ip link add vlan40 link br0 type vlan id 40
+ip link set vlan40 master VRF-STAFF
+ip link set vlan40 address $ANYCAST_MAC || true
+ip addr add 192.168.40.1/24 dev vlan40
+ip link set vlan40 up
 
 ip link add vlan50 link br0 type vlan id 50
 ip link set vlan50 master VRF-STAFF
