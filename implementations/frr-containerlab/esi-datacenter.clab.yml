@@ -207,6 +207,22 @@ topology:
         - ip route del default
         - ip route add default via 192.168.100.1 dev eth1
 
+    lms-staff:
+      kind: linux
+      image: alpine:3.20
+      exec:
+        - ip addr add 192.168.30.10/24 dev eth1
+        - ip route del default
+        - ip route add default via 192.168.30.1 dev eth1
+
+    services-web:
+      kind: linux
+      image: alpine:3.20
+      exec:
+        - ip addr add 192.168.40.10/24 dev eth1
+        - ip route del default
+        - ip route add default via 192.168.40.1 dev eth1
+
     firewall-01:
       kind: linux
       image: alpine:3.20
@@ -243,7 +259,7 @@ topology:
     wifi-controller:
       kind: linux
       image: alpine:3.20
-    bp-sw:
+    campus-bp:
       kind: linux
       image: alpine:3.20
     oob-sw:
@@ -281,21 +297,22 @@ topology:
     - endpoints: ["leaf-02:eth5", "firewall-02:eth1"]
     - endpoints: ["leaf-01:eth6", "ids-01:eth1"]
 
-    - endpoints: ["leaf-09:eth3", "server-student-01:eth1"]
-    - endpoints: ["leaf-09:eth4", "server-student-02:eth1"]
-    - endpoints: ["leaf-03:eth3", "server-admin-01:eth1"]
-    - endpoints: ["leaf-03:eth4", "server-admin-02:eth1"]
-    - endpoints: ["leaf-05:eth3", "server-hpc-01:eth1"]
-    - endpoints: ["leaf-05:eth4", "server-hpc-02:eth1"]
-    - endpoints: ["leaf-07:eth3", "server-storage-01:eth1"]
-    - endpoints: ["leaf-01:eth7", "server-dmz-01:eth1"]
+    - endpoints: [ "leaf-09:eth3", "server-student-01:eth1" ]
+    - endpoints: [ "leaf-09:eth4", "server-student-02:eth1" ]
+    - endpoints: [ "leaf-03:eth3", "server-admin-01:eth1" ]
+    - endpoints: [ "leaf-03:eth4", "server-admin-02:eth1" ]
+    - endpoints: [ "leaf-05:eth3", "server-hpc-01:eth1" ]
+    - endpoints: [ "leaf-05:eth4", "server-hpc-02:eth1" ]
+    - endpoints: [ "leaf-07:eth3", "server-storage-01:eth1" ]
+    - endpoints: [ "leaf-01:eth7", "server-dmz-01:eth1" ]
+    - endpoints: [ "leaf-03:eth5", "lms-staff:eth1" ]
+    - endpoints: [ "leaf-04:eth4", "services-web:eth1" ]
 
-    - endpoints: ["leaf-01:eth9", "leaf-02:eth9"]
-    - endpoints: ["leaf-03:eth9", "leaf-04:eth9"]
-    - endpoints: ["leaf-05:eth9", "leaf-06:eth9"]
-    - endpoints: ["leaf-07:eth9", "leaf-08:eth9"]
-    - endpoints: ["leaf-09:eth9", "leaf-10:eth9"]
-
-    - endpoints: ["bp-sw:eth1", "leaf-09:eth7"]
-    - endpoints: ["bp-sw:eth2", "leaf-10:eth7"]
-    - endpoints: ["bastion-01:eth1", "oob-sw:eth1"]
+    - endpoints: [ "leaf-01:eth9", "leaf-02:eth9" ]
+    - endpoints: [ "leaf-03:eth9", "leaf-04:eth9" ]
+    - endpoints: [ "leaf-05:eth9", "leaf-06:eth9" ]
+    - endpoints: [ "leaf-07:eth9", "leaf-08:eth9" ]
+    - endpoints: [ "leaf-09:eth9", "leaf-10:eth9" ]
+    - endpoints: [ "campus-bp:eth3", "leaf-01:eth8" ]
+    - endpoints: [ "firewall-01:eth3", "firewall-02:eth3" ]
+    - endpoints: [ "bastion-01:eth1", "oob-sw:eth1" ]
