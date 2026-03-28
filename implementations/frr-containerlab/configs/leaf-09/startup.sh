@@ -55,3 +55,23 @@ ip link set vlan4030 master VRF-PEDAGOGY
 ip link set vlan4030 up
 
 # === END PHASE 1 — Phase 2 appends below ===
+
+# =====================================================
+# THEME T1 — BORDER ROUTING — Youcef
+# BP switch student uplink access on VLAN 10
+# =====================================================
+if ip link show eth7 >/dev/null 2>&1; then
+  ip link set eth7 master br0
+  bridge vlan add vid 10 dev eth7 pvid untagged
+fi
+
+# Dedicated BP internet breakout: keep student-to-web traffic deterministic.
+if ip link show eth8 >/dev/null 2>&1; then
+  ip link set dev eth8 mtu 9000 || true
+  ip link set eth8 master VRF-PEDAGOGY
+  ip addr add 198.19.9.2/30 dev eth8
+  ip link set eth8 up
+  ip route add vrf VRF-PEDAGOGY 198.18.3.0/24 via 198.19.9.1 dev eth8
+  iptables -t nat -A POSTROUTING -s 192.168.10.0/24 -d 198.18.3.0/24 -o eth8 -j MASQUERADE
+  iptables -t nat -A POSTROUTING -s 192.168.20.0/24 -d 198.18.3.0/24 -o eth8 -j MASQUERADE
+fi

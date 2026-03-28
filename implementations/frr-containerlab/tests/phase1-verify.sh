@@ -2,11 +2,55 @@
 set +e
 PASS=0; FAIL=0
 C="docker exec clab-esi-datacenter"
+RETRIES="${PHASE1_RETRIES:-15}"
+DELAY="${PHASE1_DELAY:-2}"
+LAST_OUT=""
 
 ok()  { echo "  [PASS] $1"; ((PASS++)); return 0; }
 fail(){ echo "  [FAIL] $1"; ((FAIL++)); return 0; }
+info(){ echo "  [INFO] $1"; }
+
+retry_match() {
+  local cmd="$1"
+  local regex="$2"
+  local i=1
+  while [ "$i" -le "$RETRIES" ]; do
+    LAST_OUT=$(eval "$cmd" 2>/dev/null)
+    if echo "$LAST_OUT" | grep -Eq "$regex"; then
+      return 0
+    fi
+    sleep "$DELAY"
+    i=$((i + 1))
+  done
+  return 1
+}
+
+retry_empty() {
+  local cmd="$1"
+  local i=1
+  local out=""
+  while [ "$i" -le "$RETRIES" ]; do
+    out=$(eval "$cmd" 2>/dev/null)
+    LAST_OUT="$out"
+    [ -z "$out" ] && return 0
+    sleep "$DELAY"
+    i=$((i + 1))
+  done
+  return 1
+}
+
 chk() {
-  eval "$2" 2>/dev/null | grep -Eq "$3" && ok "$1" || fail "$1"
+  echo
+  echo "[TEST] $1"
+  info "command: $2"
+  info "expect : /$3/"
+  if retry_match "$2" "$3"; then
+    ok "$1"
+  else
+    fail "$1"
+    echo "  [DEBUG] last output:"
+    echo "$LAST_OUT" | sed 's/^/    /'
+  fi
 }
 
 echo "=== ESI Phase 1 Verification ==="
@@ -34,14 +78,41 @@ chk "leaf-01 VNI 10030 has remote VTEPs" "$C-leaf-01 vtysh -c 'show evpn vni 100
 chk "EVPN Type-5 present" "$C-spine-01 vtysh -c 'show bgp l2vpn evpn route type prefix'" "Route Distinguisher"
 chk "student inter-subnet ping" "$C-server-student-01 ping -c3 -W2 192.168.20.10" "3 (packets )?received"
 
-r=$($C-server-student-01 ping -c2 -W1 192.168.50.10 2>/dev/null)
-echo "$r" | grep -Eq "0 (packets )?received|100% packet loss|unreachable" && ok "VRF isolation student->staff" || fail "VRF isolation broken"
+echo
+echo "[TEST] VRF isolation student->staff"
+info "command: $C-server-student-01 ping -c2 -W1 192.168.50.10"
+info "expect : /(0 packets received|100% packet loss|unreachable)/"
+if retry_match "$C-server-student-01 ping -c2 -W1 192.168.50.10" "0 (packets )?received|100% packet loss|unreachable"; then
+  ok "VRF isolation student->staff"
+else
+  fail "VRF isolation broken"
+  echo "  [DEBUG] last output:"
+  echo "$LAST_OUT" | sed 's/^/    /'
+fi
 
-r=$($C-leaf-01 ip route show vrf VRF-PUBLIC 2>/dev/null)
-[ -z "$r" ] && ok "VRF-PUBLIC route table empty" || fail "VRF-PUBLIC has routes: $r"
+echo
+echo "[TEST] VRF-PUBLIC route table empty"
+info "command: $C-leaf-01 ip route show vrf VRF-PUBLIC"
+info "expect : empty output"
+if retry_empty "$C-leaf-01 ip route show vrf VRF-PUBLIC"; then
+  ok "VRF-PUBLIC route table empty"
+else
+  fail "VRF-PUBLIC has routes"
+  echo "  [DEBUG] last output:"
+  echo "$LAST_OUT" | sed 's/^/    /'
+fi
 
-r=$($C-leaf-01 ip route show vrf VRF-ORIENTATION 2>/dev/null)
-[ -z "$r" ] && ok "VRF-ORIENTATION empty pre-activation" || fail "VRF-ORIENTATION has routes: $r"
+echo
+echo "[TEST] VRF-ORIENTATION empty pre-activation"
+info "command: $C-leaf-01 ip route show vrf VRF-ORIENTATION"
+info "expect : empty output"
+if retry_empty "$C-leaf-01 ip route show vrf VRF-ORIENTATION"; then
+  ok "VRF-ORIENTATION empty pre-activation"
+else
+  fail "VRF-ORIENTATION has routes"
+  echo "  [DEBUG] last output:"
+  echo "$LAST_OUT" | sed 's/^/    /'
+fi
 
 chk "leaf-01 ping isp-router-01" "$C-leaf-01 ping -c2 -W1 203.0.113.2" "2 (packets )?received"
 chk "leaf-02 ping isp-router-02" "$C-leaf-02 ping -c2 -W1 203.0.113.6" "2 (packets )?received"
@@ -51,7 +122,17 @@ chk "spine-01 ecmp hash policy=1" "$C-spine-01 sysctl net.ipv4.fib_multipath_has
 $C-leaf-09 vtysh -c "clear bgp *" 2>/dev/null || true
 sleep 2
 MGMT_IP=$(docker inspect clab-esi-datacenter-spine-01 --format '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' 2>/dev/null | head -1)
-ping -c2 -W2 "$MGMT_IP" >/dev/null 2>&1 && ok "OOB reachable during BGP disruption" || fail "OOB not reachable"
+echo
+echo "[TEST] OOB reachable during BGP disruption"
+info "command: ping -c2 -W2 '$MGMT_IP'"
+info "expect : /(2 packets transmitted, 2 received|0% packet loss)/"
+if retry_match "ping -c2 -W2 '$MGMT_IP'" "(2 packets transmitted, 2 (packets )?received|0% packet loss)"; then
+  ok "OOB reachable during BGP disruption"
+else
+  fail "OOB not reachable"
+  echo "  [DEBUG] last output:"
+  echo "$LAST_OUT" | sed 's/^/    /'
+fi
 
 echo "Results: $PASS passed / $FAIL failed"
 [ $FAIL -eq 0 ] && echo "Phase 1 STABLE" || echo "Phase 1 NOT ready"
