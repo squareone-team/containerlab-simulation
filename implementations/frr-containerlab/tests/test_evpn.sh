@@ -57,7 +57,7 @@ for P in "${PAIRS[@]}"; do
         if [ "$DUPS" -eq 0 ]; then
             pass "Ping Gateway ${GW} (Stable, 0 DUP!)"
         else
-            fail "Ping Gateway ${GW} ($DUPS DUP! détectés - Erreur DF)"
+            fail "Ping Gateway ${GW} ($DUPS DUP!  détectés - Erreur DF)"
         fi
     else
         fail "Ping Gateway ${GW} ÉCHOUÉ (Vérifier Bond0/Privileged)"
