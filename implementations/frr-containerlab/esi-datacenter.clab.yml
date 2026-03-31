@@ -319,10 +319,17 @@ topology:
     frr-exporter:
       kind: linux
       image: alpine:3.20
+      env:
+        LAB_NAME: esi-datacenter
       binds:
         - configs/frr-exporter/metrics:/srv/www/metrics
+        - configs/frr-exporter/generate-metrics.sh:/opt/frr-exporter/generate-metrics.sh
+        - /var/run/docker.sock:/var/run/docker.sock
       exec:
-        - sh -lc "apk add --no-cache busybox-extras >/dev/null 2>&1 || true;
+        - sh -lc "apk add --no-cache busybox-extras docker-cli jq iproute2 >/dev/null 2>&1 || true;
+          chmod +x /opt/frr-exporter/generate-metrics.sh;
+          nohup /opt/frr-exporter/generate-metrics.sh >/tmp/frr-exporter-loop.log 2>&1
+          &
           nohup httpd -f -p 9342 -h /srv/www >/tmp/frr-exporter-httpd.log 2>&1
           &"
     syslog-server:

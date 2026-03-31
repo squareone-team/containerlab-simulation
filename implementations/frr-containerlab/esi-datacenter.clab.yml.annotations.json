@@ -34,8 +34,8 @@
       "id": "zone-ext-label",
       "text": "EXTERNAL DOMAIN ( INTERNET )",
       "position": {
-        "x": -349.765101807438,
-        "y": -750.9421139980246
+        "x": -198.86051371179744,
+        "y": -766.8268074817763
       },
       "fontSize": 22,
       "fontColor": "#bfdbfe",
@@ -731,8 +731,8 @@
         "x": -360,
         "y": -760
       },
-      "width": 690,
-      "height": 760,
+      "width": 644,
+      "height": 564,
       "fillColor": "#0b2d4a",
       "fillOpacity": 0.2,
       "borderColor": "#60a5fa",
@@ -1408,8 +1408,8 @@
     {
       "id": "internet-client-02",
       "position": {
-        "x": 220,
-        "y": -500
+        "x": 180,
+        "y": -380
       },
       "icon": "client",
       "iconCornerRadius": 0
@@ -1417,8 +1417,8 @@
     {
       "id": "internet-client-01",
       "position": {
-        "x": 180,
-        "y": -600
+        "x": 0,
+        "y": -560
       },
       "icon": "client",
       "iconCornerRadius": 0
@@ -1426,15 +1426,15 @@
     {
       "id": "internet-router-02",
       "position": {
-        "x": 220,
-        "y": -400
+        "x": -20,
+        "y": -380
       }
     },
     {
       "id": "internet-router-01",
       "position": {
-        "x": 60,
-        "y": -480
+        "x": -220,
+        "y": -560
       }
     },
     {
@@ -1449,7 +1449,7 @@
     {
       "id": "internet-web-01",
       "position": {
-        "x": 60,
+        "x": -280,
         "y": -680
       },
       "icon": "cloud",
