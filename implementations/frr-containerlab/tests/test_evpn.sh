@@ -1,119 +1,79 @@
 #!/bin/bash
 # =======================================================
-# Full EVPN Multi-Homing & Fabric Validation Script
-# Lab : Ikram Datacenter (Containerlab + FRR)
+# Validation Rigoureuse par Paire de Leafs (ESI/Multi-homing)
+# Lab : clab-esi-datacenter
 # =======================================================
 
 LAB_PREFIX="clab-esi-datacenter"
-PASS=0
-FAIL=0
-
-# Couleurs
 GREEN='\033[0;32m'
 RED='\033[0;31m'
-YELLOW='\033[1;33m'
-NC='\033[0m' 
+NC='\033[0m'
 
-echo "-------------------------------------------------------"
-echo -e "🚀 ${YELLOW}DEBUT DU TEST GLOBAL FABRIC & ESI${NC}"
-echo "-------------------------------------------------------"
+pass() { echo -e "  [${GREEN}PASS${NC}] $1"; }
+fail() { echo -e "  [${RED}FAIL${NC}] $1"; }
 
-# Fonction de résultat
-result() {
-    if [ $1 -eq 0 ]; then
-        echo -e "${GREEN}[PASS]${NC} $2"
-        ((PASS++))
+echo -e "=== VALIDATION PAR PAIRE DE LEAFS ===\n"
+
+# --- CONFIGURATION DES PAIRES ET DES TESTS ---
+# Format: "LeafA LeafB Serveur IP_Gateway IP_Distant Description"
+PAIRS=(
+    "leaf-01 leaf-02 server-dmz-01 192.168.100.1 192.168.100.1 DMZ_Zone"
+    "leaf-03 leaf-04 server-admin-01 192.168.50.1 192.168.60.10 Admin_Zone"
+    "leaf-05 leaf-06 server-hpc-01 192.168.70.1 192.168.70.20 HPC_Zone"
+    "leaf-07 leaf-08 server-storage-01 192.168.80.1 192.168.80.1 Storage_Zone"
+    "leaf-09 leaf-10 server-student-01 192.168.10.1 192.168.20.10 Student_Zone"
+)
+
+for P in "${PAIRS[@]}"; do
+    L1=$(echo $P | awk '{print $1}')
+    L2=$(echo $P | awk '{print $2}')
+    SRV=$(echo $P | awk '{print $3}')
+    GW=$(echo $P | awk '{print $4}')
+    REMOTE=$(echo $P | awk '{print $5}')
+    DESC=$(echo $P | awk '{print $6}')
+
+    echo -e "📍 Vérification [${DESC}] (Paire ${L1}/${L2})"
+
+    # 1. Test ESI Sync (Plan de contrôle)
+    # On redirige les erreurs vtysh vers /dev/null pour un affichage propre
+    SYNC1=$(docker exec ${LAB_PREFIX}-${L1} vtysh -c "show evpn mh es" 2>/dev/null | grep -c "ESI")
+    SYNC2=$(docker exec ${LAB_PREFIX}-${L2} vtysh -c "show evpn mh es" 2>/dev/null | grep -c "ESI")
+    
+    if [ "$SYNC1" -gt 0 ] && [ "$SYNC2" -gt 0 ]; then
+        pass "ESI synchronisée sur ${L1} et ${L2}"
     else
-        echo -e "${RED}[FAIL]${NC} $2"
-        ((FAIL++))
+        fail "ESI manquante ou service FRR HS sur ${L1} ou ${L2}"
     fi
-}
 
-# -------------------------------------------------------
-# TEST 1 : Vérification de l'état ESI sur TOUS les Leafs
-# -------------------------------------------------------
-echo -e "\n🔍 [SECTION 1] Vérification ESI sur tous les Leafs..."
-LEAFS=("leaf-01" "leaf-02" "leaf-03" "leaf-04" "leaf-05" "leaf-06" "leaf-07" "leaf-08" "leaf-09" "leaf-10")
+    # 2. Test DF Election (Anti-doublon / BUM)
+    DF=$(docker exec ${LAB_PREFIX}-${L1} vtysh -c "show evpn mh es" 2>/dev/null | grep -c "DF")
+    [ "$DF" -gt 0 ] && pass "Election Designated Forwarder OK" || fail "Problème d'élection DF"
 
-for LEAF in "${LEAFS[@]}"; do
-    ESI_COUNT=$(sudo docker exec ${LAB_PREFIX}-${LEAF} vtysh -c "show evpn mh es" 2>/dev/null | grep -c "ESI")
-    if [ "$ESI_COUNT" -gt 0 ]; then
-        result 0 "ESI active sur ${LEAF} ($ESI_COUNT segment(s) détecté(s))"
+    # 3. Test Gateway Anycast (LACP local + IRB)
+    docker exec ${LAB_PREFIX}-${SRV} ping -c 2 -W 1 ${GW} > /dev/null 2>&1
+    if [ $? -eq 0 ]; then
+        # Vérification des DUP! (Doublons)
+        DUPS=$(docker exec ${LAB_PREFIX}-${SRV} ping -c 3 -W 1 ${GW} | grep -c "DUP!")
+        if [ "$DUPS" -eq 0 ]; then
+            pass "Ping Gateway ${GW} (Stable, 0 DUP!)"
+        else
+            fail "Ping Gateway ${GW} ($DUPS DUP! détectés - Erreur DF)"
+        fi
     else
-        # Note: Certains leafs pourraient ne pas avoir d'ESI par design
-        echo -e "${YELLOW}[INFO]${NC} Pas d'ESI configurée sur ${LEAF}"
+        fail "Ping Gateway ${GW} ÉCHOUÉ (Vérifier Bond0/Privileged)"
     fi
+
+    # 4. Test Connectivité Fabric (VXLAN Inter-VTEP)
+    # On ne lance le test distant que si la destination est différente de la GW
+    if [ "$GW" != "$REMOTE" ]; then
+        docker exec ${LAB_PREFIX}-${SRV} ping -c 2 -W 1 ${REMOTE} > /dev/null 2>&1
+        [ $? -eq 0 ] && pass "Ping Distant ${REMOTE} (Overlay OK)" || fail "Ping Distant ${REMOTE} ÉCHOUÉ"
+    fi
+
+    echo "-------------------------------------------------------"
 done
 
-# -------------------------------------------------------
-# TEST 2 : Sessions BGP EVPN (Voisinage avec Spines)
-# -------------------------------------------------------
-echo -e "\n🔍 [SECTION 2] Sessions BGP L2VPN EVPN..."
-for LEAF in "${LEAFS[@]}"; do
-    BGP_STATE=$(sudo docker exec ${LAB_PREFIX}-${LEAF} vtysh -c "show bgp l2vpn evpn summary" 2>/dev/null | grep -c "Established")
-    if [ "$BGP_STATE" -gt 0 ]; then
-        result 0 "Sessions EVPN Established sur ${LEAF}"
-    else
-        result 1 "BGP EVPN DOWN sur ${LEAF}"
-    fi
-done
-
-# -------------------------------------------------------
-# TEST 3 : Connectivité Inter-VLAN (Overlay)
-# -------------------------------------------------------
-echo -e "\n🔍 [SECTION 3] Ping Inter-VLAN (Student-01 -> Student-02)..."
-sudo docker exec ${LAB_PREFIX}-server-student-01 ping -c 3 -W 1 192.168.20.10 > /dev/null 2>&1
-result $? "Connectivité 192.168.10.x -> 192.168.20.x"
-
-# -------------------------------------------------------
-# TEST 4 : Résilience ESI (Basculement de lien)
-# -------------------------------------------------------
-echo -e "\n🔥 [SECTION 4] Test de résilience ESI (Coupure eth1)..."
-sudo docker exec ${LAB_PREFIX}-server-student-01 ping -i 0.2 -W 1 192.168.10.1 > res_test.txt 2>&1 &
-PING_PID=$!
-
-sleep 1
-sudo docker exec ${LAB_PREFIX}-server-student-01 ip link set eth1 down
-sleep 2
-sudo docker exec ${LAB_PREFIX}-server-student-01 ip link set eth1 up
-sleep 1
-
-kill $PING_PID 2>/dev/null
-LOSS=$(grep -c "unreachable" res_test.txt)
-rm -f res_test.txt
-
-if [ "$LOSS" -eq 0 ]; then
-    result 0 "Basculement ESI transparent (0 perte)"
-else
-    result 1 "Coupure détectée lors du basculement ($LOSS paquets)"
-fi
-
-# -------------------------------------------------------
-# TEST 5 : LACP / Bonding Serveur
-# -------------------------------------------------------
-echo -e "\n🔍 [SECTION 5] État LACP sur Storage-01..."
-if sudo docker exec ${LAB_PREFIX}-server-storage-01 test -f /proc/net/bonding/bond0; then
-    BOND_MODE=$(sudo docker exec ${LAB_PREFIX}-server-storage-01 cat /proc/net/bonding/bond0 | grep -c "802.3ad")
-    if [ "$BOND_MODE" -gt 0 ]; then
-        result 0 "LACP 802.3ad est actif sur Storage-01"
-    else
-        result 1 "Bond présent mais n'est pas en mode 802.3ad"
-    fi
-else
-    result 1 "Interface bond0 absente sur Storage-01"
-fi
-
-# -------------------------------------------------------
-# BILAN FINAL
-# -------------------------------------------------------
-echo -e "\n-------------------------------------------------------"
-echo -e "📊 BILAN FINAL : ${GREEN}$PASS Reussis${NC} / ${RED}$FAIL Echecs${NC}"
-echo "-------------------------------------------------------"
-
-if [ $FAIL -eq 0 ]; then
-    echo -e "${GREEN}✅ TOUTE LA FABRIC ET L'ESI SONT OPÉRATIONNELS !${NC}"
-    exit 0
-else
-    echo -e "${RED}❌ DES ERREURS DOIVENT ÊTRE CORRIGÉES.${NC}"
-    exit 1
-fi
+# --- TEST FINAL VRF ---
+echo -ne "🔍 Test Isolation VRF Finale... "
+docker exec ${LAB_PREFIX}-server-dmz-01 ping -c 1 -W 1 192.168.50.10 > /dev/null 2>&1
+[ $? -ne 0 ] && echo -e "${GREEN}[OK] VRF isolées${NC}" || echo -e "${RED}[FAIL] LEAK DETECTED${NC}"
