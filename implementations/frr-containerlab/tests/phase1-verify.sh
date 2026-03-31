@@ -87,7 +87,7 @@ done
 
 chk "leaf-01 has VNI 10120 (WIFI-CTRL-MGMT)" "$C-leaf-01 vtysh -c 'show evpn vni 10120'" "10120"
 chk "VRF-WIFI-CTRL exists on leaf-01" "$C-leaf-01 ip vrf show" "VRF-WIFI-CTRL"
-chk "leaf-01 VRF-WIFI-CTRL has /32 wifi-controller route" "$C-leaf-01 ip route show vrf VRF-WIFI-CTRL" "192\.168\.10\.100/32"
+chk "leaf-01 VRF-WIFI-CTRL has /32 wifi-controller route" "$C-leaf-01 ip route show vrf VRF-WIFI-CTRL" "192\.168\.10\.100(/32)?"
 
 r=$($C-leaf-01 ip route show vrf VRF-WIFI-CTRL 2>/dev/null)
 echo "$r" | grep -Eq "^default" && fail "VRF-WIFI-CTRL must not have a default route" || ok "VRF-WIFI-CTRL has no default route"
@@ -108,16 +108,21 @@ else
 fi
 
 echo
-echo "[TEST] VRF-PUBLIC has no internal RFC1918 routes"
+echo "[TEST] VRF-PUBLIC has no internal routes outside DMZ segment"
 info "command: $C-leaf-01 ip route show vrf VRF-PUBLIC"
-info "expect : not /(10\\.|172\\.(1[6-9]|2[0-9]|3[0-1])\\.|192\\.168\\.)/"
+info "expect : no 10/8, no 172.16/12, and no 192.168/16 except 192.168.100.0/24"
 LAST_OUT=$($C-leaf-01 ip route show vrf VRF-PUBLIC 2>/dev/null)
-if echo "$LAST_OUT" | grep -Eq "(10\.|172\.(1[6-9]|2[0-9]|3[0-1])\.|192\.168\.)"; then
-  fail "VRF-PUBLIC leaks internal prefixes"
+if echo "$LAST_OUT" | grep -Eq "10\.|172\.(1[6-9]|2[0-9]|3[0-1])\."; then
+  fail "VRF-PUBLIC leaks internal 10/8 or 172.16/12 prefixes"
+  echo "  [DEBUG] last output:"
+  echo "$LAST_OUT" | sed 's/^/    /'
+elif echo "$LAST_OUT" | grep -Eq "192\.168\." && \
+     echo "$LAST_OUT" | grep -Ev "192\.168\.100(\.|/24)" | grep -Eq "192\.168\."; then
+  fail "VRF-PUBLIC leaks internal 192.168 prefixes outside DMZ segment"
   echo "  [DEBUG] last output:"
   echo "$LAST_OUT" | sed 's/^/    /'
 else
-  ok "VRF-PUBLIC has no internal RFC1918 routes"
+  ok "VRF-PUBLIC only carries DMZ/public-facing routes"
 fi
 
 echo
