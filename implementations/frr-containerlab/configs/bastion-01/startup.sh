@@ -1,18 +1,29 @@
 #!/bin/sh
 set -eu
 
-# Bastion management address on OOB network
-ip addr flush dev eth0 || true
-ip addr add 172.16.0.50/24 dev eth0
-ip link set eth0 up
+OOB_IF="eth1"
 
-# SSH service hardening for management access
-apk add --no-cache openssh >/dev/null
+# Keep Docker management on eth0; assign OOB address on dedicated interface.
+ip addr replace 172.16.0.50/24 dev "$OOB_IF"
+ip link set "$OOB_IF" up
+
+# Install OpenSSH with retries (network can be briefly unavailable at boot).
+for i in 1 2 3 4 5 6 7 8 9 10; do
+  if apk update >/dev/null 2>&1 && apk add --no-cache openssh >/dev/null 2>&1; then
+    break
+  fi
+  sleep 2
+done
+
+if ! command -v ssh >/dev/null 2>&1; then
+  echo "Failed to install OpenSSH on bastion" >&2
+  exit 1
+fi
+
 mkdir -p /run/sshd /root/.ssh
 chmod 700 /root/.ssh
 ssh-keygen -A
 
-# Use explicit settings required by Ring 4 policy.
 if grep -q '^PasswordAuthentication' /etc/ssh/sshd_config; then
   sed -i 's/^PasswordAuthentication.*/PasswordAuthentication no/' /etc/ssh/sshd_config
 else
@@ -34,9 +45,8 @@ else
   echo 'LoginGraceTime 30' >> /etc/ssh/sshd_config
 fi
 
-# Generate bastion management keypair if missing.
 if [ ! -f /root/.ssh/id_ed25519 ]; then
   ssh-keygen -t ed25519 -N '' -f /root/.ssh/id_ed25519
 fi
 
-/usr/sbin/sshd -D -e
+/usr/sbin/sshd

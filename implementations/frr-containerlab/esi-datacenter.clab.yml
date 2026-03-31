@@ -155,98 +155,92 @@ topology:
     server-student-01:
       kind: linux
       image: alpine:3.20
-      binds:
-        - configs/server-student-01/startup.sh:/startup.sh
       exec:
-        - sh /startup.sh
+        - ip addr add 192.168.10.10/24 dev eth1
+        - ip route del default
+        - ip route add default via 192.168.10.1 dev eth1
 
     server-student-02:
       kind: linux
       image: alpine:3.20
-      binds:
-        - configs/server-student-02/startup.sh:/startup.sh
       exec:
-        - sh /startup.sh
+        - ip addr add 192.168.20.10/24 dev eth1
+        - ip route del default
+        - ip route add default via 192.168.20.1 dev eth1
 
     server-admin-01:
       kind: linux
       image: alpine:3.20
-      binds:
-        - configs/server-admin-01/startup.sh:/startup.sh
       exec:
-        - sh /startup.sh
+        - ip addr add 192.168.50.10/24 dev eth1
+        - ip route del default
+        - ip route add default via 192.168.50.1 dev eth1
 
     server-admin-02:
       kind: linux
       image: alpine:3.20
-      binds:
-        - configs/server-admin-02/startup.sh:/startup.sh
       exec:
-        - sh /startup.sh
+        - ip addr add 192.168.60.10/24 dev eth1
+        - ip route del default
+        - ip route add default via 192.168.60.1 dev eth1
 
     server-hpc-01:
       kind: linux
       image: alpine:3.20
-      binds:
-        - configs/server-hpc-01/startup.sh:/startup.sh
       exec:
-        - sh /startup.sh
+        - ip addr add 192.168.70.10/24 dev eth1
+        - ip route del default
+        - ip route add default via 192.168.70.1 dev eth1
 
     server-hpc-02:
       kind: linux
       image: alpine:3.20
-      binds:
-        - configs/server-hpc-02/startup.sh:/startup.sh
       exec:
-        - sh /startup.sh
+        - ip addr add 192.168.70.20/24 dev eth1
+        - ip route del default
+        - ip route add default via 192.168.70.1 dev eth1
 
     server-storage-01:
       kind: linux
       image: alpine:3.20
-      binds:
-        - configs/server-storage-01/startup.sh:/startup.sh
       exec:
-        - sh /startup.sh
+        - ip addr add 192.168.80.10/24 dev eth1
+        - ip route del default
+        - ip route add default via 192.168.80.1 dev eth1
 
     server-dmz-01:
       kind: linux
       image: alpine:3.20
-      binds:
-        - configs/server-dmz-01/startup.sh:/startup.sh
       exec:
-        - sh /startup.sh
+        - ip addr add 192.168.100.10/24 dev eth1
+        - ip route del default
+        - ip route add default via 192.168.100.1 dev eth1
 
     lms-staff:
       kind: linux
       image: alpine:3.20
-      binds:
-        - configs/lms-staff/startup.sh:/startup.sh
       exec:
-        - sh /startup.sh
+        - ip addr add 192.168.30.10/24 dev eth1
+        - ip route del default
+        - ip route add default via 192.168.30.1 dev eth1
 
     services-web:
       kind: linux
       image: alpine:3.20
-      binds:
-        - configs/services-web/startup.sh:/startup.sh
       exec:
-        - sh /startup.sh
+        - ip addr add 192.168.40.10/24 dev eth1
+        - ip route del default
+        - ip route add default via 192.168.40.1 dev eth1
 
     firewall-01:
       kind: linux
       image: alpine:3.20
-      exec:
-        - iptables -I INPUT -i eth0 -p tcp --dport 22 -s 172.16.0.50 -j ACCEPT
-        - iptables -A INPUT -i eth0 -p tcp --dport 22 -j DROP
     firewall-02:
       kind: linux
       image: alpine:3.20
-      exec:
-        - iptables -I INPUT -i eth0 -p tcp --dport 22 -s 172.16.0.50 -j ACCEPT
-        - iptables -A INPUT -i eth0 -p tcp --dport 22 -j DROP
     bastion-01:
       kind: linux
-      image: alpine:3.20
+      image: alpine:3.16
       binds:
         - configs/bastion-01/startup.sh:/startup.sh
       exec:
@@ -254,69 +248,40 @@ topology:
     ids-01:
       kind: linux
       image: alpine:3.20
-      exec:
-        - iptables -I INPUT -i eth0 -p tcp --dport 22 -s 172.16.0.50 -j ACCEPT
-        - iptables -A INPUT -i eth0 -p tcp --dport 22 -j DROP
     ntp-server:
       kind: linux
       image: alpine:3.20
-      exec:
-        - iptables -I INPUT -i eth0 -p tcp --dport 22 -s 172.16.0.50 -j ACCEPT
-        - iptables -A INPUT -i eth0 -p tcp --dport 22 -j DROP
     dns-server:
       kind: linux
       image: alpine:3.20
-      exec:
-        - iptables -I INPUT -i eth0 -p tcp --dport 22 -s 172.16.0.50 -j ACCEPT
-        - iptables -A INPUT -i eth0 -p tcp --dport 22 -j DROP
     dhcp-server:
       kind: linux
       image: alpine:3.20
-      exec:
-        - iptables -I INPUT -i eth0 -p tcp --dport 22 -s 172.16.0.50 -j ACCEPT
-        - iptables -A INPUT -i eth0 -p tcp --dport 22 -j DROP
     ftp-server:
       kind: linux
       image: alpine:3.20
-      exec:
-        - iptables -I INPUT -i eth0 -p tcp --dport 22 -s 172.16.0.50 -j ACCEPT
-        - iptables -A INPUT -i eth0 -p tcp --dport 22 -j DROP
     zabbix-server:
       kind: linux
       image: alpine:3.20
-      exec:
-        - iptables -I INPUT -i eth0 -p tcp --dport 22 -s 172.16.0.50 -j ACCEPT
-        - iptables -A INPUT -i eth0 -p tcp --dport 22 -j DROP
     prometheus:
       kind: linux
       image: alpine:3.20
-      exec:
-        - iptables -I INPUT -i eth0 -p tcp --dport 22 -s 172.16.0.50 -j ACCEPT
-        - iptables -A INPUT -i eth0 -p tcp --dport 22 -j DROP
     syslog-server:
       kind: linux
       image: alpine:3.20
-      exec:
-        - iptables -I INPUT -i eth0 -p tcp --dport 22 -s 172.16.0.50 -j ACCEPT
-        - iptables -A INPUT -i eth0 -p tcp --dport 22 -j DROP
     wifi-controller:
       kind: linux
       image: alpine:3.20
-      exec:
-        - iptables -I INPUT -i eth0 -p tcp --dport 22 -s 172.16.0.50 -j ACCEPT
-        - iptables -A INPUT -i eth0 -p tcp --dport 22 -j DROP
     campus-bp:
       kind: linux
       image: alpine:3.20
-      exec:
-        - iptables -I INPUT -i eth0 -p tcp --dport 22 -s 172.16.0.50 -j ACCEPT
-        - iptables -A INPUT -i eth0 -p tcp --dport 22 -j DROP
     oob-sw:
       kind: linux
       image: alpine:3.20
+      binds:
+        - configs/oob-sw/startup.sh:/startup.sh
       exec:
-        - iptables -I INPUT -i eth0 -p tcp --dport 22 -s 172.16.0.50 -j ACCEPT
-        - iptables -A INPUT -i eth0 -p tcp --dport 22 -j DROP
+        - sh /startup.sh
 
   links:
     - endpoints: ["spine-01:eth1", "leaf-01:eth1"]
@@ -368,3 +333,15 @@ topology:
     - endpoints: [ "campus-bp:eth3", "leaf-01:eth8" ]
     - endpoints: [ "firewall-01:eth3", "firewall-02:eth3" ]
     - endpoints: [ "bastion-01:eth1", "oob-sw:eth1" ]
+    - endpoints: [ "oob-sw:eth2", "spine-01:eth11" ]
+    - endpoints: [ "oob-sw:eth3", "spine-02:eth11" ]
+    - endpoints: [ "oob-sw:eth4", "leaf-01:eth10" ]
+    - endpoints: [ "oob-sw:eth5", "leaf-02:eth10" ]
+    - endpoints: [ "oob-sw:eth6", "leaf-03:eth10" ]
+    - endpoints: [ "oob-sw:eth7", "leaf-04:eth10" ]
+    - endpoints: [ "oob-sw:eth8", "leaf-05:eth10" ]
+    - endpoints: [ "oob-sw:eth9", "leaf-06:eth10" ]
+    - endpoints: [ "oob-sw:eth10", "leaf-07:eth10" ]
+    - endpoints: [ "oob-sw:eth11", "leaf-08:eth10" ]
+    - endpoints: [ "oob-sw:eth12", "leaf-09:eth10" ]
+    - endpoints: [ "oob-sw:eth13", "leaf-10:eth10" ]
