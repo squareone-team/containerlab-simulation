@@ -232,6 +232,10 @@ topology:
     bastion-01:
       kind: linux
       image: alpine:3.20
+      binds:
+        - configs/bastion-01/startup.sh:/startup.sh
+      exec:
+        - sh /startup.sh
     ids-01:
       kind: linux
       image: alpine:3.20
