@@ -33,7 +33,7 @@ get_eth1_counter_sum() {
   echo $((rx + tx))
 }
 
-echo "=== T3 Firewall In-Path Validation ==="
+echo "=== Firewall In-Path Validation (Ring 1) ==="
 
 if docker exec "$LEAF1" sh -lc "ping -c 2 -W 2 $VIP >/dev/null"; then
   ok "leaf-01 can ping VIP $VIP"

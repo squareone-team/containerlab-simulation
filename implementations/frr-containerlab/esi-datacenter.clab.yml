@@ -228,6 +228,7 @@ topology:
       image: alpine:3.20
       mgmt-ipv4: 172.20.20.101
       binds:
+        - configs/firewall-common/startup-common.sh:/opt/firewall-common/startup-common.sh
         - configs/firewall-01/keepalived.conf:/etc/keepalived/keepalived.conf
         - configs/firewall-01/nftables.conf:/etc/nftables.conf
         - configs/firewall-01/startup.sh:/startup.sh
@@ -239,6 +240,7 @@ topology:
       image: alpine:3.20
       mgmt-ipv4: 172.20.20.102
       binds:
+        - configs/firewall-common/startup-common.sh:/opt/firewall-common/startup-common.sh
         - configs/firewall-02/keepalived.conf:/etc/keepalived/keepalived.conf
         - configs/firewall-02/nftables.conf:/etc/nftables.conf
         - configs/firewall-02/startup.sh:/startup.sh

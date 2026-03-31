@@ -150,7 +150,10 @@ When health check fails on MASTER:
 
 ### Test Script Location
 
-`tests/firewall_test.sh`
+- `tests/firewall_policy_validation.sh`
+- `tests/firewall_inpath_validation.sh`
+- `tests/firewall_e2e_validation.sh`
+- `tests/firewall_all_validation.sh` (runs all tests)
 
 ### Test Coverage
 
@@ -167,7 +170,7 @@ When health check fails on MASTER:
 
 ```bash
 cd /home/mounir/Desktop/datacenter-containerlab-esi/implementations/frr-containerlab
-bash tests/firewall_test.sh
+bash tests/firewall_all_validation.sh
 ```
 
 ### Manual Testing Examples
