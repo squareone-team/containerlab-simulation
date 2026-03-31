@@ -298,11 +298,22 @@ topology:
     prometheus:
       kind: linux
       image: prom/prometheus:latest
+      ports:
+        - 9090:9090
       binds:
         - configs/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+        - configs/prometheus/alerts.yml:/etc/prometheus/alerts.yml
     grafana:
       kind: linux
       image: grafana/grafana:latest
+      ports:
+        - 3000:3000
+      env:
+        GF_SECURITY_ADMIN_USER: admin
+        GF_SECURITY_ADMIN_PASSWORD: admin
+        GF_USERS_ALLOW_SIGN_UP: "false"
+        GF_METRICS_ENABLED: "true"
+        GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /etc/grafana/provisioning/dashboards/json/esi-fabric-observability.json
       binds:
         - configs/grafana/provisioning:/etc/grafana/provisioning
     frr-exporter:

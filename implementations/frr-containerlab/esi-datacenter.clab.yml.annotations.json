@@ -1,192 +1,1069 @@
 {
   "freeTextAnnotations": [
     {
-      "id": "freeText_1774955967117",
+      "id": "title-main",
+      "text": "ESI DATACENTER - MODULAR FABRIC VIEW",
+      "position": {
+        "x": 315.39170723173333,
+        "y": -964.0541931607495
+      },
+      "fontSize": 30,
+      "fontColor": "#f3f4f6",
+      "fontWeight": "bold",
+      "fontStyle": "normal",
+      "textDecoration": "none",
+      "textAlign": "left",
+      "fontFamily": "Segoe UI"
+    },
+    {
+      "id": "title-sub",
+      "text": "Two-tier Clos | eBGP Underlay | EVPN/VXLAN Overlay | Structural Security by VRF",
+      "position": {
+        "x": 357.8757955824635,
+        "y": -897.3153313152384
+      },
+      "fontSize": 15,
+      "fontColor": "#d1d5db",
+      "fontWeight": "normal",
+      "fontStyle": "normal",
+      "textDecoration": "none",
+      "textAlign": "left",
+      "fontFamily": "Segoe UI"
+    },
+    {
+      "id": "zone-ext-label",
+      "text": "EXTERNAL DOMAIN ( INTERNET )",
+      "position": {
+        "x": -349.765101807438,
+        "y": -750.9421139980246
+      },
+      "fontSize": 22,
+      "fontColor": "#bfdbfe",
+      "fontWeight": "bold",
+      "fontStyle": "normal",
+      "textDecoration": "none",
+      "textAlign": "left",
+      "fontFamily": "Segoe UI"
+    },
+    {
+      "id": "zone-border-label",
+      "text": "POD 1: BORDER / DMZ",
+      "position": {
+        "x": 476.56861769432476,
+        "y": -670.0353863422564
+      },
+      "fontSize": 28,
+      "fontColor": "#fde68a",
+      "fontWeight": "bold",
+      "fontStyle": "normal",
+      "textDecoration": "none",
+      "textAlign": "left",
+      "fontFamily": "Segoe UI"
+    },
+    {
+      "id": "zone-core-label",
+      "text": "SPINE CORE",
+      "position": {
+        "x": 857.1918020507596,
+        "y": 42.66279968449851
+      },
+      "fontSize": 21,
+      "fontColor": "#86efac",
+      "fontWeight": "bold",
+      "fontStyle": "normal",
+      "textDecoration": "none",
+      "textAlign": "left",
+      "fontFamily": "Segoe UI"
+    },
+    {
+      "id": "zone-workload-label",
+      "text": "WORKLOAD PODS (MODULAR SCALE-OUT)",
+      "position": {
+        "x": 935.8265502552367,
+        "y": 193.6145489928671
+      },
+      "fontSize": 20,
+      "fontColor": "#bfdbfe",
+      "fontWeight": "bold",
+      "fontStyle": "normal",
+      "textDecoration": "none",
+      "textAlign": "left",
+      "fontFamily": "Segoe UI"
+    },
+    {
+      "id": "zone-oob-label",
+      "text": "OOB + OBSERVABILITY (OUTSIDE EVPN)",
+      "position": {
+        "x": 138,
+        "y": 867
+      },
+      "fontSize": 18,
+      "fontColor": "#e5e7eb",
+      "fontWeight": "bold",
+      "fontStyle": "normal",
+      "textDecoration": "none",
+      "textAlign": "left",
+      "fontFamily": "Segoe UI"
+    },
+    {
+      "id": "pod1-line2",
+      "text": "VRFs: PUBLIC(50040), ORIENTATION(50050)",
+      "position": {
+        "x": 429.4263514838882,
+        "y": -500.4816295711697
+      },
+      "fontSize": 14,
+      "fontColor": "#fef3c7",
+      "fontWeight": "normal",
+      "fontStyle": "normal",
+      "textDecoration": "none",
+      "textAlign": "left",
+      "fontFamily": "Segoe UI"
+    },
+    {
+      "id": "pod1-line3",
+      "text": "Segments: DMZ-WEB\nVNI 10100\nBAC-ORIENT VNI 10090",
+      "position": {
+        "x": 432.9628366151317,
+        "y": -482.77731143838685
+      },
+      "fontSize": 14,
+      "fontColor": "#fef3c7",
+      "fontWeight": "normal",
+      "fontStyle": "normal",
+      "textDecoration": "none",
+      "textAlign": "left",
+      "fontFamily": "Segoe UI",
+      "width": 165,
+      "height": 111
+    },
+    {
+      "id": "wifi-ctrl-1",
+      "text": "VRF-WIFI-CTRL (MICRO-VRF)",
+      "position": {
+        "x": 297.344310103921,
+        "y": -336.60928164934654
+      },
+      "fontSize": 12,
+      "fontColor": "#fef9c3",
+      "fontWeight": "bold",
+      "fontStyle": "normal",
+      "textDecoration": "none",
+      "textAlign": "left",
+      "fontFamily": "Segoe UI"
+    },
+    {
+      "id": "wifi-ctrl-2",
+      "text": "VLAN 120 / VNI 10120",
+      "position": {
+        "x": 315.0464082467325,
+        "y": -313.3907183506535
+      },
+      "fontSize": 12,
+      "fontColor": "#fef9c3",
+      "fontWeight": "normal",
+      "fontStyle": "normal",
+      "textDecoration": "none",
+      "textAlign": "left",
+      "fontFamily": "Segoe UI"
+    },
+    {
+      "id": "core-line1",
+      "text": "Spine-01 / Spine-02 | AS 65000 | eBGP underlay + BFD",
+      "position": {
+        "x": 858.5065223452276,
+        "y": 93.79767981069912
+      },
+      "fontSize": 14,
+      "fontColor": "#dcfce7",
+      "fontWeight": "bold",
+      "fontStyle": "normal",
+      "textDecoration": "none",
+      "textAlign": "left",
+      "fontFamily": "Segoe UI"
+    },
+    {
+      "id": "core-line2",
+      "text": "Leaf pairs AS 65001-65005 | ECMP across both spines",
+      "position": {
+        "x": 860.4048300402789,
+        "y": 126.63316606102333
+      },
+      "fontSize": 14,
+      "fontColor": "#dcfce7",
+      "fontWeight": "normal",
+      "fontStyle": "normal",
+      "textDecoration": "none",
+      "textAlign": "left",
+      "fontFamily": "Segoe UI"
+    },
+    {
+      "id": "pod2-title",
+      "text": "POD 2: ADMIN / CORE INFRA",
+      "position": {
+        "x": 229.0457160252015,
+        "y": 769.7617685392632
+      },
+      "fontSize": 20,
+      "fontColor": "#ccfbf1",
+      "fontWeight": "bold",
+      "fontStyle": "normal",
+      "textDecoration": "none",
+      "textAlign": "left",
+      "fontFamily": "Segoe UI"
+    },
+    {
+      "id": "pod2-line1",
+      "text": "VRFs: VRF-STAFF(50020), VRF-ADMINISTRATION(50010)",
+      "position": {
+        "x": 219.33692231424686,
+        "y": 711.8469663570154
+      },
+      "fontSize": 12,
+      "fontColor": "#ccfbf1",
+      "fontWeight": "normal",
+      "fontStyle": "normal",
+      "textDecoration": "none",
+      "textAlign": "left",
+      "fontFamily": "Segoe UI"
+    },
+    {
+      "id": "pod2-line2",
+      "text": "VNIs: 10030, 10040, 10050, 10060",
+      "position": {
+        "x": 222.58903973630316,
+        "y": 731.3107970753931
+      },
+      "fontSize": 12,
+      "fontColor": "#ccfbf1",
+      "fontWeight": "normal",
+      "fontStyle": "normal",
+      "textDecoration": "none",
+      "textAlign": "left",
+      "fontFamily": "Segoe UI"
+    },
+    {
+      "id": "pod3-title",
+      "text": "POD 3: AI / HPC",
+      "position": {
+        "x": 591.9730392592189,
+        "y": 767.8597569409884
+      },
+      "fontSize": 20,
+      "fontColor": "#99f6e4",
+      "fontWeight": "bold",
+      "fontStyle": "normal",
+      "textDecoration": "none",
+      "textAlign": "left",
+      "fontFamily": "Segoe UI"
+    },
+    {
+      "id": "pod3-line1",
+      "text": "VRF: VRF-STAFF(50020)",
+      "position": {
+        "x": 575.880222765754,
+        "y": 710.037886434773
+      },
+      "fontSize": 12,
+      "fontColor": "#99f6e4",
+      "fontWeight": "normal",
+      "fontStyle": "normal",
+      "textDecoration": "none",
+      "textAlign": "left",
+      "fontFamily": "Segoe UI"
+    },
+    {
+      "id": "pod3-line2",
+      "text": "VNI 10070 | RoCEv2 + PFC + ECN",
+      "position": {
+        "x": 575.880222765754,
+        "y": 730.037886434773
+      },
+      "fontSize": 12,
+      "fontColor": "#99f6e4",
+      "fontWeight": "normal",
+      "fontStyle": "normal",
+      "textDecoration": "none",
+      "textAlign": "left",
+      "fontFamily": "Segoe UI"
+    },
+    {
+      "id": "pod4-title",
+      "text": "POD 4: STORAGE",
+      "position": {
+        "x": 847.015558004761,
+        "y": 768.0848262166069
+      },
+      "fontSize": 20,
+      "fontColor": "#bbf7d0",
+      "fontWeight": "bold",
+      "fontStyle": "normal",
+      "textDecoration": "none",
+      "textAlign": "left",
+      "fontFamily": "Segoe UI"
+    },
+    {
+      "id": "pod4-line1",
+      "text": "VRF: VRF-STAFF(50020)",
+      "position": {
+        "x": 827.7041782126031,
+        "y": 710.2629557103916
+      },
+      "fontSize": 12,
+      "fontColor": "#bbf7d0",
+      "fontWeight": "normal",
+      "fontStyle": "normal",
+      "textDecoration": "none",
+      "textAlign": "left",
+      "fontFamily": "Segoe UI"
+    },
+    {
+      "id": "pod4-line2",
+      "text": "VNI 10080 | Ceph RBD / CephFS / RGW",
+      "position": {
+        "x": 827.7041782126031,
+        "y": 730.2629557103916
+      },
+      "fontSize": 12,
+      "fontColor": "#bbf7d0",
+      "fontWeight": "normal",
+      "fontStyle": "normal",
+      "textDecoration": "none",
+      "textAlign": "left",
+      "fontFamily": "Segoe UI"
+    },
+    {
+      "id": "pod5-title",
+      "text": "POD 5: STUDENT / LAB",
+      "position": {
+        "x": 1079.7903945305957,
+        "y": 765.3117192812992
+      },
+      "fontSize": 20,
+      "fontColor": "#bfdbfe",
+      "fontWeight": "bold",
+      "fontStyle": "normal",
+      "textDecoration": "none",
+      "textAlign": "left",
+      "fontFamily": "Segoe UI"
+    },
+    {
+      "id": "pod5-line1",
+      "text": "VRF: VRF-PEDAGOGY(50030)",
+      "position": {
+        "x": 1065.306859686477,
+        "y": 710.318630410253
+      },
+      "fontSize": 12,
+      "fontColor": "#bfdbfe",
+      "fontWeight": "normal",
+      "fontStyle": "normal",
+      "textDecoration": "none",
+      "textAlign": "left",
+      "fontFamily": "Segoe UI"
+    },
+    {
+      "id": "pod5-line2",
+      "text": "VNIs: 10010, 10020",
+      "position": {
+        "x": 1065.306859686477,
+        "y": 730.318630410253
+      },
+      "fontSize": 12,
+      "fontColor": "#bfdbfe",
+      "fontWeight": "normal",
+      "fontStyle": "normal",
+      "textDecoration": "none",
+      "textAlign": "left",
+      "fontFamily": "Segoe UI"
+    },
+    {
+      "id": "campus-edge-1",
+      "text": "CAMPUS EDGE (BP)",
+      "position": {
+        "x": -66.13100575312217,
+        "y": 69.88953908999564
+      },
+      "fontSize": 13,
+      "fontColor": "#e2e8f0",
+      "fontWeight": "bold",
+      "fontStyle": "normal",
+      "textDecoration": "none",
+      "textAlign": "left",
+      "fontFamily": "Segoe UI"
+    },
+    {
+      "id": "campus-edge-2",
+      "text": "AP traffic remains outside the DC fabric",
+      "position": {
+        "x": -62.75400383541478,
+        "y": 108.85297890521872
+      },
+      "fontSize": 12,
+      "fontColor": "#e2e8f0",
+      "fontWeight": "normal",
+      "fontStyle": "normal",
+      "textDecoration": "none",
+      "textAlign": "left",
+      "fontFamily": "Segoe UI"
+    },
+    {
+      "id": "legend-title",
+      "text": "REFERENCE LEGEND",
+      "position": {
+        "x": 937.8757955824635,
+        "y": -794.092381118997
+      },
+      "fontSize": 19,
+      "fontColor": "#f9fafb",
+      "fontWeight": "bold",
+      "fontStyle": "normal",
+      "textDecoration": "none",
+      "textAlign": "left",
+      "fontFamily": "Segoe UI"
+    },
+    {
+      "id": "legend-line1",
+      "text": "Control plane: eBGP underlay + MP-BGP EVPN",
+      "position": {
+        "x": 935.751591164927,
+        "y": -756.5955634488508
+      },
+      "fontSize": 12,
+      "fontColor": "#d1d5db",
+      "fontWeight": "normal",
+      "fontStyle": "normal",
+      "textDecoration": "none",
+      "textAlign": "left",
+      "fontFamily": "Segoe UI"
+    },
+    {
+      "id": "legend-line2",
+      "text": "Data plane: VXLAN, Symmetric IRB, Anycast Gateway",
+      "position": {
+        "x": 931.5031823298541,
+        "y": -735.595563448851
+      },
+      "fontSize": 12,
+      "fontColor": "#d1d5db",
+      "fontWeight": "normal",
+      "fontStyle": "normal",
+      "textDecoration": "none",
+      "textAlign": "left",
+      "fontFamily": "Segoe UI"
+    },
+    {
+      "id": "legend-line3",
+      "text": "BUM transport: Head-End Replication (no PIM)",
+      "position": {
+        "x": 929.3789779123176,
+        "y": -714.5955634488508
+      },
+      "fontSize": 12,
+      "fontColor": "#d1d5db",
+      "fontWeight": "normal",
+      "fontStyle": "normal",
+      "textDecoration": "none",
+      "textAlign": "left",
+      "fontFamily": "Segoe UI"
+    },
+    {
+      "id": "legend-trust-header",
+      "text": "Trust Zones (L3VNIs)",
+      "position": {
+        "x": 931.4257559717607,
+        "y": -696.7424402823923
+      },
+      "fontSize": 13,
+      "fontColor": "#f9fafb",
+      "fontWeight": "bold",
+      "fontStyle": "normal",
+      "textDecoration": "none",
+      "textAlign": "left",
+      "fontFamily": "Segoe UI"
+    },
+    {
+      "id": "legend-vrf-admin",
+      "text": "VRF-ADMINISTRATION 50010",
+      "position": {
+        "x": 976.5703023887045,
+        "y": -623.003941639535
+      },
+      "fontSize": 12,
+      "fontColor": "#fecaca",
+      "fontWeight": "normal",
+      "fontStyle": "normal",
+      "textDecoration": "none",
+      "textAlign": "left",
+      "fontFamily": "Segoe UI"
+    },
+    {
+      "id": "legend-vrf-staff",
+      "text": "VRF-STAFF 50020",
+      "position": {
+        "x": 978.2851511943524,
+        "y": -589.7187904451827
+      },
+      "fontSize": 12,
+      "fontColor": "#99f6e4",
+      "fontWeight": "normal",
+      "fontStyle": "normal",
+      "textDecoration": "none",
+      "textAlign": "left",
+      "fontFamily": "Segoe UI"
+    },
+    {
+      "id": "legend-vrf-pedagogy",
+      "text": "VRF-PEDAGOGY 50030",
+      "position": {
+        "x": 976.5703023887042,
+        "y": -551.289092833887
+      },
+      "fontSize": 12,
+      "fontColor": "#bfdbfe",
+      "fontWeight": "normal",
+      "fontStyle": "normal",
+      "textDecoration": "none",
+      "textAlign": "left",
+      "fontFamily": "Segoe UI"
+    },
+    {
+      "id": "legend-vrf-public",
+      "text": "VRF-PUBLIC 50040",
+      "position": {
+        "x": 980,
+        "y": -519.7187904451828
+      },
+      "fontSize": 12,
+      "fontColor": "#fdba74",
+      "fontWeight": "normal",
+      "fontStyle": "normal",
+      "textDecoration": "none",
+      "textAlign": "left",
+      "fontFamily": "Segoe UI"
+    },
+    {
+      "id": "legend-vrf-orientation",
+      "text": "VRF-ORIENTATION 50050",
+      "position": {
+        "x": 978.285151194352,
+        "y": -483.00394163953496
+      },
+      "fontSize": 12,
+      "fontColor": "#d1d5db",
+      "fontWeight": "normal",
+      "fontStyle": "normal",
+      "textDecoration": "none",
+      "textAlign": "left",
+      "fontFamily": "Segoe UI"
+    },
+    {
+      "id": "legend-vrf-wifi",
+      "text": "VRF-WIFI-CTRL micro-VRF",
+      "position": {
+        "x": 974.8554535830565,
+        "y": -446.2890928338871
+      },
+      "fontSize": 12,
+      "fontColor": "#fde68a",
+      "fontWeight": "normal",
+      "fontStyle": "normal",
+      "textDecoration": "none",
+      "textAlign": "left",
+      "fontFamily": "Segoe UI"
+    },
+    {
+      "id": "legend-line4",
+      "text": "L2VNI convention: 10000 + VLAN",
+      "position": {
+        "x": 940,
+        "y": -396
+      },
+      "fontSize": 12,
+      "fontColor": "#d1d5db",
+      "fontWeight": "normal",
+      "fontStyle": "normal",
+      "textDecoration": "none",
+      "textAlign": "left",
+      "fontFamily": "Segoe UI"
+    },
+    {
+      "id": "legend-line5",
+      "text": "Example: VLAN 100 -> VNI 10100",
+      "position": {
+        "x": 940,
+        "y": -376
+      },
+      "fontSize": 12,
+      "fontColor": "#d1d5db",
+      "fontWeight": "normal",
+      "fontStyle": "normal",
+      "textDecoration": "none",
+      "textAlign": "left",
+      "fontFamily": "Segoe UI"
+    },
+    {
+      "id": "legend-line6",
+      "text": "Security rule: missing route = deny",
+      "position": {
+        "x": 940,
+        "y": -356
+      },
+      "fontSize": 12,
+      "fontColor": "#fda4af",
+      "fontWeight": "bold",
+      "fontStyle": "normal",
+      "textDecoration": "none",
+      "textAlign": "left",
+      "fontFamily": "Segoe UI"
+    },
+    {
+      "id": "legend-line7",
+      "text": "VRF-PUBLIC imports no internal prefixes",
+      "position": {
+        "x": 940,
+        "y": -336
+      },
+      "fontSize": 12,
+      "fontColor": "#fdba74",
+      "fontWeight": "bold",
+      "fontStyle": "normal",
+      "textDecoration": "none",
+      "textAlign": "left",
+      "fontFamily": "Segoe UI"
+    },
+    {
+      "id": "oob-line1",
+      "text": "MGMT VLAN 110 (172.16.0.0/24) | Bastion, NTP, DNS, DHCP, Syslog, Zabbix, Prometheus, Grafana",
+      "position": {
+        "x": 138,
+        "y": 898
+      },
+      "fontSize": 12,
+      "fontColor": "#e5e7eb",
+      "fontWeight": "normal",
+      "fontStyle": "normal",
+      "textDecoration": "none",
+      "textAlign": "left",
+      "fontFamily": "Segoe UI"
+    },
+    {
+      "id": "freeText_1774966101482",
+      "text": "AS 65002",
+      "position": {
+        "x": 341.8932388390167,
+        "y": 280.2011823923477
+      },
+      "fontSize": 20,
+      "fontColor": "#ccfbf1",
+      "fontWeight": "bold",
+      "fontStyle": "normal",
+      "textDecoration": "none",
+      "textAlign": "left",
+      "fontFamily": "Arial"
+    },
+    {
+      "id": "freeText_1774966238364",
+      "text": "AS 65003",
+      "position": {
+        "x": 630.0718615684169,
+        "y": 280.20118239234785
+      },
+      "fontSize": 20,
+      "fontColor": "#99f6e4",
+      "fontWeight": "bold",
+      "fontStyle": "normal",
+      "textDecoration": "none",
+      "textAlign": "left",
+      "fontFamily": "Arial"
+    },
+    {
+      "id": "freeText_1774966287290",
+      "text": "AS 65004",
+      "position": {
+        "x": 885.6864678116647,
+        "y": 281.7173076043654
+      },
+      "fontSize": 20,
+      "fontColor": "#bbf7d0",
+      "fontWeight": "bold",
+      "fontStyle": "normal",
+      "textDecoration": "none",
+      "textAlign": "left",
+      "fontFamily": "Arial"
+    },
+    {
+      "id": "freeText_1774966321757",
+      "text": "AS 65005",
+      "position": {
+        "x": 1133.4672443911456,
+        "y": 278.1035144104448
+      },
+      "fontSize": 20,
+      "fontColor": "#bfdbfe",
+      "fontWeight": "bold",
+      "fontStyle": "normal",
+      "textDecoration": "none",
+      "textAlign": "left",
+      "fontFamily": "Arial"
+    },
+    {
+      "id": "freeText_1774966438599",
       "text": "AS 65001",
       "position": {
-        "x": 353.661477184361,
-        "y": -477.31945889813596
+        "x": 563.1472522419539,
+        "y": -595.5784386710969
       },
-      "fontSize": 24,
-      "fontColor": "#d4d4d4",
+      "fontSize": 20,
+      "fontColor": "#fef3c7",
       "fontWeight": "bold",
       "fontStyle": "normal",
       "textDecoration": "none",
-      "textAlign": "center",
-      "fontFamily": "Arial",
-      "width": 177,
-      "height": 98
-    },
-    {
-      "id": "freeText_1774956141973",
-      "text": "Pod: Border/DMZ",
-      "position": {
-        "x": 628.5548713259107,
-        "y": -532.806417081116
-      },
-      "fontSize": 24,
-      "fontColor": "#d4d4d4",
-      "fontWeight": "bold",
-      "fontStyle": "normal",
-      "textDecoration": "none",
-      "textAlign": "center",
-      "fontFamily": "Arial"
-    },
-    {
-      "id": "freeText_1774956275172",
-      "text": "VRFs: ",
-      "position": {
-        "x": 383.26356138565757,
-        "y": -344.1578113407753
-      },
-      "fontSize": 14,
-      "fontColor": "#d4d4d4",
-      "fontWeight": "bold",
-      "fontStyle": "normal",
-      "textDecoration": "none",
-      "textAlign": "center",
-      "fontFamily": "Arial"
-    },
-    {
-      "id": "freeText_1774956283901",
-      "text": "VNIs: ",
-      "position": {
-        "x": 383.96780645564587,
-        "y": -403.0130030547512
-      },
-      "fontSize": 14,
-      "fontColor": "#d4d4d4",
-      "fontWeight": "bold",
-      "fontStyle": "normal",
-      "textDecoration": "none",
-      "textAlign": "center",
-      "fontFamily": "Arial"
-    },
-    {
-      "id": "freeText_1774956315600",
-      "text": "L3VNIs:",
-      "position": {
-        "x": 383.2382553124901,
-        "y": -376.19828991460156
-      },
-      "fontSize": 14,
-      "fontColor": "#d4d4d4",
-      "fontWeight": "bold",
-      "fontStyle": "normal",
-      "textDecoration": "none",
-      "textAlign": "center",
-      "fontFamily": "Arial"
-    },
-    {
-      "id": "freeText_1774956359298",
-      "text": "VLANs:",
-      "position": {
-        "x": 383.39194406909286,
-        "y": -427.78825921458656
-      },
-      "fontSize": 14,
-      "fontColor": "#d4d4d4",
-      "fontWeight": "bold",
-      "fontStyle": "normal",
-      "textDecoration": "none",
-      "textAlign": "center",
-      "fontFamily": "Arial"
-    },
-    {
-      "id": "freeText_1774956390329",
-      "text": "Host Subnet:",
-      "position": {
-        "x": 376.5413270316482,
-        "y": -512.2495876701615
-      },
-      "fontSize": 14,
-      "fontColor": "#d4d4d4",
-      "fontWeight": "bold",
-      "fontStyle": "normal",
-      "textDecoration": "none",
-      "textAlign": "center",
-      "fontFamily": "Arial"
-    },
-    {
-      "id": "freeText_1774956453792",
-      "text": "Segment: ",
-      "position": {
-        "x": 628.8106971789168,
-        "y": -570.1065608080833
-      },
-      "fontSize": 24,
-      "fontColor": "#d4d4d4",
-      "fontWeight": "bold",
-      "fontStyle": "normal",
-      "textDecoration": "none",
-      "textAlign": "center",
-      "fontFamily": "Arial"
-    },
-    {
-      "id": "freeText_1774961086449",
-      "text": "Loopback Range:",
-      "position": {
-        "x": 376.44122392545995,
-        "y": -532.5648635487353
-      },
-      "fontSize": 14,
-      "fontColor": "#d4d4d4",
-      "fontWeight": "bold",
-      "fontStyle": "normal",
-      "textDecoration": "none",
-      "textAlign": "center",
-      "fontFamily": "Arial"
-    },
-    {
-      "id": "freeText_1774961889118",
-      "text": "INTERNET",
-      "position": {
-        "x": -260.11042649191,
-        "y": -273.6116936549653
-      },
-      "fontSize": 24,
-      "fontColor": "#d4d4d4",
-      "fontWeight": "bold",
-      "fontStyle": "normal",
-      "textDecoration": "none",
-      "textAlign": "center",
+      "textAlign": "left",
       "fontFamily": "Arial"
     }
   ],
   "freeShapeAnnotations": [
     {
-      "id": "freeShape_1774955802745",
+      "id": "shape-external-zone",
       "shapeType": "rectangle",
       "position": {
-        "x": 355.0264088278884,
-        "y": -470.0631153861711
+        "x": -360,
+        "y": -760
       },
-      "width": 479,
-      "height": 427,
-      "fillColor": "#7000fa",
-      "fillOpacity": 0.6,
-      "borderColor": "#d4d4d4",
-      "borderWidth": 4,
+      "width": 690,
+      "height": 760,
+      "fillColor": "#0b2d4a",
+      "fillOpacity": 0.2,
+      "borderColor": "#60a5fa",
+      "borderWidth": 2,
+      "borderStyle": "solid",
+      "rotation": 0,
+      "cornerRadius": 26,
+      "zIndex": -5
+    },
+    {
+      "id": "shape-border-zone",
+      "shapeType": "rectangle",
+      "position": {
+        "x": 330,
+        "y": -600
+      },
+      "width": 560,
+      "height": 620,
+      "fillColor": "#3f2a12",
+      "fillOpacity": 0.2,
+      "borderColor": "#f59e0b",
+      "borderWidth": 2,
+      "borderStyle": "solid",
+      "rotation": 0,
+      "cornerRadius": 26,
+      "zIndex": -5
+    },
+    {
+      "id": "shape-core-zone",
+      "shapeType": "rectangle",
+      "position": {
+        "x": 356.03372003155005,
+        "y": 45.53229362523808
+      },
+      "width": 500,
+      "height": 190,
+      "fillColor": "#163a26",
+      "fillOpacity": 0.22,
+      "borderColor": "#4ade80",
+      "borderWidth": 2,
       "borderStyle": "solid",
       "rotation": 0,
       "cornerRadius": 20,
+      "zIndex": -5
+    },
+    {
+      "id": "shape-workload-zone",
+      "shapeType": "rectangle",
+      "position": {
+        "x": 181.77559530989947,
+        "y": 250
+      },
+      "width": 1170,
+      "height": 580,
+      "fillColor": "#0f2842",
+      "fillOpacity": 0.2,
+      "borderColor": "#60a5fa",
+      "borderWidth": 2,
+      "borderStyle": "solid",
+      "rotation": 0,
+      "cornerRadius": 26,
+      "zIndex": -5
+    },
+    {
+      "id": "shape-oob-zone",
+      "shapeType": "rectangle",
+      "position": {
+        "x": 120,
+        "y": 860
+      },
+      "width": 980,
+      "height": 340,
+      "fillColor": "#2b2b2b",
+      "fillOpacity": 0.26,
+      "borderColor": "#9ca3af",
+      "borderWidth": 2,
+      "borderStyle": "solid",
+      "rotation": 0,
+      "cornerRadius": 20,
+      "zIndex": -5
+    },
+    {
+      "id": "shape-pod1",
+      "shapeType": "rectangle",
+      "position": {
+        "x": 420,
+        "y": -520
+      },
+      "width": 360,
+      "height": 470,
+      "fillColor": "#92400e",
+      "fillOpacity": 0.24,
+      "borderColor": "#fcd34d",
+      "borderWidth": 2,
+      "borderStyle": "solid",
+      "rotation": 0,
+      "cornerRadius": 18,
+      "zIndex": -4
+    },
+    {
+      "id": "shape-pod2",
+      "shapeType": "rectangle",
+      "position": {
+        "x": 211.59719751410142,
+        "y": 291.6805604971796
+      },
+      "width": 350,
+      "height": 500,
+      "fillColor": "#0e7490",
+      "fillOpacity": 0.22,
+      "borderColor": "#67e8f9",
+      "borderWidth": 2,
+      "borderStyle": "solid",
+      "rotation": 0,
+      "cornerRadius": 16,
+      "zIndex": -4
+    },
+    {
+      "id": "shape-pod3",
+      "shapeType": "rectangle",
+      "position": {
+        "x": 573.5511906197987,
+        "y": 291.77559530989936
+      },
+      "width": 230,
+      "height": 500,
+      "fillColor": "#0f766e",
+      "fillOpacity": 0.22,
+      "borderColor": "#5eead4",
+      "borderWidth": 2,
+      "borderStyle": "solid",
+      "rotation": 0,
+      "cornerRadius": 16,
+      "zIndex": -4
+    },
+    {
+      "id": "shape-pod4",
+      "shapeType": "rectangle",
+      "position": {
+        "x": 820,
+        "y": 290
+      },
+      "width": 230,
+      "height": 500,
+      "fillColor": "#166534",
+      "fillOpacity": 0.22,
+      "borderColor": "#86efac",
+      "borderWidth": 2,
+      "borderStyle": "solid",
+      "rotation": 0,
+      "cornerRadius": 16,
+      "zIndex": -4
+    },
+    {
+      "id": "shape-pod5",
+      "shapeType": "rectangle",
+      "position": {
+        "x": 1060,
+        "y": 290
+      },
+      "width": 260,
+      "height": 500,
+      "fillColor": "#1d4ed8",
+      "fillOpacity": 0.2,
+      "borderColor": "#93c5fd",
+      "borderWidth": 2,
+      "borderStyle": "solid",
+      "rotation": 0,
+      "cornerRadius": 16,
+      "zIndex": -4
+    },
+    {
+      "id": "shape-campus-edge",
+      "shapeType": "rectangle",
+      "position": {
+        "x": -72.04797770108242,
+        "y": 103.80808919567036
+      },
+      "width": 340,
+      "height": 140,
+      "fillColor": "#334155",
+      "fillOpacity": 0.32,
+      "borderColor": "#cbd5e1",
+      "borderWidth": 2,
+      "borderStyle": "solid",
+      "rotation": 0,
+      "cornerRadius": 14,
+      "zIndex": -3
+    },
+    {
+      "id": "shape-wifi-microvrf",
+      "shapeType": "rectangle",
+      "position": {
+        "x": 300,
+        "y": -340
+      },
+      "width": 175,
+      "height": 147,
+      "fillColor": "#ca8a04",
+      "fillOpacity": 0.35,
+      "borderColor": "#fde047",
+      "borderWidth": 2,
+      "borderStyle": "solid",
+      "rotation": 0,
+      "cornerRadius": 10,
+      "zIndex": -3
+    },
+    {
+      "id": "shape-legend-panel",
+      "shapeType": "rectangle",
+      "position": {
+        "x": 915.751591164927,
+        "y": -797.9745413611683
+      },
+      "width": 500,
+      "height": 520,
+      "fillColor": "#111827",
+      "fillOpacity": 0.5,
+      "borderColor": "#e5e7eb",
+      "borderWidth": 2,
+      "borderStyle": "solid",
+      "rotation": 0,
+      "cornerRadius": 18,
+      "zIndex": -2
+    },
+    {
+      "id": "chip-admin",
+      "shapeType": "rectangle",
+      "position": {
+        "x": 950,
+        "y": -610
+      },
+      "width": 20,
+      "height": 20,
+      "fillColor": "#dc2626",
+      "fillOpacity": 1,
+      "borderColor": "#fecaca",
+      "borderWidth": 1,
+      "borderStyle": "solid",
+      "rotation": 0,
+      "cornerRadius": 4,
       "zIndex": -1
     },
     {
-      "id": "freeShape_1774961841105",
-      "shapeType": "circle",
+      "id": "chip-staff",
+      "shapeType": "rectangle",
       "position": {
-        "x": -298.22103665388516,
-        "y": -293.48151027769904
+        "x": 950,
+        "y": -575
       },
-      "width": 200,
-      "height": 127,
-      "fillColor": "#0008fa",
+      "width": 20,
+      "height": 20,
+      "fillColor": "#14b8a6",
       "fillOpacity": 1,
-      "borderColor": "#d4d4d4",
-      "borderWidth": 4,
+      "borderColor": "#99f6e4",
+      "borderWidth": 1,
       "borderStyle": "solid",
       "rotation": 0,
+      "cornerRadius": 4,
+      "zIndex": -1
+    },
+    {
+      "id": "chip-pedagogy",
+      "shapeType": "rectangle",
+      "position": {
+        "x": 950,
+        "y": -540
+      },
+      "width": 20,
+      "height": 20,
+      "fillColor": "#2563eb",
+      "fillOpacity": 1,
+      "borderColor": "#bfdbfe",
+      "borderWidth": 1,
+      "borderStyle": "solid",
+      "rotation": 0,
+      "cornerRadius": 4,
+      "zIndex": -1
+    },
+    {
+      "id": "chip-public",
+      "shapeType": "rectangle",
+      "position": {
+        "x": 950,
+        "y": -505
+      },
+      "width": 20,
+      "height": 20,
+      "fillColor": "#f97316",
+      "fillOpacity": 1,
+      "borderColor": "#fdba74",
+      "borderWidth": 1,
+      "borderStyle": "solid",
+      "rotation": 0,
+      "cornerRadius": 4,
+      "zIndex": -1
+    },
+    {
+      "id": "chip-orientation",
+      "shapeType": "rectangle",
+      "position": {
+        "x": 950,
+        "y": -470
+      },
+      "width": 20,
+      "height": 20,
+      "fillColor": "#6b7280",
+      "fillOpacity": 1,
+      "borderColor": "#e5e7eb",
+      "borderWidth": 1,
+      "borderStyle": "solid",
+      "rotation": 0,
+      "cornerRadius": 4,
+      "zIndex": -1
+    },
+    {
+      "id": "chip-wifi",
+      "shapeType": "rectangle",
+      "position": {
+        "x": 950,
+        "y": -435
+      },
+      "width": 20,
+      "height": 20,
+      "fillColor": "#facc15",
+      "fillOpacity": 1,
+      "borderColor": "#fef9c3",
+      "borderWidth": 1,
+      "borderStyle": "solid",
+      "rotation": 0,
+      "cornerRadius": 4,
       "zIndex": -1
     }
   ],
@@ -348,9 +1225,11 @@
       "id": "lms-staff",
       "position": {
         "x": 240,
-        "y": 560
+        "y": 400
       },
-      "icon": "switch"
+      "icon": "server",
+      "iconColor": "#000000",
+      "iconCornerRadius": 0
     },
     {
       "id": "server-dmz-01",
@@ -364,8 +1243,8 @@
     {
       "id": "server-admin-01",
       "position": {
-        "x": 350,
-        "y": 700
+        "x": 240,
+        "y": 520
       },
       "icon": "server",
       "iconColor": "#000000",
@@ -374,8 +1253,8 @@
     {
       "id": "server-admin-02",
       "position": {
-        "x": 450,
-        "y": 700
+        "x": 340,
+        "y": 520
       },
       "icon": "server",
       "iconColor": "#000000",
@@ -385,7 +1264,7 @@
       "id": "server-hpc-01",
       "position": {
         "x": 600,
-        "y": 700
+        "y": 600
       },
       "icon": "server",
       "iconColor": "#000000",
@@ -395,7 +1274,7 @@
       "id": "server-hpc-02",
       "position": {
         "x": 700,
-        "y": 700
+        "y": 600
       },
       "icon": "server",
       "iconColor": "#000000",
@@ -405,7 +1284,7 @@
       "id": "server-storage-01",
       "position": {
         "x": 900,
-        "y": 700
+        "y": 600
       },
       "icon": "server",
       "iconColor": "#000000",
@@ -415,7 +1294,7 @@
       "id": "server-student-01",
       "position": {
         "x": 1100,
-        "y": 700
+        "y": 600
       },
       "icon": "server",
       "iconColor": "#000000",
@@ -424,8 +1303,8 @@
     {
       "id": "server-student-02",
       "position": {
-        "x": 1200,
-        "y": 700
+        "x": 1220,
+        "y": 600
       },
       "icon": "server",
       "iconColor": "#000000",
@@ -497,8 +1376,8 @@
     {
       "id": "wifi-controller",
       "position": {
-        "x": 380,
-        "y": -260
+        "x": 360,
+        "y": -280
       },
       "icon": "rgw",
       "iconCornerRadius": 0
@@ -586,12 +1465,19 @@
     {
       "id": "services-web",
       "position": {
-        "x": 500,
-        "y": 580
-      }
+        "x": 460,
+        "y": 520
+      },
+      "icon": "server",
+      "iconColor": "#000000",
+      "iconCornerRadius": 0
     }
   ],
   "edgeAnnotations": [],
   "aliasEndpointAnnotations": [],
-  "viewerSettings": {}
+  "viewerSettings": {
+    "style": "default",
+    "linkLabelMode": "hide",
+    "lastNonTelemetryLinkLabelMode": "hide"
+  }
 }

@@ -1,0 +1,76 @@
+groups:
+  - name: monitoring-stack
+    interval: 30s
+    rules:
+      - alert: FRRExporterTargetDown
+        expr: up{job="frr-exporter"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          team: netops
+        annotations:
+          summary: "FRR exporter target is down"
+          description: "Prometheus cannot scrape frr-exporter:9342 for more than 1 minute."
+
+      - alert: GrafanaTargetDown
+        expr: up{job="grafana"} == 0
+        for: 2m
+        labels:
+          severity: warning
+          team: netops
+        annotations:
+          summary: "Grafana endpoint is down"
+          description: "Prometheus cannot scrape Grafana metrics endpoint."
+
+      - alert: HighPrometheusScrapeDuration
+        expr: histogram_quantile(0.95, sum(rate(scrape_duration_seconds_bucket[5m])) by (le, job)) > 5
+        for: 5m
+        labels:
+          severity: warning
+          team: netops
+        annotations:
+          summary: "High scrape duration detected"
+          description: "95th percentile scrape duration is above 5 seconds."
+
+  - name: fabric-routing
+    interval: 30s
+    rules:
+      - alert: BorderBGPSessionDown
+        expr: frr_bgp_session_up{pod="border",peer_role="isp"} < 1
+        for: 45s
+        labels:
+          severity: critical
+          team: netops
+        annotations:
+          summary: "Border ISP BGP session down"
+          description: "A border leaf lost one ISP BGP session in simulation telemetry."
+
+      - alert: FabricUplinkDown
+        expr: fabric_uplink_status == 0
+        for: 30s
+        labels:
+          severity: critical
+          team: netops
+        annotations:
+          summary: "Leaf uplink down"
+          description: "A fabric uplink toward spine is down."
+
+      - alert: PodHealthDegraded
+        expr: fabric_pod_health_score < 0.92
+        for: 3m
+        labels:
+          severity: warning
+          team: netops
+        annotations:
+          summary: "Pod health degraded"
+          description: "A pod health score dropped below 0.92."
+
+      - alert: HighSimulatedRouterCPU
+        expr: frr_node_cpu_utilization_percent > 85
+        for: 5m
+        labels:
+          severity: warning
+          team: netops
+        annotations:
+          summary: "High simulated router CPU"
+          description: "Simulated FRR node CPU has been above 85% for 5 minutes."
