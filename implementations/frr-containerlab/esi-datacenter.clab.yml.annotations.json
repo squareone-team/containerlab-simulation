@@ -2,7 +2,7 @@
   "freeTextAnnotations": [
     {
       "id": "freeText_1774955967117",
-      "text": "AS 65000",
+      "text": "AS 65001",
       "position": {
         "x": 353.661477184361,
         "y": -477.31945889813596
@@ -21,10 +21,10 @@
       "id": "freeText_1774956141973",
       "text": "Pod: Border/DMZ",
       "position": {
-        "x": 384.15318114571653,
-        "y": -509.0645386064685
+        "x": 628.5548713259107,
+        "y": -532.806417081116
       },
-      "fontSize": 14,
+      "fontSize": 24,
       "fontColor": "#d4d4d4",
       "fontWeight": "bold",
       "fontStyle": "normal",
@@ -36,8 +36,8 @@
       "id": "freeText_1774956275172",
       "text": "VRFs: ",
       "position": {
-        "x": 384.5064537157987,
-        "y": -434.8889514410744
+        "x": 383.26356138565757,
+        "y": -344.1578113407753
       },
       "fontSize": 14,
       "fontColor": "#d4d4d4",
@@ -51,8 +51,8 @@
       "id": "freeText_1774956283901",
       "text": "VNIs: ",
       "position": {
-        "x": 385.0823161023518,
-        "y": -392.5153991756711
+        "x": 383.96780645564587,
+        "y": -403.0130030547512
       },
       "fontSize": 14,
       "fontColor": "#d4d4d4",
@@ -66,8 +66,8 @@
       "id": "freeText_1774956315600",
       "text": "L3VNIs:",
       "position": {
-        "x": 383.1098726290549,
-        "y": -346.02466044512073
+        "x": 383.2382553124901,
+        "y": -376.19828991460156
       },
       "fontSize": 14,
       "fontColor": "#d4d4d4",
@@ -81,8 +81,8 @@
       "id": "freeText_1774956359298",
       "text": "VLANs:",
       "position": {
-        "x": 384.50645371579867,
-        "y": -414.9332533586594
+        "x": 383.39194406909286,
+        "y": -427.78825921458656
       },
       "fontSize": 14,
       "fontColor": "#d4d4d4",
@@ -96,8 +96,8 @@
       "id": "freeText_1774956390329",
       "text": "Host Subnet:",
       "position": {
-        "x": 639.4959292133246,
-        "y": -508.05984440992967
+        "x": 376.5413270316482,
+        "y": -512.2495876701615
       },
       "fontSize": 14,
       "fontColor": "#d4d4d4",
@@ -111,10 +111,40 @@
       "id": "freeText_1774956453792",
       "text": "Segment: ",
       "position": {
-        "x": 382.86501631541677,
-        "y": -372.1561382252566
+        "x": 628.8106971789168,
+        "y": -570.1065608080833
+      },
+      "fontSize": 24,
+      "fontColor": "#d4d4d4",
+      "fontWeight": "bold",
+      "fontStyle": "normal",
+      "textDecoration": "none",
+      "textAlign": "center",
+      "fontFamily": "Arial"
+    },
+    {
+      "id": "freeText_1774961086449",
+      "text": "Loopback Range:",
+      "position": {
+        "x": 376.44122392545995,
+        "y": -532.5648635487353
       },
       "fontSize": 14,
+      "fontColor": "#d4d4d4",
+      "fontWeight": "bold",
+      "fontStyle": "normal",
+      "textDecoration": "none",
+      "textAlign": "center",
+      "fontFamily": "Arial"
+    },
+    {
+      "id": "freeText_1774961889118",
+      "text": "INTERNET",
+      "position": {
+        "x": -260.11042649191,
+        "y": -273.6116936549653
+      },
+      "fontSize": 24,
       "fontColor": "#d4d4d4",
       "fontWeight": "bold",
       "fontStyle": "normal",
@@ -128,11 +158,11 @@
       "id": "freeShape_1774955802745",
       "shapeType": "rectangle",
       "position": {
-        "x": 369.0264088278884,
-        "y": -471.3060077163122
+        "x": 355.0264088278884,
+        "y": -470.0631153861711
       },
-      "width": 465,
-      "height": 396,
+      "width": 479,
+      "height": 427,
       "fillColor": "#7000fa",
       "fillOpacity": 0.6,
       "borderColor": "#d4d4d4",
@@ -140,6 +170,23 @@
       "borderStyle": "solid",
       "rotation": 0,
       "cornerRadius": 20,
+      "zIndex": -1
+    },
+    {
+      "id": "freeShape_1774961841105",
+      "shapeType": "circle",
+      "position": {
+        "x": -298.22103665388516,
+        "y": -293.48151027769904
+      },
+      "width": 200,
+      "height": 127,
+      "fillColor": "#0008fa",
+      "fillOpacity": 1,
+      "borderColor": "#d4d4d4",
+      "borderWidth": 4,
+      "borderStyle": "solid",
+      "rotation": 0,
       "zIndex": -1
     }
   ],
