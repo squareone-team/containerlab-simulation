@@ -37,6 +37,9 @@ This section resolves mismatches between older implementation docs and the full 
 | Border uplink port naming | In simulation, use the dedicated campus port already wired in YAML (currently `leaf-01:eth8`) | Keeps current lab stable while preserving single-port design intent from physical spec |
 | PIM in fabric | **Excluded** from this project baseline; EVPN BUM remains HER only | `architecture_spec_full.md` states no multicast routing in the fabric |
 | Firewall HA nuance | Active/Active is mandatory. Dedicated state-sync link remains mandatory. Session sync implementation may be staged by T3 without changing Ring 1 ownership boundaries | Keeps transition safe for in-flight branches while preserving architecture intent |
+| Infrastructure Loopbacks | `10.1.0.x/32` loopbacks for firewall, bastion, ids mentioned in spec are omitted. | Simulation simplification. BGP is not run on these auxiliary endpoints. |
+| Border Routers | Dedicated `border-router` tier omitted; `border-leaf` peers directly with `isp-router`. | Spec states `border-leaf` applies external BGP prefix-lists; collapsing tier simplifies lab without removing routing logic. |
+| Border Leaf PAT/NAT | NAT/PAT is absolutely not performed on the Leaf switches. | Spec states North-South stateful inspection and policies are managed strictly by the HA Firewalls (Ring 1). |
 
 ### 0.3 Missing Architecture Element Added Here
 
@@ -310,7 +313,7 @@ A leak of the external secret cannot compromise the internal fabric control plan
 | 18 | Symmetric IRB | Anycast GW + L3VNI on each leaf | Phase 1 (Youcef) | Done |
 | 19 | Anycast Gateway (MAC 00:00:00:11:11:11) | Linux SVI + shared MAC | Phase 1 (Youcef) | Done |
 | 20 | Spines as EVPN relay (`attribute-unchanged next-hop`) | FRR | Phase 1 (Youcef) | Done |
-| 21 | VRF-PUBLIC structural isolation | No routes installed | Phase 1 (Youcef) | Done |
+| 21 | VRF-PUBLIC structural isolation | No internal routes installed (internet-facing routes allowed) | Phase 1 (Youcef) | Done |
 | 22 | VRF-ORIENTATION always empty | Empty routing table | Phase 1 (Youcef) | Done |
 | 23 | VNI 10030/10040 on admin-leaf | leaf-03/04 startup.sh + frr.conf | Youcef T1 (correction) | CORRECTION |
 | 24 | VNI 10120 WIFI-CTRL-MGMT on border-leaf-01 | New VRF-WIFI-CTRL, static /32 → EVPN Type-5 | Youcef T1 | Pending |
@@ -400,7 +403,7 @@ needs a correction push before Phase 2 branches proceed.
 | Physical | All 12 leaf/spine nodes + 3 ISP routers + servers + placeholder nodes | None |
 | Underlay | eBGP, BFD, ECMP, TCP MD5 (single secret), MTU 9000 | Split MD5 into two secrets (Youcef) |
 | Overlay | VXLAN all VNIs with wrong 10030/10040 placement, EVPN Type-2/3/5, 5 VRFs, IRB, anycast GW | Move VNI 10030/10040 to admin-leaf; add VNI 10120 + VRF-WIFI-CTRL |
-| Security | VRF isolation, VRF-PUBLIC/ORIENTATION empty | None to Phase 1 structure |
+| Security | VRF isolation, VRF-ORIENTATION empty, VRF-PUBLIC without internal routes | None to Phase 1 structure |
 | Infrastructure | Placeholder containers declared | None |
 
 ### 4.2 Correction Push Required (Youcef — High Priority)
@@ -817,7 +820,8 @@ r=$($C-server-student-01 ping -c2 -W1 192.168.50.10 2>/dev/null)
 echo "$r" | grep -Eq "0 (packets )?received|100% packet loss|unreachable" && ok "VRF isolation student->staff" || fail "VRF isolation broken"
 
 r=$($C-leaf-01 ip route show vrf VRF-PUBLIC 2>/dev/null)
-[ -z "$r" ] && ok "VRF-PUBLIC route table empty" || fail "VRF-PUBLIC has routes: $r"
+echo "$r" | grep -Eq "10\.|172\.(1[6-9]|2[0-9]|3[0-1])\.|192\.168\." \
+  && fail "VRF-PUBLIC leaks internal routes: $r" || ok "VRF-PUBLIC has no internal RFC1918 routes"
 
 r=$($C-leaf-01 ip route show vrf VRF-ORIENTATION 2>/dev/null)
 [ -z "$r" ] && ok "VRF-ORIENTATION empty pre-activation" || fail "VRF-ORIENTATION has routes: $r"
@@ -874,11 +878,22 @@ $C-leaf-01 ip route show vrf VRF-WIFI-CTRL 2>/dev/null | grep -q "192.168.10.100
 $C-campus-bp ping -c2 -W2 192.168.10.100 2>/dev/null | grep -q "2 received" \
   && echo "[PASS] campus-bp reaches wifi-controller via VRF-WIFI-CTRL" || echo "[FAIL] WiFi MGMT path broken"
 
-# Default route in all VRFs
-for VRF in VRF-PEDAGOGY VRF-STAFF VRF-ADMINISTRATION; do
-  $C-leaf-01 ip route show vrf $VRF 2>/dev/null | grep -q "default" \
-    && echo "[PASS] Default route in $VRF" || echo "[FAIL] No default in $VRF"
-done
+# VRF-WIFI-CTRL remains micro-scoped (no default)
+$C-leaf-01 ip route show vrf VRF-WIFI-CTRL 2>/dev/null | grep -q "^default" \
+  && echo "[FAIL] VRF-WIFI-CTRL must not have a default route" || echo "[PASS] VRF-WIFI-CTRL has no default route"
+
+# Behavioral internet objective
+$C-server-student-01 ping -c2 -W2 198.18.3.10 2>/dev/null | grep -q "2 received" \
+  && echo "[PASS] Student reaches external internet endpoint" || echo "[FAIL] Student cannot reach external endpoint"
+
+$C-internet-web-01 ping -c2 -W2 192.168.10.10 2>/dev/null | grep -Eq "0 received|100% packet loss|unreachable" \
+  && echo "[PASS] Internet cannot initiate toward student host" || echo "[FAIL] Internet initiation toward student host should be blocked"
+
+$C-internet-web-01 ping -c2 -W2 192.168.100.10 2>/dev/null | grep -q "2 received" \
+  && echo "[PASS] Internet reaches DMZ host" || echo "[FAIL] Internet cannot reach DMZ host"
+
+$C-leaf-01 iptables-save -t nat 2>/dev/null | grep -Eq "MASQUERADE|SNAT|DNAT" \
+  && echo "[FAIL] Border leaf has NAT/PAT rules (ownership violation)" || echo "[PASS] Border leaf has no NAT/PAT rules"
 
 # BAC orientation runbook
 ./configs/orientation-runbook.sh activate >/dev/null 2>&1

@@ -1,6 +1,148 @@
 {
-  "freeTextAnnotations": [],
-  "freeShapeAnnotations": [],
+  "freeTextAnnotations": [
+    {
+      "id": "freeText_1774955967117",
+      "text": "AS 65000",
+      "position": {
+        "x": 353.661477184361,
+        "y": -477.31945889813596
+      },
+      "fontSize": 24,
+      "fontColor": "#d4d4d4",
+      "fontWeight": "bold",
+      "fontStyle": "normal",
+      "textDecoration": "none",
+      "textAlign": "center",
+      "fontFamily": "Arial",
+      "width": 177,
+      "height": 98
+    },
+    {
+      "id": "freeText_1774956141973",
+      "text": "Pod: Border/DMZ",
+      "position": {
+        "x": 384.15318114571653,
+        "y": -509.0645386064685
+      },
+      "fontSize": 14,
+      "fontColor": "#d4d4d4",
+      "fontWeight": "bold",
+      "fontStyle": "normal",
+      "textDecoration": "none",
+      "textAlign": "center",
+      "fontFamily": "Arial"
+    },
+    {
+      "id": "freeText_1774956275172",
+      "text": "VRFs: ",
+      "position": {
+        "x": 384.5064537157987,
+        "y": -434.8889514410744
+      },
+      "fontSize": 14,
+      "fontColor": "#d4d4d4",
+      "fontWeight": "bold",
+      "fontStyle": "normal",
+      "textDecoration": "none",
+      "textAlign": "center",
+      "fontFamily": "Arial"
+    },
+    {
+      "id": "freeText_1774956283901",
+      "text": "VNIs: ",
+      "position": {
+        "x": 385.0823161023518,
+        "y": -392.5153991756711
+      },
+      "fontSize": 14,
+      "fontColor": "#d4d4d4",
+      "fontWeight": "bold",
+      "fontStyle": "normal",
+      "textDecoration": "none",
+      "textAlign": "center",
+      "fontFamily": "Arial"
+    },
+    {
+      "id": "freeText_1774956315600",
+      "text": "L3VNIs:",
+      "position": {
+        "x": 383.1098726290549,
+        "y": -346.02466044512073
+      },
+      "fontSize": 14,
+      "fontColor": "#d4d4d4",
+      "fontWeight": "bold",
+      "fontStyle": "normal",
+      "textDecoration": "none",
+      "textAlign": "center",
+      "fontFamily": "Arial"
+    },
+    {
+      "id": "freeText_1774956359298",
+      "text": "VLANs:",
+      "position": {
+        "x": 384.50645371579867,
+        "y": -414.9332533586594
+      },
+      "fontSize": 14,
+      "fontColor": "#d4d4d4",
+      "fontWeight": "bold",
+      "fontStyle": "normal",
+      "textDecoration": "none",
+      "textAlign": "center",
+      "fontFamily": "Arial"
+    },
+    {
+      "id": "freeText_1774956390329",
+      "text": "Host Subnet:",
+      "position": {
+        "x": 639.4959292133246,
+        "y": -508.05984440992967
+      },
+      "fontSize": 14,
+      "fontColor": "#d4d4d4",
+      "fontWeight": "bold",
+      "fontStyle": "normal",
+      "textDecoration": "none",
+      "textAlign": "center",
+      "fontFamily": "Arial"
+    },
+    {
+      "id": "freeText_1774956453792",
+      "text": "Segment: ",
+      "position": {
+        "x": 382.86501631541677,
+        "y": -372.1561382252566
+      },
+      "fontSize": 14,
+      "fontColor": "#d4d4d4",
+      "fontWeight": "bold",
+      "fontStyle": "normal",
+      "textDecoration": "none",
+      "textAlign": "center",
+      "fontFamily": "Arial"
+    }
+  ],
+  "freeShapeAnnotations": [
+    {
+      "id": "freeShape_1774955802745",
+      "shapeType": "rectangle",
+      "position": {
+        "x": 369.0264088278884,
+        "y": -471.3060077163122
+      },
+      "width": 465,
+      "height": 396,
+      "fillColor": "#7000fa",
+      "fillOpacity": 0.6,
+      "borderColor": "#d4d4d4",
+      "borderWidth": 4,
+      "borderStyle": "solid",
+      "rotation": 0,
+      "cornerRadius": 20,
+      "zIndex": -1
+    }
+  ],
   "trafficRateAnnotations": [],
   "groupStyleAnnotations": [],
   "networkNodeAnnotations": [],
@@ -340,7 +482,7 @@
     {
       "id": "internet-client-02",
       "position": {
-        "x": 300,
+        "x": 220,
         "y": -500
       },
       "icon": "client",
@@ -358,7 +500,7 @@
     {
       "id": "internet-router-02",
       "position": {
-        "x": 300,
+        "x": 220,
         "y": -400
       }
     },

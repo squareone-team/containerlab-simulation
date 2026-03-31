@@ -63,7 +63,7 @@ for IP in 10.1.0.11 10.1.0.12 10.1.0.13 10.1.0.14 10.1.0.15 10.1.0.16 10.1.0.17 
 done
 
 chk "leaf-09: multipath" "$C-leaf-09 vtysh -c 'show ip bgp 10.1.0.13/32'" "Multipath|2"
-chk "spine-01 MD5 present" "$C-spine-01 grep -E -c 'password ESI-BGP-(INTERNAL|SECRET)' /etc/frr/frr.conf" "1"
+chk "spine-01 internal MD5 present" "$C-spine-01 grep -c 'password ESI-BGP-INTERNAL' /etc/frr/frr.conf" "^[1-9][0-9]*$"
 chk "leaf-09 BFD Up" "$C-leaf-09 vtysh -c 'show bfd peers'" "Up"
 chk "spine-01 eth1 mtu 9000" "$C-spine-01 ip link show eth1" "mtu 9000"
 chk "leaf-03 br0 mtu 9000" "$C-leaf-03 ip link show br0" "mtu 9000"
@@ -76,13 +76,21 @@ done
 chk "leaf-09 VNI 10010 has remote VTEPs" "$C-leaf-09 vtysh -c 'show evpn vni 10010'" "Remote VTEPs for this VNI"
 chk "leaf-03 has VNI 10030 (LMS-STAFF moved from border)" "$C-leaf-03 vtysh -c 'show evpn vni 10030'" "10030"
 chk "leaf-03 has VNI 10040 (SERVICES-WEB moved from border)" "$C-leaf-03 vtysh -c 'show evpn vni 10040'" "10040"
+chk "leaf-04 has VNI 10030 (LMS-STAFF moved from border)" "$C-leaf-04 vtysh -c 'show evpn vni 10030'" "10030"
+chk "leaf-04 has VNI 10040 (SERVICES-WEB moved from border)" "$C-leaf-04 vtysh -c 'show evpn vni 10040'" "10040"
 
-r=$($C-leaf-01 vtysh -c 'show evpn vni' 2>/dev/null)
-echo "$r" | grep -q "10030" && fail "leaf-01 still has VNI 10030 (must be removed)" || ok "leaf-01 does NOT have VNI 10030 (correct)"
-echo "$r" | grep -q "10040" && fail "leaf-01 still has VNI 10040 (must be removed)" || ok "leaf-01 does NOT have VNI 10040 (correct)"
+for BORDER_LEAF in leaf-01 leaf-02; do
+  r=$($C-${BORDER_LEAF} vtysh -c 'show evpn vni' 2>/dev/null)
+  echo "$r" | grep -q "10030" && fail "${BORDER_LEAF} still has VNI 10030 (must be removed)" || ok "${BORDER_LEAF} does NOT have VNI 10030 (correct)"
+  echo "$r" | grep -q "10040" && fail "${BORDER_LEAF} still has VNI 10040 (must be removed)" || ok "${BORDER_LEAF} does NOT have VNI 10040 (correct)"
+done
 
 chk "leaf-01 has VNI 10120 (WIFI-CTRL-MGMT)" "$C-leaf-01 vtysh -c 'show evpn vni 10120'" "10120"
 chk "VRF-WIFI-CTRL exists on leaf-01" "$C-leaf-01 ip vrf show" "VRF-WIFI-CTRL"
+chk "leaf-01 VRF-WIFI-CTRL has /32 wifi-controller route" "$C-leaf-01 ip route show vrf VRF-WIFI-CTRL" "192\.168\.10\.100/32"
+
+r=$($C-leaf-01 ip route show vrf VRF-WIFI-CTRL 2>/dev/null)
+echo "$r" | grep -Eq "^default" && fail "VRF-WIFI-CTRL must not have a default route" || ok "VRF-WIFI-CTRL has no default route"
 
 chk "EVPN Type-5 present" "$C-spine-01 vtysh -c 'show bgp l2vpn evpn route type prefix'" "Route Distinguisher"
 chk "student inter-subnet ping" "$C-server-student-01 ping -c3 -W2 192.168.20.10" "3 (packets )?received"
@@ -100,15 +108,16 @@ else
 fi
 
 echo
-echo "[TEST] VRF-PUBLIC route table empty"
+echo "[TEST] VRF-PUBLIC has no internal RFC1918 routes"
 info "command: $C-leaf-01 ip route show vrf VRF-PUBLIC"
-info "expect : empty output"
-if retry_empty "$C-leaf-01 ip route show vrf VRF-PUBLIC"; then
-  ok "VRF-PUBLIC route table empty"
-else
-  fail "VRF-PUBLIC has routes"
+info "expect : not /(10\\.|172\\.(1[6-9]|2[0-9]|3[0-1])\\.|192\\.168\\.)/"
+LAST_OUT=$($C-leaf-01 ip route show vrf VRF-PUBLIC 2>/dev/null)
+if echo "$LAST_OUT" | grep -Eq "(10\.|172\.(1[6-9]|2[0-9]|3[0-1])\.|192\.168\.)"; then
+  fail "VRF-PUBLIC leaks internal prefixes"
   echo "  [DEBUG] last output:"
   echo "$LAST_OUT" | sed 's/^/    /'
+else
+  ok "VRF-PUBLIC has no internal RFC1918 routes"
 fi
 
 echo
