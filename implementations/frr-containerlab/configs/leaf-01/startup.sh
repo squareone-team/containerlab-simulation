@@ -70,3 +70,7 @@ ip link set vlan4060 master VRF-WIFI-CTRL
 ip link set vlan4060 up
 
 # === END PHASE 1 — Phase 2 appends below ===
+
+# Ring 4: restrict OOB SSH access to bastion-01 only
+iptables -I INPUT -i eth0 -p tcp --dport 22 -s 172.16.0.50 -j ACCEPT
+iptables -A INPUT -i eth0 -p tcp --dport 22 -j DROP
