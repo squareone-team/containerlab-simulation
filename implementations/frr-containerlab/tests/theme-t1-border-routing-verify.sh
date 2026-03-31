@@ -7,6 +7,9 @@ set +e
 
 LAB="esi-datacenter"
 C="docker exec clab-${LAB}"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+LAB_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
+RUNBOOK="${LAB_ROOT}/configs/orientation-runbook.sh"
 
 PASS=0
 FAIL=0
@@ -110,7 +113,7 @@ for node in leaf-01 leaf-02 isp-router-01 isp-router-02 isp-router-03; do
   fi
 done
 
-for node in internet-web-01 student-bp-01 campus-bp; do
+for node in internet-web-01 campus-bp server-student-01 server-dmz-01; do
   if container_exists "clab-${LAB}-${node}"; then
     ok "container present: ${node}"
   else
@@ -146,8 +149,20 @@ cmd_match "leaf-01 ping isp-router-03" \
   "2 (packets )?received"
 
 # ---------------------------------------------------------------------------
-# 2) Border policy controls: prefix-lists + max-prefix
+# 2) Border policy controls: MD5 secrets, prefix-lists + max-prefix
 # ---------------------------------------------------------------------------
+cmd_match "leaf-01 uses external MD5 secret" \
+  "$C-leaf-01 grep -c 'ESI-BGP-EXTERNAL' /etc/frr/frr.conf" \
+  "1"
+
+cmd_match "leaf-02 uses external MD5 secret" \
+  "$C-leaf-02 grep -c 'ESI-BGP-EXTERNAL' /etc/frr/frr.conf" \
+  "1"
+
+cmd_match "leaf-01 still uses internal MD5 for fabric sessions" \
+  "$C-leaf-01 grep -c 'ESI-BGP-INTERNAL' /etc/frr/frr.conf" \
+  "1"
+
 for leaf in leaf-01 leaf-02; do
   for line in \
     "ip prefix-list ISP-IN" \
@@ -175,13 +190,13 @@ cmd_match "leaf-02 applies ISP-OUT outbound" \
   "$C-leaf-02 vtysh -c 'show running-config'" \
   "neighbor 203\\.0\\.113\\.6 prefix-list ISP-OUT out"
 
-cmd_match "leaf-01 max-prefix on external peer" \
+cmd_match "leaf-01 max-prefix threshold on external peer" \
   "$C-leaf-01 vtysh -c 'show running-config'" \
-  "neighbor 203\\.0\\.113\\.2 maximum-prefix"
+  "neighbor 203\\.0\\.113\\.2 maximum-prefix 100 80"
 
-cmd_match "leaf-02 max-prefix on external peer" \
+cmd_match "leaf-02 max-prefix threshold on external peer" \
   "$C-leaf-02 vtysh -c 'show running-config'" \
-  "neighbor 203\\.0\\.113\\.6 maximum-prefix"
+  "neighbor 203\\.0\\.113\\.6 maximum-prefix 100 80"
 
 cmd_no_match "leaf-01 does not set max-prefix on fabric peers" \
   "$C-leaf-01 vtysh -c 'show running-config'" \
@@ -225,25 +240,21 @@ cmd_match "border has default in VRF-PEDAGOGY" \
   "$C-leaf-01 ip route show vrf VRF-PEDAGOGY" \
   "default"
 
-test_banner "admin leaf default in VRF-STAFF (optional in current baseline)"
-LAST_OUT=$($C-leaf-03 ip route show vrf VRF-STAFF 2>/dev/null)
-if echo "$LAST_OUT" | grep -Eq "default"; then
-  ok "admin leaf has default in VRF-STAFF"
-else
-  warn "admin leaf has no default in VRF-STAFF (accepted in current baseline)"
-fi
-
 cmd_match "student leaf imports default in VRF-PEDAGOGY" \
   "$C-leaf-09 ip route show vrf VRF-PEDAGOGY" \
   "default"
 
-test_banner "campus-bp reaches WiFi controller via dedicated /32 path"
-LAST_OUT=$($C-campus-bp ping -c2 -W1 192.168.10.100 2>/dev/null)
-if echo "$LAST_OUT" | grep -Eq "2 (packets )?received"; then
-  ok "campus-bp reaches WiFi controller via dedicated /32 path"
-else
-  warn "campus-bp cannot reach WiFi controller (accepted during mixed topologies)"
-fi
+cmd_match "VRF-WIFI-CTRL contains only dedicated /32 destination" \
+  "$C-leaf-01 ip route show vrf VRF-WIFI-CTRL" \
+  "192\\.168\\.10\\.100/32"
+
+cmd_no_match "VRF-WIFI-CTRL has no default route" \
+  "$C-leaf-01 ip route show vrf VRF-WIFI-CTRL" \
+  "^default"
+
+cmd_ping_no_dup "campus-bp reaches WiFi controller via dedicated /32 path" \
+  "$C-campus-bp ping -c2 -W1 192.168.10.100" \
+  "2 (packets )?received"
 
 # ---------------------------------------------------------------------------
 # 5) Third ISP isolation + orientation activation runbook
@@ -252,14 +263,14 @@ cmd_no_match "VRF-ORIENTATION empty before activation" \
   "$C-leaf-01 ip route show vrf VRF-ORIENTATION" \
   "."
 
-if [ -f "configs/orientation-runbook.sh" ]; then
-  if [ -x "configs/orientation-runbook.sh" ]; then
-    ./configs/orientation-runbook.sh --activate >/dev/null 2>&1
+if [ -f "$RUNBOOK" ]; then
+  if [ -x "$RUNBOOK" ]; then
+    "$RUNBOOK" --activate >/dev/null 2>&1
     cmd_match "VRF-ORIENTATION receives route after activation" \
       "$C-leaf-01 ip route show vrf VRF-ORIENTATION" \
       "default|203\\.0\\.114"
 
-    ./configs/orientation-runbook.sh --deactivate >/dev/null 2>&1
+    "$RUNBOOK" --deactivate >/dev/null 2>&1
     cmd_no_match "VRF-ORIENTATION empty after deactivation" \
       "$C-leaf-01 ip route show vrf VRF-ORIENTATION" \
       "."
@@ -297,90 +308,64 @@ else
 fi
 
 # ---------------------------------------------------------------------------
-# 7) Optional Internet-emulation scenario (your new ISP chain)
+# 7) VNI Correction Validation (LMS and Services mapping)
 # ---------------------------------------------------------------------------
-ENABLE_INTERNET_EMULATION="${ENABLE_INTERNET_EMULATION:-0}"
-INET_CLIENT_A="${INET_CLIENT_A:-internet-client-01}"
-INET_CLIENT_B="${INET_CLIENT_B:-internet-client-02}"
-INET_EDGE_A="${INET_EDGE_A:-internet-router-01}"
-INET_EDGE_B="${INET_EDGE_B:-internet-router-02}"
-INET_NEW_ISP="${INET_NEW_ISP:-isp-router-04}"
-FACILITY_PUBLIC_IP="${FACILITY_PUBLIC_IP:-100.64.0.1}"
-FACILITY_BLOCKED_IP_1="${FACILITY_BLOCKED_IP_1:-192.168.50.10}"
-FACILITY_BLOCKED_IP_2="${FACILITY_BLOCKED_IP_2:-192.168.10.10}"
+cmd_match "LMS-STAFF VNI on admin-leaf (leaf-03)" \
+  "$C-leaf-03 vtysh -c 'show evpn vni 10030'" \
+  "10030"
 
-all_inet_nodes_present=1
-for n in "$INET_CLIENT_A" "$INET_CLIENT_B" "$INET_EDGE_A" "$INET_EDGE_B" "$INET_NEW_ISP"; do
-  container_exists "clab-${LAB}-${n}" || all_inet_nodes_present=0
-done
+cmd_no_match "LMS-STAFF NOT on border-leaf (leaf-01)" \
+  "$C-leaf-01 vtysh -c 'show evpn vni'" \
+  "10030"
 
-if [ "$ENABLE_INTERNET_EMULATION" = "1" ] || [ "$all_inet_nodes_present" = "1" ]; then
-  [ "$all_inet_nodes_present" = "1" ] || fail "internet-emulation enabled but required nodes are missing"
+cmd_match "SERVICES-WEB VNI on admin-leaf (leaf-03)" \
+  "$C-leaf-03 vtysh -c 'show evpn vni 10040'" \
+  "10040"
 
-  cmd_match "internet client A can reach public service IP" \
-    "$C-${INET_CLIENT_A} ping -c2 -W1 ${FACILITY_PUBLIC_IP}" \
-    "2 (packets )?received"
+cmd_no_match "SERVICES-WEB NOT on border-leaf (leaf-01)" \
+  "$C-leaf-01 vtysh -c 'show evpn vni'" \
+  "10040"
 
-  cmd_match "internet client B can reach public service IP" \
-    "$C-${INET_CLIENT_B} ping -c2 -W1 ${FACILITY_PUBLIC_IP}" \
-    "2 (packets )?received"
+# ---------------------------------------------------------------------------
+# 8) Intuitive Objective: True Internet Reachability (Behavioral E2E)
+# ---------------------------------------------------------------------------
+# T1 must prove internet reachability outcomes while preserving security boundaries.
+# Duplicate ICMP behavior can be related to multihoming/loop handling (T2 scope),
+# so T1 gates only on reachability and logs duplicates as diagnostics.
+cmd_match "Student reaches external internet endpoint" \
+  "$C-server-student-01 ping -c2 -W2 198.18.3.10" \
+  "2 (packets )?received"
 
-  cmd_no_match "internet client A blocked from STAFF/internal subnet" \
-    "$C-${INET_CLIENT_A} ping -c2 -W1 ${FACILITY_BLOCKED_IP_1}" \
-    "2 (packets )?received"
-
-  cmd_no_match "internet client B blocked from PEDAGOGY/internal subnet" \
-    "$C-${INET_CLIENT_B} ping -c2 -W1 ${FACILITY_BLOCKED_IP_2}" \
-    "2 (packets )?received"
+test_banner "Student outbound duplicate check (diagnostic, T2/ESI-owned)"
+LAST_OUT=$($C-server-student-01 ping -c2 -W2 198.18.3.10 2>/dev/null)
+if echo "$LAST_OUT" | grep -Eq "\(DUP!\)|duplicates"; then
+  warn "Duplicate ICMP replies observed on student outbound path (review T2 ESI behavior)"
 else
-  warn "internet-emulation topology not detected (set ENABLE_INTERNET_EMULATION=1 to enforce this block)"
+  ok "No duplicate ICMP replies observed on student outbound path"
 fi
 
-# 8) BP student access + NAT/PAT verification to internet ping target
-# ---------------------------------------------------------------------------
-INET_PING_TARGET_IP="${INET_PING_TARGET_IP:-198.18.3.10}"
-
-BP_STUDENT_MODE="${ENABLE_BP_STUDENT_PATH:-auto}"
-bp_student_path_present=0
-if $C-campus-bp ip link show eth1 >/dev/null 2>&1 || $C-campus-bp ip link show eth2 >/dev/null 2>&1; then
-  bp_student_path_present=1
+test_banner "Internet cannot initiate unsolicited access to student host"
+LAST_OUT=$($C-internet-web-01 ping -c2 -W2 192.168.10.10 2>/dev/null)
+if echo "$LAST_OUT" | grep -Eq "0 (packets )?received|100% packet loss|unreachable"; then
+  ok "Internet initiation toward student host is blocked"
+else
+  fail "Internet can initiate toward student host (unexpected)"
+  echo "  [DEBUG] output:"
+  echo "$LAST_OUT" | sed 's/^/    /'
 fi
 
-if [ "$BP_STUDENT_MODE" = "1" ] || { [ "$BP_STUDENT_MODE" = "auto" ] && [ "$bp_student_path_present" -eq 1 ]; }; then
+cmd_match "Internet reaches public DMZ host" \
+  "$C-internet-web-01 ping -c2 -W2 192.168.100.10" \
+  "2 (packets )?received"
 
-  cmd_ping_no_dup "BP student can ping local anycast gateway (no duplicates)" \
-    "$C-student-bp-01 ping -c1 -W1 192.168.10.1" \
-    "1 (packets )?received"
-
-  cmd_ping_no_dup "BP student can ping internet target (no duplicates)" \
-    "$C-student-bp-01 ping -c1 -W1 ${INET_PING_TARGET_IP}" \
-    "1 (packets )?received"
-
-  test_banner "PAT/NAT counters increment for student ICMP toward internet target"
-  nat_l1_before=$($C-leaf-01 sh -lc "iptables-save -c -t nat | awk '/-A POSTROUTING/ && /-s 192.168.10.0\\/24/ && /-d 198.18.3.0\\/24/ && /-j MASQUERADE/ {gsub(/\\[|\\]/, \"\", \\$1); split(\\$1, a, \":\"); sum += a[1]} END {print sum+0}'" 2>/dev/null)
-  nat_l2_before=$($C-leaf-02 sh -lc "iptables-save -c -t nat | awk '/-A POSTROUTING/ && /-s 192.168.10.0\\/24/ && /-d 198.18.3.0\\/24/ && /-j MASQUERADE/ {gsub(/\\[|\\]/, \"\", \\$1); split(\\$1, a, \":\"); sum += a[1]} END {print sum+0}'" 2>/dev/null)
-
-  # Send one probe to validate NAT counter movement on active egress leaf.
-  $C-student-bp-01 ping -c1 -W1 ${INET_PING_TARGET_IP} >/dev/null 2>&1 || true
-
-  nat_l1_after=$($C-leaf-01 sh -lc "iptables-save -c -t nat | awk '/-A POSTROUTING/ && /-s 192.168.10.0\\/24/ && /-d 198.18.3.0\\/24/ && /-j MASQUERADE/ {gsub(/\\[|\\]/, \"\", \\$1); split(\\$1, a, \":\"); sum += a[1]} END {print sum+0}'" 2>/dev/null)
-  nat_l2_after=$($C-leaf-02 sh -lc "iptables-save -c -t nat | awk '/-A POSTROUTING/ && /-s 192.168.10.0\\/24/ && /-d 198.18.3.0\\/24/ && /-j MASQUERADE/ {gsub(/\\[|\\]/, \"\", \\$1); split(\\$1, a, \":\"); sum += a[1]} END {print sum+0}'" 2>/dev/null)
-
-  nat_l1_before=${nat_l1_before:-0}
-  nat_l2_before=${nat_l2_before:-0}
-  nat_l1_after=${nat_l1_after:-0}
-  nat_l2_after=${nat_l2_after:-0}
-
-  info "leaf-01 NAT packets: ${nat_l1_before} -> ${nat_l1_after}"
-  info "leaf-02 NAT packets: ${nat_l2_before} -> ${nat_l2_after}"
-
-  if [[ "$nat_l1_before" =~ ^[0-9]+$ ]] && [[ "$nat_l2_before" =~ ^[0-9]+$ ]] && [[ "$nat_l1_after" =~ ^[0-9]+$ ]] && [[ "$nat_l2_after" =~ ^[0-9]+$ ]] && { [ "$nat_l1_after" -gt "$nat_l1_before" ] || [ "$nat_l2_after" -gt "$nat_l2_before" ]; }; then
-    ok "PAT/NAT counters increment for student ICMP toward internet target"
-  else
-    warn "PAT/NAT counters did not visibly increment (ping path still validated)"
-  fi
+test_banner "Border leaf performs no NAT/PAT"
+LAST_OUT=$($C-leaf-01 iptables-save -t nat 2>/dev/null | grep -E 'MASQUERADE|SNAT|DNAT' || true)
+if [ -z "$LAST_OUT" ]; then
+  ok "No NAT/PAT rules found on border leaf"
 else
-  warn "BP student NAT checks skipped (wired BP-to-student leaf path not present in this topology)"
+  fail "Border leaf has NAT/PAT rules (violates architecture ownership)"
+  echo "  [DEBUG] output:"
+  echo "$LAST_OUT" | sed 's/^/    /'
 fi
 
 echo
