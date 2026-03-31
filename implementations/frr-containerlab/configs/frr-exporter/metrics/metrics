@@ -1,4 +1,89 @@
-# HELP frr_bgp_session_up Simulated BGP session state for border observability.
+# HELP frr_bgp_session_up Simulated BGP session state for fabric and border peers.
 # TYPE frr_bgp_session_up gauge
-frr_bgp_session_up{node="leaf-01",peer="203.0.113.2"} 1
-frr_bgp_session_up{node="leaf-02",peer="203.0.113.6"} 1
+frr_bgp_session_up{node="leaf-01",peer="203.0.113.2",peer_role="isp",pod="border"} 1
+frr_bgp_session_up{node="leaf-02",peer="203.0.113.6",peer_role="isp",pod="border"} 1
+frr_bgp_session_up{node="leaf-01",peer="10.0.0.0",peer_role="spine",pod="border"} 1
+frr_bgp_session_up{node="leaf-01",peer="10.0.1.0",peer_role="spine",pod="border"} 1
+frr_bgp_session_up{node="leaf-03",peer="10.0.0.4",peer_role="spine",pod="admin"} 1
+frr_bgp_session_up{node="leaf-05",peer="10.0.0.8",peer_role="spine",pod="hpc"} 1
+frr_bgp_session_up{node="leaf-07",peer="10.0.0.12",peer_role="spine",pod="storage"} 1
+frr_bgp_session_up{node="leaf-09",peer="10.0.0.16",peer_role="spine",pod="student"} 1
+
+# HELP frr_bgp_prefixes_received Simulated received BGP prefixes per node and address family.
+# TYPE frr_bgp_prefixes_received gauge
+frr_bgp_prefixes_received{node="leaf-01",afi_safi="ipv4_unicast",pod="border"} 12
+frr_bgp_prefixes_received{node="leaf-02",afi_safi="ipv4_unicast",pod="border"} 12
+frr_bgp_prefixes_received{node="leaf-03",afi_safi="l2vpn_evpn",pod="admin"} 48
+frr_bgp_prefixes_received{node="leaf-05",afi_safi="l2vpn_evpn",pod="hpc"} 42
+frr_bgp_prefixes_received{node="leaf-07",afi_safi="l2vpn_evpn",pod="storage"} 38
+frr_bgp_prefixes_received{node="leaf-09",afi_safi="l2vpn_evpn",pod="student"} 40
+
+# HELP frr_vrf_route_count Simulated active route count in each VRF.
+# TYPE frr_vrf_route_count gauge
+frr_vrf_route_count{node="leaf-01",vrf="VRF-PUBLIC",pod="border"} 4
+frr_vrf_route_count{node="leaf-01",vrf="VRF-ORIENTATION",pod="border"} 0
+frr_vrf_route_count{node="leaf-01",vrf="VRF-WIFI-CTRL",pod="border"} 1
+frr_vrf_route_count{node="leaf-03",vrf="VRF-STAFF",pod="admin"} 36
+frr_vrf_route_count{node="leaf-03",vrf="VRF-ADMINISTRATION",pod="admin"} 8
+frr_vrf_route_count{node="leaf-05",vrf="VRF-STAFF",pod="hpc"} 22
+frr_vrf_route_count{node="leaf-07",vrf="VRF-STAFF",pod="storage"} 18
+frr_vrf_route_count{node="leaf-09",vrf="VRF-PEDAGOGY",pod="student"} 14
+
+# HELP frr_evpn_vni_up Simulated EVPN VNI operational state.
+# TYPE frr_evpn_vni_up gauge
+frr_evpn_vni_up{node="leaf-01",vni="10090",segment="BAC-ORIENT",vrf="VRF-ORIENTATION",pod="border"} 1
+frr_evpn_vni_up{node="leaf-01",vni="10100",segment="DMZ-WEB",vrf="VRF-PUBLIC",pod="border"} 1
+frr_evpn_vni_up{node="leaf-01",vni="10120",segment="WIFI-CTRL-MGMT",vrf="VRF-WIFI-CTRL",pod="border"} 1
+frr_evpn_vni_up{node="leaf-03",vni="10030",segment="LMS-STAFF",vrf="VRF-STAFF",pod="admin"} 1
+frr_evpn_vni_up{node="leaf-03",vni="10040",segment="SERVICES-WEB",vrf="VRF-STAFF",pod="admin"} 1
+frr_evpn_vni_up{node="leaf-03",vni="10050",segment="CORE-INFRA",vrf="VRF-STAFF",pod="admin"} 1
+frr_evpn_vni_up{node="leaf-03",vni="10060",segment="HR-FINANCE",vrf="VRF-ADMINISTRATION",pod="admin"} 1
+frr_evpn_vni_up{node="leaf-05",vni="10070",segment="AI-GPU",vrf="VRF-STAFF",pod="hpc"} 1
+frr_evpn_vni_up{node="leaf-07",vni="10080",segment="STORAGE-SAN",vrf="VRF-STAFF",pod="storage"} 1
+frr_evpn_vni_up{node="leaf-09",vni="10010",segment="STUDENT-TP",vrf="VRF-PEDAGOGY",pod="student"} 1
+frr_evpn_vni_up{node="leaf-09",vni="10020",segment="STUDENT-PROJ",vrf="VRF-PEDAGOGY",pod="student"} 1
+
+# HELP frr_node_cpu_utilization_percent Simulated router CPU utilization percentage.
+# TYPE frr_node_cpu_utilization_percent gauge
+frr_node_cpu_utilization_percent{node="spine-01",role="spine",pod="core"} 32
+frr_node_cpu_utilization_percent{node="spine-02",role="spine",pod="core"} 34
+frr_node_cpu_utilization_percent{node="leaf-01",role="leaf",pod="border"} 27
+frr_node_cpu_utilization_percent{node="leaf-02",role="leaf",pod="border"} 25
+frr_node_cpu_utilization_percent{node="leaf-03",role="leaf",pod="admin"} 38
+frr_node_cpu_utilization_percent{node="leaf-05",role="leaf",pod="hpc"} 61
+frr_node_cpu_utilization_percent{node="leaf-07",role="leaf",pod="storage"} 44
+frr_node_cpu_utilization_percent{node="leaf-09",role="leaf",pod="student"} 29
+
+# HELP frr_node_memory_utilization_percent Simulated router memory utilization percentage.
+# TYPE frr_node_memory_utilization_percent gauge
+frr_node_memory_utilization_percent{node="spine-01",role="spine",pod="core"} 51
+frr_node_memory_utilization_percent{node="spine-02",role="spine",pod="core"} 53
+frr_node_memory_utilization_percent{node="leaf-01",role="leaf",pod="border"} 47
+frr_node_memory_utilization_percent{node="leaf-02",role="leaf",pod="border"} 45
+frr_node_memory_utilization_percent{node="leaf-03",role="leaf",pod="admin"} 56
+frr_node_memory_utilization_percent{node="leaf-05",role="leaf",pod="hpc"} 66
+frr_node_memory_utilization_percent{node="leaf-07",role="leaf",pod="storage"} 58
+frr_node_memory_utilization_percent{node="leaf-09",role="leaf",pod="student"} 42
+
+# HELP fabric_pod_health_score Simulated pod health score from 0 to 1.
+# TYPE fabric_pod_health_score gauge
+fabric_pod_health_score{pod="border"} 0.98
+fabric_pod_health_score{pod="admin"} 0.97
+fabric_pod_health_score{pod="hpc"} 0.95
+fabric_pod_health_score{pod="storage"} 0.96
+fabric_pod_health_score{pod="student"} 0.97
+
+# HELP fabric_uplink_status Simulated uplink state to spine nodes (1=up, 0=down).
+# TYPE fabric_uplink_status gauge
+fabric_uplink_status{node="leaf-01",uplink="eth1",spine="spine-01"} 1
+fabric_uplink_status{node="leaf-01",uplink="eth2",spine="spine-02"} 1
+fabric_uplink_status{node="leaf-02",uplink="eth1",spine="spine-01"} 1
+fabric_uplink_status{node="leaf-02",uplink="eth2",spine="spine-02"} 1
+fabric_uplink_status{node="leaf-03",uplink="eth1",spine="spine-01"} 1
+fabric_uplink_status{node="leaf-03",uplink="eth2",spine="spine-02"} 1
+fabric_uplink_status{node="leaf-05",uplink="eth1",spine="spine-01"} 1
+fabric_uplink_status{node="leaf-05",uplink="eth2",spine="spine-02"} 1
+fabric_uplink_status{node="leaf-07",uplink="eth1",spine="spine-01"} 1
+fabric_uplink_status{node="leaf-07",uplink="eth2",spine="spine-02"} 1
+fabric_uplink_status{node="leaf-09",uplink="eth1",spine="spine-01"} 1
+fabric_uplink_status{node="leaf-09",uplink="eth2",spine="spine-02"} 1
