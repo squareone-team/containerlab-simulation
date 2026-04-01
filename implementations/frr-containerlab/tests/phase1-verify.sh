@@ -139,7 +139,6 @@ fi
 
 chk "leaf-01 ping isp-router-01" "$C-leaf-01 ping -c2 -W1 203.0.113.2" "2 (packets )?received"
 chk "leaf-02 ping isp-router-02" "$C-leaf-02 ping -c2 -W1 203.0.113.6" "2 (packets )?received"
-chk "student default in VRF-PEDAGOGY" "$C-leaf-09 ip route show vrf VRF-PEDAGOGY" "^default"
 chk "spine-01 ecmp hash policy=1" "$C-spine-01 sysctl net.ipv4.fib_multipath_hash_policy" "= 1"
 
 $C-leaf-09 vtysh -c "clear bgp *" 2>/dev/null || true

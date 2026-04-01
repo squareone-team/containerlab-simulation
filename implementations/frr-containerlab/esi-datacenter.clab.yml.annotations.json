@@ -32,10 +32,10 @@
     },
     {
       "id": "zone-ext-label",
-      "text": "EXTERNAL DOMAIN ( INTERNET )",
+      "text": "INTERNET",
       "position": {
-        "x": -198.86051371179744,
-        "y": -766.8268074817763
+        "x": -84.89655827562017,
+        "y": -762.1343689981353
       },
       "fontSize": 22,
       "fontColor": "#bfdbfe",
@@ -1088,8 +1088,8 @@
     {
       "id": "isp-router-03",
       "position": {
-        "x": -240,
-        "y": 40
+        "x": 120,
+        "y": -20
       }
     },
     {
