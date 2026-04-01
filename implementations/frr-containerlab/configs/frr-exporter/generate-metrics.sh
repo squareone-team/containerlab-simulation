@@ -243,6 +243,12 @@ generate_metrics() {
     printf 'frr_node_cpu_utilization_percent{node="%s",role="%s",pod="%s"} %s\n' "$node" "$(echo "$node" | sed 's/-.*//')" "$pod" "$cpu_pct" >> "$tmp_file"
     printf 'frr_node_memory_utilization_percent{node="%s",role="%s",pod="%s"} %s\n' "$node" "$(echo "$node" | sed 's/-.*//')" "$pod" "$mem_pct" >> "$tmp_file"
 
+    vrf_public_json="$(docker exec "$container" vtysh -c 'show bgp vrf VRF-PUBLIC summary json' 2>/dev/null || true)"
+    vrf_public_peers=""
+    if [ -n "$vrf_public_json" ] && printf '%s' "$vrf_public_json" | jq . >/dev/null 2>&1; then
+      vrf_public_peers="$(printf '%s' "$vrf_public_json" | jq -r '.ipv4Unicast.peers // {} | keys[]?' 2>/dev/null || true)"
+    fi
+
     bgp_json="$(docker exec "$container" vtysh -c 'show bgp summary json' 2>/dev/null || true)"
     if [ -n "$bgp_json" ] && printf '%s' "$bgp_json" | jq . >/dev/null 2>&1; then
       for family in "ipv4Unicast ipv4_unicast" "l2VpnEvpn l2vpn_evpn"; do
@@ -251,6 +257,12 @@ generate_metrics() {
 
         printf '%s' "$bgp_json" | jq -r --arg f "$family_key" '.[$f].peers // {} | to_entries[] | [.key, (.value.state // "Unknown"), ((.value.pfxRcd // 0)|tostring)] | @tsv' 2>/dev/null | while IFS="$(printf '\t')" read -r peer state pfx; do
           [ -n "$peer" ] || continue
+
+          # If the same peer exists in VRF-PUBLIC summary, skip the shadow default-VRF view.
+          if [ -n "$vrf_public_peers" ] && printf '%s\n' "$vrf_public_peers" | grep -Fxq "$peer"; then
+            continue
+          fi
+
           if [ "$state" = "Established" ]; then
             up=1
           else
@@ -263,6 +275,23 @@ generate_metrics() {
           printf 'frr_bgp_session_up{node="%s",peer="%s",peer_role="%s",pod="%s"} %s\n' "$node" "$peer" "$role" "$pod" "$up" >> "$tmp_file"
           printf 'frr_bgp_prefixes_received{node="%s",peer="%s",afi_safi="%s",pod="%s"} %s\n' "$node" "$peer" "$family_label" "$pod" "$pfx" >> "$tmp_file"
         done
+      done
+    fi
+
+    if [ -n "$vrf_public_json" ] && printf '%s' "$vrf_public_json" | jq . >/dev/null 2>&1; then
+      printf '%s' "$vrf_public_json" | jq -r '.ipv4Unicast.peers // {} | to_entries[] | [.key, (.value.state // "Unknown"), ((.value.pfxRcd // 0)|tostring)] | @tsv' 2>/dev/null | while IFS="$(printf '\t')" read -r peer state pfx; do
+        [ -n "$peer" ] || continue
+        if [ "$state" = "Established" ]; then
+          up=1
+        else
+          up=0
+        fi
+        role="$(peer_role_for "$node" "$peer")"
+        case "$pfx" in
+          ''|null|*[!0-9]*) pfx=0 ;;
+        esac
+        printf 'frr_bgp_session_up{node="%s",peer="%s",peer_role="%s",pod="%s"} %s\n' "$node" "$peer" "$role" "$pod" "$up" >> "$tmp_file"
+        printf 'frr_bgp_prefixes_received{node="%s",peer="%s",afi_safi="%s",pod="%s"} %s\n' "$node" "$peer" "ipv4_unicast" "$pod" "$pfx" >> "$tmp_file"
       done
     fi
 

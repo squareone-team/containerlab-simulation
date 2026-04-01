@@ -20,6 +20,12 @@ for IFACE in eth3 eth4 eth5 eth6 eth7 eth8; do
   ip link set dev $IFACE mtu 9000 || true
 done
 
+if ip link show eth3 >/dev/null 2>&1; then
+  ip link set eth3 master VRF-PUBLIC
+  ip addr add 203.0.113.1/30 dev eth3 2>/dev/null || true
+  ip link set eth3 up
+fi
+
 ip link set eth8 master VRF-WIFI-CTRL
 ip addr add 10.200.0.1/30 dev eth8
 ip link set eth8 up
@@ -79,7 +85,7 @@ fi
 ip link add vlan100 link br0 type vlan id 100
 ip link set vlan100 master VRF-PUBLIC
 ip link set vlan100 address $ANYCAST_MAC || true
-ip addr add 192.168.100.1/24 dev vlan100
+ip addr add 198.51.100.1/24 dev vlan100
 ip link set vlan100 up
 
 ip link add vlan4060 link br0 type vlan id 4060
@@ -87,7 +93,7 @@ ip link set vlan4060 master VRF-WIFI-CTRL
 ip link set vlan4060 up
 
 # Inbound internet traffic to DMZ must use VRF-PUBLIC table.
-ip rule add pref 90 iif eth3 to 192.168.100.0/24 lookup 40 2>/dev/null || true
+ip rule add pref 90 iif eth3 to 198.51.100.0/24 lookup 40 2>/dev/null || true
 
 # Inbound internet return traffic to student subnets must use VRF-PEDAGOGY.
 ip rule add pref 100 iif eth3 to 192.168.10.0/24 lookup 30 2>/dev/null || true

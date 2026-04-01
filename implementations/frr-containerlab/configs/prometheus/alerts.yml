@@ -36,14 +36,14 @@ groups:
     interval: 30s
     rules:
       - alert: BorderBGPSessionDown
-        expr: frr_bgp_session_up{pod="border",peer_role="isp"} < 1
+        expr: sum by (node) (frr_bgp_session_up{pod="border",peer_role="isp"}) < 1
         for: 45s
         labels:
           severity: critical
           team: netops
         annotations:
-          summary: "Border ISP BGP session down"
-          description: "A border leaf lost one ISP BGP session in simulation telemetry."
+          summary: "Border leaf lost all ISP BGP sessions"
+          description: "A border leaf currently has no ISP BGP session up in simulation telemetry."
 
       - alert: FabricUplinkDown
         expr: fabric_uplink_status == 0
