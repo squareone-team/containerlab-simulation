@@ -72,9 +72,28 @@ ip link set vlan4060 up
 # === END PHASE 1 — Phase 2 appends below ===
 
 # === NTP CLIENT ===
+# Install chrony
 apk add --no-cache chrony
+
+# Write client config
 cat > /etc/chrony.conf << 'EOF'
-server 192.168.50.20 iburst prefer
+# Sync from lab NTP server (stratum 2)
+server clab-esi-datacenter-ntp-server iburst prefer
+
+# Fallback: if NTP server unreachable, use local clock at high stratum
 local stratum 10
+
+# Accept clock step on first 3 syncs
+makestep 1.0 3
+
+# Maximum skew allowed before chrony refuses to sync (forensic requirement: < 1s)
+maxdistance 1.0
+
+logdir /var/log/chrony
+log measurements statistics tracking
 EOF
-chronyd -f /etc/chrony.conf
+
+mkdir -p /var/log/chrony
+
+# Start chronyd in background — use & and not exec so startup.sh continues
+chronyd -f /etc/chrony.conf &

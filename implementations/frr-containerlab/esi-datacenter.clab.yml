@@ -146,131 +146,131 @@ topology:
     server-student-01:
       kind: linux
       image: alpine:3.20
+      binds:
+        - configs/ntp-server/server-client-ntp.sh:/ntp-client.sh
       exec:
         - apk add --no-cache chrony
         - ip addr add 192.168.10.10/24 dev eth1
         - ip route del default
         - ip route add default via 192.168.10.1 dev eth1
         # NTP client
-        - sh -c "echo 'server 192.168.50.20 iburst prefer' > /etc/chrony.conf && echo 'local stratum 10' >> /etc/chrony.conf"
-        - chronyd -f /etc/chrony.conf
+        - sh /ntp-client.sh
 
     server-student-02:
       kind: linux
       image: alpine:3.20
+      binds:
+        - configs/ntp-server/server-client-ntp.sh:/ntp-client.sh
       exec:
         - apk add --no-cache chrony
         - ip addr add 192.168.20.10/24 dev eth1
         - ip route del default
         - ip route add default via 192.168.20.1 dev eth1
         # NTP client
-        - sh -c "echo 'server 192.168.50.20 iburst prefer' > /etc/chrony.conf && echo 'local stratum 10' >> /etc/chrony.conf"
-        - chronyd -f /etc/chrony.conf
+        - sh /ntp-client.sh
 
     server-admin-01:
       kind: linux
       image: alpine:3.20
+      binds:
+        - configs/ntp-server/server-client-ntp.sh:/ntp-client.sh
       exec:
         - apk add --no-cache chrony
         - ip addr add 192.168.50.10/24 dev eth1
         - ip route del default
         - ip route add default via 192.168.50.1 dev eth1
         # NTP client
-        - sh -c "echo 'server 192.168.50.20 iburst prefer' > /etc/chrony.conf && echo 'local stratum 10' >> /etc/chrony.conf"
-        - chronyd -f /etc/chrony.conf
+        - sh /ntp-client.sh
 
     server-admin-02:
       kind: linux
       image: alpine:3.20
+      binds:
+        - configs/ntp-server/server-client-ntp.sh:/ntp-client.sh
       exec:
         - apk add --no-cache chrony
         - ip addr add 192.168.60.10/24 dev eth1
         - ip route del default
         - ip route add default via 192.168.60.1 dev eth1
         # NTP client
-        - sh -c "echo 'server 192.168.50.20 iburst prefer' > /etc/chrony.conf && echo 'local stratum 10' >> /etc/chrony.conf"
-        - chronyd -f /etc/chrony.conf
+        - sh /ntp-client.sh
 
     server-hpc-01:
       kind: linux
       image: alpine:3.20
+      binds:
+        - configs/ntp-server/server-client-ntp.sh:/ntp-client.sh
       exec:
         - apk add --no-cache chrony
         - ip addr add 192.168.70.10/24 dev eth1
         - ip route del default
         - ip route add default via 192.168.70.1 dev eth1
         # NTP client
-        - sh -c "echo 'server 192.168.50.20 iburst prefer' > /etc/chrony.conf && echo 'local stratum 10' >> /etc/chrony.conf"
-        - chronyd -f /etc/chrony.conf
+        - sh /ntp-client.sh
 
     server-hpc-02:
       kind: linux
       image: alpine:3.20
+      binds:
+        - configs/ntp-server/server-client-ntp.sh:/ntp-client.sh
       exec:
         - apk add --no-cache chrony
         - ip addr add 192.168.70.20/24 dev eth1
         - ip route del default
         - ip route add default via 192.168.70.1 dev eth1
         # NTP client
-        - sh -c "echo 'server 192.168.50.20 iburst prefer' > /etc/chrony.conf && echo 'local stratum 10' >> /etc/chrony.conf"
-        - chronyd -f /etc/chrony.conf
+        - sh /ntp-client.sh
 
     server-storage-01:
       kind: linux
       image: alpine:3.20
+      binds:
+        - configs/ntp-server/server-client-ntp.sh:/ntp-client.sh
       exec:
         - apk add --no-cache chrony
         - ip addr add 192.168.80.10/24 dev eth1
         - ip route del default
         - ip route add default via 192.168.80.1 dev eth1
         # NTP client
-        - sh -c "echo 'server 192.168.50.20 iburst prefer' > /etc/chrony.conf && echo 'local stratum 10' >> /etc/chrony.conf"
-        - chronyd -f /etc/chrony.conf
+        - sh /ntp-client.sh
 
     server-dmz-01:
       kind: linux
       image: alpine:3.20
+      binds:
+        - configs/ntp-server/server-client-ntp.sh:/ntp-client.sh
       exec:
         - apk add --no-cache chrony
         - ip addr add 192.168.100.10/24 dev eth1
         - ip route del default
         - ip route add default via 192.168.100.1 dev eth1
         # NTP client
-        - sh -c "echo 'server 192.168.50.20 iburst prefer' > /etc/chrony.conf && echo 'local stratum 10' >> /etc/chrony.conf"
-        - chronyd -f /etc/chrony.conf
+        - sh /ntp-client.sh
 
     lms-staff:
       kind: linux
       image: alpine:3.20
+      binds:
+        - configs/ntp-server/server-client-ntp.sh:/ntp-client.sh
       exec:
+        - apk add --no-cache chrony  
         - ip addr add 192.168.30.10/24 dev eth1
         - ip route del default
         - ip route add default via 192.168.30.1 dev eth1
+        - sh /ntp-client.sh
 
     services-web:
       kind: linux
       image: alpine:3.20
+      binds:
+        - configs/ntp-server/server-client-ntp.sh:/ntp-client.sh
       exec:
+        - apk add --no-cache chrony  
         - ip addr add 192.168.40.10/24 dev eth1
         - ip route del default
         - ip route add default via 192.168.40.1 dev eth1
-
-    lms-staff:
-      kind: linux
-      image: alpine:3.20
-      exec:
-        - ip addr add 192.168.30.10/24 dev eth1
-        - ip route del default
-        - ip route add default via 192.168.30.1 dev eth1
-
-    services-web:
-      kind: linux
-      image: alpine:3.20
-      exec:
-        - ip addr add 192.168.40.10/24 dev eth1
-        - ip route del default
-        - ip route add default via 192.168.40.1 dev eth1
-
+        - sh /ntp-client.sh
+        
     firewall-01:
       kind: linux
       image: alpine:3.20
@@ -369,4 +369,5 @@ topology:
     - endpoints: [ "campus-bp:eth3", "leaf-01:eth8" ]
     - endpoints: [ "firewall-01:eth3", "firewall-02:eth3" ]
     - endpoints: [ "bastion-01:eth1", "oob-sw:eth1" ]
-    - endpoints: ["leaf-03:eth5", "ntp-server:eth1"]
+    - endpoints: ["leaf-03:eth6", "ntp-server:eth1"]
+    - endpoints: ["oob-sw:eth2", "ntp-server:eth2"]
