@@ -83,3 +83,17 @@ mkdir -p /var/log/chrony
 
 # Start chronyd in background — use & and not exec so startup.sh continues
 chronyd -f /etc/chrony.conf &
+
+# === DHCP RELAY ===
+
+# Route to DHCP server (VRF-STAFF) via spine underlay — needed for dhcrelay upstream path
+ip route add 192.168.50.0/24 via 10.0.0.16 dev eth1 src 10.1.0.19 2>/dev/null || true
+ip route add 192.168.50.0/24 via 10.0.1.16 dev eth2 src 10.1.0.19 2>/dev/null || true
+
+apk add --no-cache dhcrelay
+dhcrelay -4 \
+  -id vlan10 \
+  -id vlan20 \
+  -iu eth1 \
+  192.168.50.40 &
+

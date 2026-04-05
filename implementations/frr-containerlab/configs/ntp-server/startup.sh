@@ -62,8 +62,17 @@ EOF
 fi
 
 echo "[ntp-server] starting chronyd..."
-chronyd -n -f /etc/chrony.conf &
-CHRONY_PID=$!
-sleep 3
-echo "[ntp-server] chronyd started, PID=$CHRONY_PID"
-wait $CHRONY_PID
+chronyd -f /etc/chrony.conf
+
+sleep 2
+
+echo "[ntp-server] waiting for source selection..."
+for i in $(seq 1 15); do
+    chronyc sources 2>/dev/null | grep -qE '\^\*|#\*' && break
+    sleep 2
+done
+
+echo "[ntp-server] ready — $(chronyc tracking 2>/dev/null | grep Stratum)"
+
+# Keep container alive
+tail -f /var/log/chrony/measurements.log 2>/dev/null || sleep infinity

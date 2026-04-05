@@ -71,3 +71,11 @@ mkdir -p /var/log/chrony
 
 # Start chronyd in background — use & and not exec so startup.sh continues
 chronyd -f /etc/chrony.conf &
+
+# === DHCP RELAY ===
+apk add --no-cache dhcrelay
+# No local vlan50 — upstream path is via VRF-STAFF EVPN Type-5 route to 192.168.50.0/24 on leaf-03
+dhcrelay -4 \
+  -id vlan70 \
+  -iu vlan70 \
+  192.168.50.40 &

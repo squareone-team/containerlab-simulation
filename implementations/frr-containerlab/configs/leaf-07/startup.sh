@@ -71,3 +71,10 @@ mkdir -p /var/log/chrony
 
 # Start chronyd in background — use & and not exec so startup.sh continues
 chronyd -f /etc/chrony.conf &
+
+# === DHCP RELAY ===
+apk add --no-cache dhcrelay
+dhcrelay -4 \
+  -id vlan80 \
+  -iu vlan80 \
+  192.168.50.40 &

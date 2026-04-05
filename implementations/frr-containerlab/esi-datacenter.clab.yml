@@ -302,6 +302,13 @@ topology:
     dhcp-server:
       kind: linux
       image: alpine:3.20
+      binds:
+        - configs/dhcp-server/startup.sh:/startup.sh
+      cmd: sh /startup.sh
+      cap-add:
+        - NET_ADMIN
+        - NET_RAW
+
     ftp-server:
       kind: linux
       image: alpine:3.20
@@ -377,5 +384,5 @@ topology:
     - endpoints: ["leaf-03:eth6", "ntp-server:eth1"]
     - endpoints: ["oob-sw:eth2", "ntp-server:eth2"]
     - endpoints: ["leaf-03:eth7", "dns-server:eth1"]
-    
+    - endpoints: ["leaf-03:eth8", "dhcp-server:eth1"]
 

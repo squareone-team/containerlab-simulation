@@ -101,6 +101,10 @@ bridge vlan add vid 50 dev eth6 pvid untagged
 ip link set eth7 master br0
 bridge vlan add vid 50 dev eth7 pvid untagged
 
+# eth8 = dhcp-server (CORE-INFRA VLAN 50)
+ip link set eth8 master br0
+bridge vlan add vid 50 dev eth8 pvid untagged
+
 # CORE-INFRA route leak to global routing table 
 # Needed so FRR nodes (spines/leaves) can reach NTP/DNS in VRF-STAFF via underlay
 # ip rule: for packets destined to 192.168.50.0/24, consult VRF-STAFF table (20)
@@ -110,3 +114,13 @@ ip rule add to 192.168.50.0/24 lookup 20 prio 100 2>/dev/null || true
 # Actual forwarding is handled by the ip rule above
 ip route add 192.168.50.0/24 nhid 0 2>/dev/null || \
 ip route add 192.168.50.0/24 dev vlan50 2>/dev/null || true
+
+# === DHCP RELAY ===
+apk add --no-cache dhcrelay
+
+dhcrelay -4 \
+  -id vlan30 \
+  -id vlan40 \
+  -id vlan50 \
+  -iu vlan50 \
+  192.168.50.40 &
