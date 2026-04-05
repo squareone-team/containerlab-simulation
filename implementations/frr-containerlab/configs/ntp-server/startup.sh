@@ -19,7 +19,6 @@ apk add --no-cache chrony
 if wait_for_iface eth1; then
     ip addr add 192.168.50.20/24 dev eth1 2>/dev/null || true
     ip link set eth1 up
-    # Add fabric-specific routes 
     ip route add 192.168.0.0/16 via 192.168.50.1 dev eth1 2>/dev/null || true
     ip route add 10.0.0.0/8    via 192.168.50.1 dev eth1 2>/dev/null || true
     ip route add 172.16.0.0/12 via 192.168.50.1 dev eth1 2>/dev/null || true
@@ -29,42 +28,42 @@ fi
 
 mkdir -p /var/log/chrony /var/run/chrony
 
-cat > /etc/chrony.conf << 'EOF'
-# Upstream time sources (reachable via eth0 management — ContainerLab default route)
+# Auto-detect internet: try reaching pool.ntp.org (timeout 3s)
+if nc -z -w3 pool.ntp.org 123 2>/dev/null || ping -c1 -W3 pool.ntp.org >/dev/null 2>&1; then
+    echo "[ntp-server] internet reachable — using upstream NTP sources"
+    cat > /etc/chrony.conf << 'EOF'
 server pool.ntp.org iburst
 server time.cloudflare.com iburst
-
-# Step the clock on first 3 syncs if offset > 1s, then slew only
+local stratum 2 orphan
 makestep 1.0 3
-
-# Maximum allowed distance from source (1s = log correlation requirement)
-maxdistance 1.0
-
-# Serve time to all internal networks
+maxdistance 16.0
 allow 192.168.0.0/16
 allow 10.0.0.0/8
 allow 172.16.0.0/12
-
-# Announce stratum 2 even before synced (fallback for isolated lab)
-local stratum 2 orphan
-
-# Admin/query interface
-cmdallow 192.168.0.0/16
-cmdallow 10.0.0.0/8
-cmdallow 172.16.0.0/12
+cmdallow 0.0.0.0/0
 bindcmdaddress 0.0.0.0
-
-# Logging
 logdir /var/log/chrony
 log measurements statistics tracking
 EOF
+else
+    echo "[ntp-server] no internet — using local clock (local stratum 2 orphan)"
+    cat > /etc/chrony.conf << 'EOF'
+local stratum 2 orphan
+makestep 1.0 3
+maxdistance 16.0
+allow 192.168.0.0/16
+allow 10.0.0.0/8
+allow 172.16.0.0/12
+cmdallow 0.0.0.0/0
+bindcmdaddress 0.0.0.0
+logdir /var/log/chrony
+log measurements statistics tracking
+EOF
+fi
 
 echo "[ntp-server] starting chronyd..."
-# Use -n (no daemon) NOT -d (debug) — -d changes socket behavior in some Alpine versions
 chronyd -n -f /etc/chrony.conf &
 CHRONY_PID=$!
-
-# Give chrony 3 seconds to initialize socket before script exits
 sleep 3
 echo "[ntp-server] chronyd started, PID=$CHRONY_PID"
 wait $CHRONY_PID

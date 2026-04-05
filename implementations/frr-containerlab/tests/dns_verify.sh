@@ -201,8 +201,8 @@ echo ""
 echo "======================================"
 echo "DNS Test Results: ${PASS} passed / ${FAIL} failed"
 [ "${FAIL}" -eq 0 ] \
-    && echo "DNS split-horizon READY — PR may proceed" \
-    || echo "NOT ready — fix failures above before PR"
+    && echo "DNS split-horizon READY" \
+    || echo "NOT ready — fix failures above"
 echo "======================================"
 
 exit "${FAIL}"

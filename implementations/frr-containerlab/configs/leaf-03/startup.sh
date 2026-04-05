@@ -100,3 +100,13 @@ bridge vlan add vid 50 dev eth6 pvid untagged
 # eth7 = dns-server 
 ip link set eth7 master br0
 bridge vlan add vid 50 dev eth7 pvid untagged
+
+# CORE-INFRA route leak to global routing table 
+# Needed so FRR nodes (spines/leaves) can reach NTP/DNS in VRF-STAFF via underlay
+# ip rule: for packets destined to 192.168.50.0/24, consult VRF-STAFF table (20)
+ip rule add to 192.168.50.0/24 lookup 20 prio 100 2>/dev/null || true
+
+# Add a static route in the main table so FRR BGP can advertise the prefix to spines
+# Actual forwarding is handled by the ip rule above
+ip route add 192.168.50.0/24 nhid 0 2>/dev/null || \
+ip route add 192.168.50.0/24 dev vlan50 2>/dev/null || true
