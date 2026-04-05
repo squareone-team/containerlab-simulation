@@ -52,7 +52,7 @@ ip addr add 192.168.40.1/24 dev vlan40
 ip link set vlan40 up
 
 ip link add vlan50 link br0 type vlan id 50
-# ip link set vlan50 master VRF-STAFF
+ip link set vlan50 master VRF-STAFF
 ip link set vlan50 address $ANYCAST_MAC || true
 ip addr add 192.168.50.1/24 dev vlan50
 ip link set vlan50 up
@@ -63,12 +63,6 @@ ip link set vlan4020 up
 
 # === END PHASE 1 — Phase 2 appends below ===
 
-# Add eth5 to bridge (L2)
-ip link set vlan50 up
-ip link set eth5 master br0
-bridge vlan add vid 50 dev eth5 pvid untagged
-
-
 # === NTP CLIENT ===
 # Install chrony
 apk add --no-cache chrony
@@ -76,7 +70,8 @@ apk add --no-cache chrony
 # Write client config
 cat > /etc/chrony.conf << 'EOF'
 # Sync from lab NTP server (stratum 2)
-server clab-esi-datacenter-ntp-server iburst prefer
+server 192.168.50.20 iburst prefer
+
 
 # Fallback: if NTP server unreachable, use local clock at high stratum
 local stratum 10
@@ -95,3 +90,13 @@ mkdir -p /var/log/chrony
 
 # Start chronyd in background — use & and not exec so startup.sh continues
 chronyd -f /etc/chrony.conf &
+
+
+# === CORE-INFRA server ports — VLAN 50 ===
+# eth6 = ntp-server 
+ip link set eth6 master br0
+bridge vlan add vid 50 dev eth6 pvid untagged
+
+# eth7 = dns-server 
+ip link set eth7 master br0
+bridge vlan add vid 50 dev eth7 pvid untagged

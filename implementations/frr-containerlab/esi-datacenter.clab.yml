@@ -294,6 +294,11 @@ topology:
     dns-server:
       kind: linux
       image: alpine:3.20
+      binds:
+        - configs/dns-server/startup.sh:/setup.sh:ro
+        - configs/dns-server/unbound.conf:/etc/unbound/unbound.conf.seed:ro
+      cmd: /bin/sh /setup.sh
+
     dhcp-server:
       kind: linux
       image: alpine:3.20
@@ -371,3 +376,5 @@ topology:
     - endpoints: [ "bastion-01:eth1", "oob-sw:eth1" ]
     - endpoints: ["leaf-03:eth6", "ntp-server:eth1"]
     - endpoints: ["oob-sw:eth2", "ntp-server:eth2"]
+    - endpoints: ["leaf-03:eth7", "dns-server:eth1"]
+

@@ -61,7 +61,8 @@ apk add --no-cache chrony
 # Write client config
 cat > /etc/chrony.conf << 'EOF'
 # Sync from lab NTP server (stratum 2)
-server clab-esi-datacenter-ntp-server iburst prefer
+server 192.168.50.20 iburst prefer
+
 
 # Fallback: if NTP server unreachable, use local clock at high stratum
 local stratum 10
