@@ -178,19 +178,26 @@ topology:
     server-hpc-01:
       kind: linux
       image: alpine:3.20
+      cap-add:
+        - NET_ADMIN
+        - SYS_MODULE
+        - NET_RAW
+      binds:
+        - configs/server-hpc-01/startup.sh:/startup.sh
       exec:
-        - ip addr add 192.168.70.10/24 dev eth1
-        - ip route del default
-        - ip route add default via 192.168.70.1 dev eth1
+        - sh /startup.sh # <--- Utilise "exec" pour que le serveur reste UP
 
     server-hpc-02:
       kind: linux
       image: alpine:3.20
+      cap-add:
+        - NET_ADMIN
+        - SYS_MODULE
+        - NET_RAW
+      binds:
+        - configs/server-hpc-02/startup.sh:/startup.sh
       exec:
-        - ip addr add 192.168.70.20/24 dev eth1
-        - ip route del default
-        - ip route add default via 192.168.70.1 dev eth1
-
+        - sh /startup.sh
     server-storage-01:
       kind: linux
       image: alpine:3.20
@@ -307,12 +314,8 @@ topology:
     - endpoints: [ "leaf-01:eth7", "server-dmz-01:eth1" ]
     - endpoints: [ "leaf-03:eth5", "lms-staff:eth1" ]
     - endpoints: [ "leaf-04:eth4", "services-web:eth1" ]
-
-    - endpoints: [ "leaf-01:eth9", "leaf-02:eth9" ]
-    - endpoints: [ "leaf-03:eth9", "leaf-04:eth9" ]
-    - endpoints: [ "leaf-05:eth9", "leaf-06:eth9" ]
-    - endpoints: [ "leaf-07:eth9", "leaf-08:eth9" ]
-    - endpoints: [ "leaf-09:eth9", "leaf-10:eth9" ]
+    - endpoints: ["leaf-06:eth3", "server-hpc-01:eth2"]   # Nouveau lien ESI
+    - endpoints: ["leaf-06:eth4", "server-hpc-02:eth2"]   # Nouveau lien ESI    
     - endpoints: [ "campus-bp:eth3", "leaf-01:eth8" ]
     - endpoints: [ "firewall-01:eth3", "firewall-02:eth3" ]
     - endpoints: [ "bastion-01:eth1", "oob-sw:eth1" ]

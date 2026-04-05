@@ -43,3 +43,4 @@ ip link set vlan4020 master VRF-STAFF
 ip link set vlan4020 up
 
 # === END PHASE 1 — Phase 2 appends below ===
+ip link set eth3 up
