@@ -182,9 +182,12 @@ topology:
 
     internet-web-01:
       kind: linux
-      image: alpine:3.20
+      image: python:3.11-alpine
+      cmd: sleep infinity
+      binds:
+        - ./configs/internet-web-01/www:/www:ro
       exec:
-        - ip addr add 198.18.3.10/24 dev eth1
+        - sh -c "ip addr add 198.18.3.10/24 dev eth1 && ip link set eth1 up && nohup python3 -m http.server 80 --bind 198.18.3.10 --directory /www >/tmp/http-server.log 2>&1 &"
         - ip route del default
         - ip route add default via 198.18.3.1 dev eth1
 
@@ -359,7 +362,8 @@ topology:
 
     student-bp-01:
       kind: linux
-      image: alpine:3.20
+      image: nicolaka/netshoot
+      cmd: sleep infinity
       exec:
         - ip addr add 192.168.10.30/24 dev eth1
         - ip route del default
