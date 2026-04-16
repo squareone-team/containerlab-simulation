@@ -2,7 +2,7 @@
 set -eu
 
 for i in 1 2 3 4 5; do
-  if apk update >/dev/null 2>&1 && apk add --no-cache nftables >/dev/null 2>&1; then
+  if apk update >/dev/null 2>&1 && apk add --no-cache nftables rsyslog >/dev/null 2>&1; then
     break
   fi
   sleep 2
@@ -36,3 +36,10 @@ table inet filter {
 NFT
 
 nft -f /etc/nftables.conf
+
+cat > /etc/rsyslog.conf << 'RSYSLOG'
+module(load="imuxsock")
+*.* @@192.168.50.70:514
+RSYSLOG
+
+/usr/sbin/rsyslogd

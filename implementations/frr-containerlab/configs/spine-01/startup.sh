@@ -13,7 +13,7 @@ ip link set "$OOB_IF" up
 
 # Ring 4: enable SSH daemon for bastion management
 for i in 1 2 3 4 5 6 7 8 9 10; do
-  if apk update >/dev/null 2>&1 && apk add --no-cache openssh-server openssh-client >/dev/null 2>&1; then
+  if apk update >/dev/null 2>&1 && apk add --no-cache openssh-server openssh-client rsyslog >/dev/null 2>&1; then
     break
   fi
   sleep 2
@@ -48,3 +48,10 @@ fi
 
 iptables -C INPUT -i "$OOB_IF" -p tcp --dport 22 -s 172.16.0.50 -j ACCEPT 2>/dev/null || iptables -I INPUT -i "$OOB_IF" -p tcp --dport 22 -s 172.16.0.50 -j ACCEPT
 iptables -C INPUT -i "$OOB_IF" -p tcp --dport 22 -j DROP 2>/dev/null || iptables -A INPUT -i "$OOB_IF" -p tcp --dport 22 -j DROP
+
+cat > /etc/rsyslog.conf << 'RSYSLOG'
+module(load="imuxsock")
+*.* @@192.168.50.70:514
+RSYSLOG
+
+/usr/sbin/rsyslogd
