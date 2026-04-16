@@ -316,14 +316,15 @@ topology:
 
     - endpoints: [ "leaf-09:eth3", "server-student-01:eth1" ]
     - endpoints: [ "leaf-09:eth4", "server-student-02:eth1" ]
-    - endpoints: [ "leaf-03:eth3", "server-admin-01:eth1" ]
-    - endpoints: [ "leaf-03:eth4", "server-admin-02:eth1" ]
+    - endpoints: [ "leaf-03:eth4", "server-admin-01:eth1" ]
+    - endpoints: [ "leaf-03:eth6", "server-admin-02:eth1" ]
     - endpoints: [ "leaf-05:eth3", "server-hpc-01:eth1" ]
     - endpoints: [ "leaf-05:eth4", "server-hpc-02:eth1" ]
     - endpoints: [ "leaf-07:eth3", "server-storage-01:eth1" ]
     - endpoints: [ "leaf-01:eth7", "server-dmz-01:eth1" ]
     - endpoints: [ "leaf-03:eth5", "lms-staff:eth1" ]
     - endpoints: [ "leaf-04:eth4", "services-web:eth1" ]
+    - endpoints: [ "leaf-03:eth3", "ftp-server:eth1" ]
 
     - endpoints: [ "leaf-01:eth9", "leaf-02:eth9" ]
     - endpoints: [ "leaf-03:eth9", "leaf-04:eth9" ]
