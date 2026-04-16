@@ -275,6 +275,11 @@ topology:
     syslog-server:
       kind: linux
       image: alpine:3.20
+      binds:
+        - configs/syslog-server/startup.sh:/startup.sh
+        - configs/shared:/shared:ro
+      exec:
+        - sh /startup.sh
     wifi-controller:
       kind: linux
       image: alpine:3.20
