@@ -49,4 +49,7 @@ if [ ! -f /root/.ssh/id_ed25519 ]; then
   ssh-keygen -t ed25519 -N '' -f /root/.ssh/id_ed25519
 fi
 
+mkdir -p /shared
+cp /root/.ssh/id_ed25519.pub /shared/bastion_ed25519.pub
+
 /usr/sbin/sshd

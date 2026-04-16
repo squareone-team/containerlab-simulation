@@ -243,6 +243,7 @@ topology:
       image: alpine:3.16
       binds:
         - configs/bastion-01/startup.sh:/startup.sh
+        - configs/shared:/shared
       exec:
         - sh /startup.sh
     ids-01:
@@ -260,6 +261,11 @@ topology:
     ftp-server:
       kind: linux
       image: alpine:3.20
+      binds:
+        - configs/ftp-server/startup.sh:/startup.sh
+        - configs/shared:/shared:ro
+      exec:
+        - sh /startup.sh
     zabbix-server:
       kind: linux
       image: alpine:3.20
