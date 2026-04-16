@@ -46,4 +46,31 @@ for i in 1 2 3 4 5 6 7 8 9 10; do
   sleep 1
 done
 
+cat > /etc/nftables.conf << 'NFT'
+flush ruleset
+table inet filter {
+  chain input {
+    type filter hook input priority 0;
+    policy drop;
+    iif "lo" accept
+    ct state established,related accept
+    ip saddr 172.16.0.50 tcp dport 22 accept
+    ip saddr 192.168.80.0/24 tcp dport 21 accept
+    ip saddr 192.168.80.0/24 tcp dport 30000-31000 accept
+  }
+
+  chain forward {
+    type filter hook forward priority 0;
+    policy drop;
+  }
+
+  chain output {
+    type filter hook output priority 0;
+    policy accept;
+  }
+}
+NFT
+
+nft -f /etc/nftables.conf
+
 /usr/sbin/sshd

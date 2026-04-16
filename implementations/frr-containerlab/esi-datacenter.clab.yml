@@ -155,50 +155,50 @@ topology:
     server-student-01:
       kind: linux
       image: alpine:3.20
+      binds:
+        - configs/server-student-01/startup.sh:/startup.sh
       exec:
-        - ip addr add 192.168.10.10/24 dev eth1
-        - ip route del default
-        - ip route add default via 192.168.10.1 dev eth1
+        - sh /startup.sh
 
     server-student-02:
       kind: linux
       image: alpine:3.20
+      binds:
+        - configs/server-student-02/startup.sh:/startup.sh
       exec:
-        - ip addr add 192.168.20.10/24 dev eth1
-        - ip route del default
-        - ip route add default via 192.168.20.1 dev eth1
+        - sh /startup.sh
 
     server-admin-01:
       kind: linux
       image: alpine:3.20
+      binds:
+        - configs/server-admin-01/startup.sh:/startup.sh
       exec:
-        - ip addr add 192.168.50.10/24 dev eth1
-        - ip route del default
-        - ip route add default via 192.168.50.1 dev eth1
+        - sh /startup.sh
 
     server-admin-02:
       kind: linux
       image: alpine:3.20
+      binds:
+        - configs/server-admin-02/startup.sh:/startup.sh
       exec:
-        - ip addr add 192.168.60.10/24 dev eth1
-        - ip route del default
-        - ip route add default via 192.168.60.1 dev eth1
+        - sh /startup.sh
 
     server-hpc-01:
       kind: linux
       image: alpine:3.20
+      binds:
+        - configs/server-hpc-01/startup.sh:/startup.sh
       exec:
-        - ip addr add 192.168.70.10/24 dev eth1
-        - ip route del default
-        - ip route add default via 192.168.70.1 dev eth1
+        - sh /startup.sh
 
     server-hpc-02:
       kind: linux
       image: alpine:3.20
+      binds:
+        - configs/server-hpc-02/startup.sh:/startup.sh
       exec:
-        - ip addr add 192.168.70.20/24 dev eth1
-        - ip route del default
-        - ip route add default via 192.168.70.1 dev eth1
+        - sh /startup.sh
 
     server-storage-01:
       kind: linux
