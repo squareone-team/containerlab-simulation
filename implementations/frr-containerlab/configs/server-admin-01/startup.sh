@@ -1,16 +1,16 @@
 #!/bin/sh
 set -eu
 
-ip addr add 192.168.50.10/24 dev eth1
-ip route del default 2>/dev/null || true
-ip route add default via 192.168.50.1 dev eth1
-
 for i in 1 2 3 4 5; do
   if apk update >/dev/null 2>&1 && apk add --no-cache nftables >/dev/null 2>&1; then
     break
   fi
   sleep 2
 done
+
+ip addr add 192.168.50.10/24 dev eth1
+ip route del default 2>/dev/null || true
+ip route add default via 192.168.50.1 dev eth1
 
 cat > /etc/nftables.conf << 'NFT'
 flush ruleset
@@ -36,5 +36,3 @@ table inet filter {
 NFT
 
 nft -f /etc/nftables.conf
-
-tail -f /dev/null

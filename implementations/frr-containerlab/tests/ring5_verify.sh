@@ -6,7 +6,8 @@ CLAB_PREFIX="clab-${LAB_NAME}-"
 BASTION="${CLAB_PREFIX}bastion-01"
 STUDENT="${CLAB_PREFIX}server-student-01"
 FTP="${CLAB_PREFIX}ftp-server"
-FTP_IP="192.168.80.10"
+FTP_DATA_IP="192.168.80.11"
+FTP_OOB_IP="172.16.0.61"
 
 PASS=0
 FAIL=0
@@ -31,20 +32,20 @@ done
 echo "=== Ring 5 Verification ==="
 
 echo "[1/2] Negative tests (student -> ftp should be blocked)"
-if docker exec "$STUDENT" sh -lc "ping -c2 -W1 ${FTP_IP} >/dev/null 2>&1"; then
+if docker exec "$STUDENT" sh -lc "ping -c2 -W1 ${FTP_DATA_IP} >/dev/null 2>&1"; then
   fail "student can ping ftp-server"
 else
   ok "student ICMP to ftp-server is blocked"
 fi
 
-if docker exec "$STUDENT" sh -lc "nc -z -w2 ${FTP_IP} 21 >/dev/null 2>&1"; then
+if docker exec "$STUDENT" sh -lc "nc -z -w2 ${FTP_DATA_IP} 21 >/dev/null 2>&1"; then
   fail "student can open TCP/21 to ftp-server"
 else
   ok "student TCP/21 to ftp-server is blocked"
 fi
 
 echo "[2/2] Positive test (bastion -> ftp SSH should remain allowed)"
-if docker exec "$BASTION" sh -lc "ssh -o BatchMode=yes -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=8 root@${FTP_IP} 'echo ring5-ok'" >/tmp/ring5_ssh_ftp.log 2>&1; then
+if docker exec "$BASTION" sh -lc "ssh -o BatchMode=yes -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=8 root@${FTP_OOB_IP} 'echo ring5-ok'" >/tmp/ring5_ssh_ftp.log 2>&1; then
   ok "bastion can SSH to ftp-server"
 else
   fail "bastion cannot SSH to ftp-server"

@@ -1,10 +1,6 @@
 #!/bin/sh
 set -eu
 
-ip addr add 192.168.80.10/24 dev eth1
-ip route del default 2>/dev/null || true
-ip route add default via 192.168.80.254 dev eth1
-
 for i in 1 2 3 4 5 6 7 8 9 10; do
   if apk update >/dev/null 2>&1 && apk add --no-cache openssh-server openssh-client nftables >/dev/null 2>&1; then
     break
@@ -16,6 +12,12 @@ if ! command -v sshd >/dev/null 2>&1; then
   echo "Failed to install OpenSSH on ftp-server" >&2
   exit 1
 fi
+
+ip addr add 192.168.80.11/24 dev eth1
+ip route del default 2>/dev/null || true
+ip route add default via 192.168.80.254 dev eth1
+ip addr add 172.16.0.61/24 dev eth2
+ip link set eth2 up
 
 mkdir -p /run/sshd /root/.ssh
 chmod 700 /root/.ssh
@@ -37,14 +39,20 @@ else
   echo 'PermitRootLogin prohibit-password' >> /etc/ssh/sshd_config
 fi
 
-for i in 1 2 3 4 5 6 7 8 9 10; do
+for i in $(seq 1 60); do
   if [ -s /shared/bastion_ed25519.pub ]; then
-    cat /shared/bastion_ed25519.pub > /root/.ssh/authorized_keys
-    chmod 600 /root/.ssh/authorized_keys
     break
   fi
   sleep 1
 done
+
+if [ ! -s /shared/bastion_ed25519.pub ]; then
+  echo "Bastion public key not found in /shared/bastion_ed25519.pub" >&2
+  exit 1
+fi
+
+cat /shared/bastion_ed25519.pub > /root/.ssh/authorized_keys
+chmod 600 /root/.ssh/authorized_keys
 
 cat > /etc/nftables.conf << 'NFT'
 flush ruleset

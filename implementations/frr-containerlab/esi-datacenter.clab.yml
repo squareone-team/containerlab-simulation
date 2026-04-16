@@ -352,3 +352,4 @@ topology:
     - endpoints: [ "oob-sw:eth11", "leaf-08:eth10" ]
     - endpoints: [ "oob-sw:eth12", "leaf-09:eth10" ]
     - endpoints: [ "oob-sw:eth13", "leaf-10:eth10" ]
+    - endpoints: [ "oob-sw:eth14", "ftp-server:eth2" ]
