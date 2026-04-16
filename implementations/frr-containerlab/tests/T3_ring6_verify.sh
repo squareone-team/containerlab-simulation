@@ -3,12 +3,12 @@ set -euo pipefail
 
 LAB_NAME="${LAB_NAME:-esi-datacenter}"
 CLAB_PREFIX="clab-${LAB_NAME}-"
-LEAF="${CLAB_PREFIX}leaf-01"
+SOURCE_NODE="${SOURCE_NODE:-${CLAB_PREFIX}server-admin-01}"
 SYSLOG="${CLAB_PREFIX}syslog-server"
 TOKEN="RING6_VERIFICATION_TEST"
 
-if ! docker ps --format '{{.Names}}' | grep -qx "$LEAF"; then
-  echo "Container $LEAF is not running" >&2
+if ! docker ps --format '{{.Names}}' | grep -qx "$SOURCE_NODE"; then
+  echo "Container $SOURCE_NODE is not running" >&2
   exit 1
 fi
 
@@ -18,8 +18,8 @@ if ! docker ps --format '{{.Names}}' | grep -qx "$SYSLOG"; then
 fi
 
 echo "=== Ring 6 Verification ==="
-echo "[1/2] Injecting test log from $LEAF"
-docker exec "$LEAF" sh -lc "logger '$TOKEN'"
+echo "[1/2] Injecting test log from $SOURCE_NODE"
+docker exec "$SOURCE_NODE" sh -lc "logger '$TOKEN'"
 
 echo "[2/2] Waiting for $SYSLOG to persist the log"
 for _ in $(seq 1 30); do
