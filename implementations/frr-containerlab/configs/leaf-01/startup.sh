@@ -126,9 +126,9 @@ ip addr add 192.168.10.1/24 dev vlan120
 ip link set vlan120 up
 ip route replace 192.168.10.100/32 dev vlan120 vrf VRF-WIFI-CTRL
 
-if ip link show eth10 >/dev/null 2>&1; then
-  ip link set eth10 master br0
-  bridge vlan add vid 120 dev eth10 pvid untagged
+if ip link show eth14 >/dev/null 2>&1; then
+  ip link set eth14 master br0
+  bridge vlan add vid 120 dev eth14 pvid untagged
 fi
 
 if ip link show eth7 >/dev/null 2>&1; then
