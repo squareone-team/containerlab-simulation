@@ -302,9 +302,25 @@ topology:
     firewall-01:
       kind: linux
       image: alpine:3.20
+      mgmt-ipv4: 172.20.20.101
+      binds:
+        - configs/firewall-common/startup-common.sh:/opt/firewall-common/startup-common.sh
+        - configs/firewall-01/keepalived.conf:/etc/keepalived/keepalived.conf
+        - configs/firewall-01/nftables.conf:/etc/nftables.conf
+        - configs/firewall-01/startup.sh:/startup.sh
+      exec:
+        - sh /startup.sh
     firewall-02:
       kind: linux
       image: alpine:3.20
+      mgmt-ipv4: 172.20.20.102
+      binds:
+        - configs/firewall-common/startup-common.sh:/opt/firewall-common/startup-common.sh
+        - configs/firewall-02/keepalived.conf:/etc/keepalived/keepalived.conf
+        - configs/firewall-02/nftables.conf:/etc/nftables.conf
+        - configs/firewall-02/startup.sh:/startup.sh
+      exec:
+        - sh /startup.sh
     bastion-01:
       kind: linux
       image: alpine:3.20
@@ -456,6 +472,7 @@ topology:
     - endpoints: [ "leaf-01:eth7", "server-dmz-01:eth1" ]
     - endpoints: [ "leaf-03:eth5", "lms-staff:eth1" ]
     - endpoints: [ "leaf-04:eth4", "services-web:eth1" ]
+    - endpoints: [ "leaf-01:eth9", "leaf-02:eth9" ]
     - endpoints: [ "campus-bp:eth3", "leaf-01:eth8" ]
     - endpoints: [ "wifi-controller:eth1", "leaf-01:eth10" ]
     - endpoints: [ "campus-bp:eth4", "student-bp-01:eth1" ]
