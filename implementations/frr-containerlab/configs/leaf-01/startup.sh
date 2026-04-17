@@ -16,7 +16,7 @@ ip link add VRF-ORIENTATION type vrf table 50
 ip link set VRF-ORIENTATION up
 ip link add VRF-WIFI-CTRL type vrf table 60
 ip link set VRF-WIFI-CTRL up
-for IFACE in eth3 eth4 eth5 eth6 eth7 eth8; do
+for IFACE in eth3 eth4 eth5 eth6 eth7 eth8 eth9; do
   ip link set dev $IFACE mtu 9000 || true
 done
 
@@ -29,6 +29,27 @@ fi
 ip link set eth8 master VRF-WIFI-CTRL
 ip addr add 10.200.0.1/30 dev eth8
 ip link set eth8 up
+
+ip link add br-fw-ha type bridge vlan_filtering 1 vlan_default_pvid 1
+ip link set br-fw-ha mtu 9000
+ip link set br-fw-ha up
+ip link set eth5 master br-fw-ha
+ip link set eth9 master br-fw-ha
+ip link set eth5 up
+ip link set eth9 up
+ip addr add 192.168.1.252/24 dev br-fw-ha
+
+# Policy routing for packets returning from the firewall transit segment.
+ip rule add iif br-fw-ha to 192.168.10.0/24 lookup 30 prio 10000 || true
+ip rule add iif br-fw-ha to 192.168.20.0/24 lookup 30 prio 10001 || true
+ip rule add iif br-fw-ha to 192.168.50.0/24 lookup 20 prio 10002 || true
+ip rule add iif br-fw-ha to 192.168.60.0/24 lookup 20 prio 10003 || true
+ip rule add iif br-fw-ha from 192.168.50.0/24 lookup 30 prio 10010 || true
+ip rule add iif br-fw-ha from 192.168.60.0/24 lookup 30 prio 10011 || true
+ip rule add iif br-fw-ha from 192.168.10.0/24 lookup 20 prio 10012 || true
+ip rule add iif br-fw-ha from 192.168.20.0/24 lookup 20 prio 10013 || true
+ip rule add iif br-fw-ha from 192.168.70.0/24 lookup 20 prio 10014 || true
+ip rule add iif br-fw-ha from 192.168.80.0/24 lookup 20 prio 10015 || true
 
 ip link add br0 type bridge vlan_filtering 1 vlan_default_pvid 0
 ip link set br0 mtu 9000
