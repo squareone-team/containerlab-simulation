@@ -1224,8 +1224,8 @@
     {
       "id": "lms-staff",
       "position": {
-        "x": 240,
-        "y": 400
+        "x": 420,
+        "y": 600
       },
       "icon": "server",
       "iconColor": "#000000",
@@ -1244,7 +1244,7 @@
       "id": "server-admin-01",
       "position": {
         "x": 240,
-        "y": 520
+        "y": 600
       },
       "icon": "server",
       "iconColor": "#000000",
@@ -1254,7 +1254,7 @@
       "id": "server-admin-02",
       "position": {
         "x": 340,
-        "y": 520
+        "y": 600
       },
       "icon": "server",
       "iconColor": "#000000",
@@ -1465,8 +1465,8 @@
     {
       "id": "services-web",
       "position": {
-        "x": 460,
-        "y": 520
+        "x": 500,
+        "y": 600
       },
       "icon": "server",
       "iconColor": "#000000",
@@ -1477,7 +1477,7 @@
   "aliasEndpointAnnotations": [],
   "viewerSettings": {
     "style": "default",
-    "linkLabelMode": "hide",
-    "lastNonTelemetryLinkLabelMode": "hide"
+    "linkLabelMode": "show-all",
+    "lastNonTelemetryLinkLabelMode": "show-all"
   }
 }
