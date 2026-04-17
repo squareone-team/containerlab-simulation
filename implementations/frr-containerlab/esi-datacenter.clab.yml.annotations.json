@@ -94,8 +94,8 @@
       "id": "zone-oob-label",
       "text": "OOB + OBSERVABILITY (OUTSIDE EVPN)",
       "position": {
-        "x": 138,
-        "y": 867
+        "x": -280.8385154181557,
+        "y": 271.87824857286347
       },
       "fontSize": 18,
       "fontColor": "#e5e7eb",
@@ -216,8 +216,8 @@
       "id": "pod2-line1",
       "text": "VRFs: VRF-STAFF(50020), VRF-ADMINISTRATION(50010)",
       "position": {
-        "x": 219.33692231424686,
-        "y": 711.8469663570154
+        "x": 216.62920322804473,
+        "y": 709.139247270813
       },
       "fontSize": 12,
       "fontColor": "#ccfbf1",
@@ -231,8 +231,8 @@
       "id": "pod2-line2",
       "text": "VNIs: 10030, 10040, 10050, 10060",
       "position": {
-        "x": 222.58903973630316,
-        "y": 731.3107970753931
+        "x": 228.00447790870749,
+        "y": 736.7262352477975
       },
       "fontSize": 12,
       "fontColor": "#ccfbf1",
@@ -381,8 +381,8 @@
       "id": "campus-edge-1",
       "text": "CAMPUS EDGE (BP)",
       "position": {
-        "x": -66.13100575312217,
-        "y": 69.88953908999564
+        "x": -326.3477026966722,
+        "y": 67.85659614512417
       },
       "fontSize": 13,
       "fontColor": "#e2e8f0",
@@ -396,8 +396,8 @@
       "id": "campus-edge-2",
       "text": "AP traffic remains outside the DC fabric",
       "position": {
-        "x": -62.75400383541478,
-        "y": 108.85297890521872
+        "x": -324.5525491301481,
+        "y": 86.25600739496396
       },
       "fontSize": 12,
       "fontColor": "#e2e8f0",
@@ -634,10 +634,10 @@
     },
     {
       "id": "oob-line1",
-      "text": "MGMT VLAN 110 (172.16.0.0/24) | Bastion, NTP, DNS, DHCP, Syslog, Zabbix, Prometheus, Grafana",
+      "text": "MGMT VLAN 110 (172.16.0.0/24) | Bastion, Syslog, Zabbix, Prometheus, Grafana",
       "position": {
-        "x": 138,
-        "y": 898
+        "x": -286.4877668091502,
+        "y": 305.0461888329262
       },
       "fontSize": 12,
       "fontColor": "#e5e7eb",
@@ -800,14 +800,14 @@
       "id": "shape-oob-zone",
       "shapeType": "rectangle",
       "position": {
-        "x": 120,
-        "y": 860
+        "x": -292.7182808673077,
+        "y": 255.07413289647536
       },
-      "width": 980,
-      "height": 340,
-      "fillColor": "#2b2b2b",
-      "fillOpacity": 0.26,
-      "borderColor": "#9ca3af",
+      "width": 458,
+      "height": 575,
+      "fillColor": "#a20b0b",
+      "fillOpacity": 0.66,
+      "borderColor": "#f50000",
       "borderWidth": 2,
       "borderStyle": "solid",
       "rotation": 0,
@@ -908,8 +908,8 @@
       "id": "shape-campus-edge",
       "shapeType": "rectangle",
       "position": {
-        "x": -72.04797770108242,
-        "y": 103.80808919567036
+        "x": -336.3305605343754,
+        "y": 75.3468879674696
       },
       "width": 340,
       "height": 140,
@@ -1088,8 +1088,8 @@
     {
       "id": "isp-router-03",
       "position": {
-        "x": 120,
-        "y": -20
+        "x": 40,
+        "y": -180
       }
     },
     {
@@ -1243,8 +1243,8 @@
     {
       "id": "server-admin-01",
       "position": {
-        "x": 240,
-        "y": 600
+        "x": 380,
+        "y": 660
       },
       "icon": "server",
       "iconColor": "#000000",
@@ -1253,8 +1253,8 @@
     {
       "id": "server-admin-02",
       "position": {
-        "x": 340,
-        "y": 600
+        "x": 320,
+        "y": 620
       },
       "icon": "server",
       "iconColor": "#000000",
@@ -1313,15 +1313,15 @@
     {
       "id": "oob-sw",
       "position": {
-        "x": 1500,
-        "y": 40
+        "x": -20,
+        "y": 560
       }
     },
     {
       "id": "bastion-01",
       "position": {
-        "x": 1620,
-        "y": 40
+        "x": -100,
+        "y": 560
       }
     },
     {
@@ -1348,29 +1348,32 @@
     {
       "id": "ftp-server",
       "position": {
-        "x": 650,
-        "y": 950
-      }
+        "x": 240,
+        "y": 580
+      },
+      "icon": "server",
+      "iconColor": "#3c4858",
+      "iconCornerRadius": 0
     },
     {
       "id": "zabbix-server",
       "position": {
-        "x": 600,
-        "y": 1060
+        "x": -100,
+        "y": 380
       }
     },
     {
       "id": "prometheus",
       "position": {
-        "x": 900,
-        "y": 950
+        "x": -260,
+        "y": 380
       }
     },
     {
       "id": "syslog-server",
       "position": {
-        "x": 420,
-        "y": 1060
+        "x": -20,
+        "y": 380
       }
     },
     {
@@ -1394,15 +1397,15 @@
     {
       "id": "frr-exporter",
       "position": {
-        "x": 900,
-        "y": 1140
+        "x": -260,
+        "y": 460
       }
     },
     {
       "id": "grafana",
       "position": {
-        "x": 800,
-        "y": 1140
+        "x": -200,
+        "y": 380
       }
     },
     {
@@ -1440,8 +1443,8 @@
     {
       "id": "student-bp-01",
       "position": {
-        "x": -20,
-        "y": 160
+        "x": -280,
+        "y": 140
       },
       "icon": "client",
       "iconCornerRadius": 0
@@ -1458,8 +1461,8 @@
     {
       "id": "campus-bp",
       "position": {
-        "x": 200,
-        "y": 160
+        "x": -60,
+        "y": 120
       }
     },
     {
@@ -1477,7 +1480,7 @@
   "aliasEndpointAnnotations": [],
   "viewerSettings": {
     "style": "default",
-    "linkLabelMode": "show-all",
-    "lastNonTelemetryLinkLabelMode": "show-all"
+    "linkLabelMode": "on-select",
+    "lastNonTelemetryLinkLabelMode": "on-select"
   }
 }
