@@ -10,6 +10,8 @@ sysctl -w net.ipv4.fib_multipath_hash_policy=1
 
 ip link add VRF-PEDAGOGY type vrf table 30
 ip link set VRF-PEDAGOGY up
+ip link add VRF-STAFF type vrf table 20
+ip link set VRF-STAFF up
 ip link add VRF-PUBLIC type vrf table 40
 ip link set VRF-PUBLIC up
 ip link add VRF-ORIENTATION type vrf table 50
@@ -53,13 +55,24 @@ bridge vlan add vid 90 dev vxlan10090 pvid untagged
 bridge vlan add vid 100 dev vxlan10100 pvid untagged
 bridge vlan add vid 90 dev br0 self
 bridge vlan add vid 100 dev br0 self
+bridge vlan add vid 4020 dev br0 self
 bridge vlan add vid 4030 dev br0 self
+
+ip link add vxlan50020 type vxlan id 50020 local $VTEP_IP dstport 4789 nolearning tos inherit
+ip link set vxlan50020 mtu 9000
+ip link set vxlan50020 master br0
+ip link set vxlan50020 up
+bridge vlan add vid 4020 dev vxlan50020 pvid untagged
 
 ip link add vxlan50030 type vxlan id 50030 local $VTEP_IP dstport 4789 nolearning tos inherit
 ip link set vxlan50030 mtu 9000
 ip link set vxlan50030 master br0
 ip link set vxlan50030 up
 bridge vlan add vid 4030 dev vxlan50030 pvid untagged
+
+ip link add vlan4020 link br0 type vlan id 4020
+ip link set vlan4020 master VRF-STAFF
+ip link set vlan4020 up
 
 ip link add vlan4030 link br0 type vlan id 4030
 ip link set vlan4030 master VRF-PEDAGOGY

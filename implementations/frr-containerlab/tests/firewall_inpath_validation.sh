@@ -1,19 +1,25 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-LAB_PREFIX="clab-esi-datacenter"
-FW1="${LAB_PREFIX}-firewall-01"
-FW2="${LAB_PREFIX}-firewall-02"
-LEAF1="${LAB_PREFIX}-leaf-01"
-ADMIN="${LAB_PREFIX}-server-admin-01"
-STUDENT="${LAB_PREFIX}-server-student-01"
+CLAB_PREFIX="clab-esi-datacenter"
+LEAF1="${CLAB_PREFIX}-leaf-01"
+FW1="${CLAB_PREFIX}-firewall-01"
+FW2="${CLAB_PREFIX}-firewall-02"
+ADMIN="${CLAB_PREFIX}-server-admin-01"
+STUDENT="${CLAB_PREFIX}-server-student-01"
 VIP="192.168.1.254"
 
 pass=0
 fail=0
 
-ok() { echo "[PASS] $1"; pass=$((pass+1)); }
-ko() { echo "[FAIL] $1"; fail=$((fail+1)); }
+ok() { echo "[PASS] $1"; pass=$((pass + 1)); }
+ko() { echo "[FAIL] $1"; fail=$((fail + 1)); }
+
+run_in_container() {
+  local node="$1"
+  shift
+  docker exec "${CLAB_PREFIX}-${node}" sh -lc "$*"
+}
 
 get_master_fw() {
   if docker exec "$FW1" sh -lc "ip -4 addr show eth1 | grep -q '192.168.1.254/24'"; then
@@ -25,13 +31,18 @@ get_master_fw() {
   fi
 }
 
-get_eth1_counter_sum() {
+get_rule_packets() {
   local fw="$1"
-  local rx tx
-  rx=$(docker exec "$fw" sh -lc "cat /sys/class/net/eth1/statistics/rx_packets")
-  tx=$(docker exec "$fw" sh -lc "cat /sys/class/net/eth1/statistics/tx_packets")
-  echo $((rx + tx))
+  local fragment="$2"
+  docker exec "$fw" sh -lc "nft list chain inet filter forward | grep -F \"$fragment\" | sed -n 's/.*counter packets \\([0-9][0-9]*\\) bytes.*/\\1/p' | head -n1"
 }
+
+cleanup() {
+  run_in_container "server-admin-01" "pkill nc >/dev/null 2>&1 || true; rm -f /tmp/ring1-admin-9101.log" >/dev/null 2>&1 || true
+  run_in_container "server-student-01" "pkill nc >/dev/null 2>&1 || true; rm -f /tmp/ring1-student-9100.log" >/dev/null 2>&1 || true
+}
+
+trap cleanup EXIT
 
 echo "=== Firewall In-Path Validation (Ring 1) ==="
 
@@ -50,26 +61,49 @@ if [[ -z "$MASTER_FW" ]]; then
 fi
 ok "Master firewall detected: $MASTER_FW"
 
-before=$(get_eth1_counter_sum "$MASTER_FW")
+ALLOW_RULE="ip saddr @cluster_2_admin ip daddr @cluster_1_pedagogy tcp dport { 53, 9100 } ct state new"
+ALLOW_TOKEN="RING1_ALLOW_$(date +%s)"
 
-docker exec "$ADMIN" sh -lc "ping -c 5 -W 1 192.168.10.10 >/dev/null || true"
-docker exec "$STUDENT" sh -lc "ping -c 5 -W 1 192.168.50.10 >/dev/null || true"
+run_in_container "server-student-01" "pkill nc >/dev/null 2>&1 || true; rm -f /tmp/ring1-student-9100.log; (nc -l -p 9100 >/tmp/ring1-student-9100.log 2>&1 &)"
+sleep 1
+before_allow="$(get_rule_packets "$MASTER_FW" "$ALLOW_RULE")"
+run_in_container "server-admin-01" "printf '%s\n' '$ALLOW_TOKEN' | nc -w 3 192.168.10.10 9100 >/dev/null 2>&1 || true"
+sleep 2
+after_allow="$(get_rule_packets "$MASTER_FW" "$ALLOW_RULE")"
 
-after=$(get_eth1_counter_sum "$MASTER_FW")
-
-delta=$((after - before))
-if (( delta > 0 )); then
-  ok "Firewall eth1 packet counters increased after Admin<->General ICMP attempts (delta=$delta)"
+if run_in_container "server-student-01" "grep -Fqx '$ALLOW_TOKEN' /tmp/ring1-student-9100.log"; then
+  ok "Admin -> Pedagogy 9100 delivered a real payload"
 else
-  ko "Firewall eth1 packet counters did NOT increase after Admin<->General ICMP attempts"
+  ko "Admin -> Pedagogy 9100 did not deliver the expected payload"
 fi
 
-echo "---"
-echo "Master: $MASTER_FW"
-echo "eth1 packet counter before: $before"
-echo "eth1 packet counter after : $after"
-echo "delta                    : $delta"
-echo "---"
+if [[ -n "$before_allow" && -n "$after_allow" && "$after_allow" -gt "$before_allow" ]]; then
+  ok "Admin -> Pedagogy allow rule counter increased ($before_allow -> $after_allow)"
+else
+  ko "Admin -> Pedagogy allow rule counter did not increase"
+fi
+
+DROP_RULE="ip saddr @cluster_1_pedagogy ip daddr @cluster_2_admin"
+DROP_TOKEN="RING1_DROP_$(date +%s)"
+
+run_in_container "server-admin-01" "pkill nc >/dev/null 2>&1 || true; rm -f /tmp/ring1-admin-9101.log; (nc -l -p 9101 >/tmp/ring1-admin-9101.log 2>&1 &)"
+sleep 1
+before_drop="$(get_rule_packets "$MASTER_FW" "$DROP_RULE")"
+run_in_container "server-student-01" "printf '%s\n' '$DROP_TOKEN' | nc -w 3 192.168.50.10 9101 >/dev/null 2>&1 || true"
+sleep 2
+after_drop="$(get_rule_packets "$MASTER_FW" "$DROP_RULE")"
+
+if run_in_container "server-admin-01" "grep -Fqx '$DROP_TOKEN' /tmp/ring1-admin-9101.log"; then
+  ko "Pedagogy -> Admin 9101 unexpectedly delivered a payload"
+else
+  ok "Pedagogy -> Admin 9101 payload was blocked"
+fi
+
+if [[ -n "$before_drop" && -n "$after_drop" && "$after_drop" -gt "$before_drop" ]]; then
+  ok "Pedagogy -> Admin drop rule counter increased ($before_drop -> $after_drop)"
+else
+  ko "Pedagogy -> Admin drop rule counter did not increase"
+fi
 
 echo "Passed: $pass"
 echo "Failed: $fail"
