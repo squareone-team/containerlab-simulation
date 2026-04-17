@@ -43,5 +43,3 @@ bridge vlan add vid 4030 dev vxlan50030 pvid untagged
 ip link add vlan4030 link br0 type vlan id 4030
 ip link set vlan4030 master VRF-PEDAGOGY
 ip link set vlan4030 up
-
-# === END PHASE 1 — Phase 2 appends below ===

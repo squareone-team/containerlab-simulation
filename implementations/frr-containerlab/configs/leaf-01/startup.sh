@@ -16,14 +16,19 @@ ip link add VRF-ORIENTATION type vrf table 50
 ip link set VRF-ORIENTATION up
 ip link add VRF-WIFI-CTRL type vrf table 60
 ip link set VRF-WIFI-CTRL up
-for IFACE in eth3 eth4 eth5 eth6 eth8; do
+for IFACE in eth3 eth4 eth5 eth6 eth7 eth8; do
   ip link set dev $IFACE mtu 9000 || true
 done
+
+if ip link show eth3 >/dev/null 2>&1; then
+  ip link set eth3 master VRF-PUBLIC
+  ip addr add 203.0.113.1/30 dev eth3 2>/dev/null || true
+  ip link set eth3 up
+fi
 
 ip link set eth8 master VRF-WIFI-CTRL
 ip addr add 10.200.0.1/30 dev eth8
 ip link set eth8 up
-ip route add 192.168.10.100/32 via 10.200.0.2 vrf VRF-WIFI-CTRL
 
 ip link add br0 type bridge vlan_filtering 1 vlan_default_pvid 0
 ip link set br0 mtu 9000
@@ -63,10 +68,46 @@ ip link set vlan4030 up
 ip link add vlan120 link br0 type vlan id 120
 ip link set vlan120 master VRF-WIFI-CTRL
 ip link set vlan120 address $ANYCAST_MAC || true
+ip addr add 192.168.10.1/24 dev vlan120
 ip link set vlan120 up
+ip route replace 192.168.10.100/32 dev vlan120 vrf VRF-WIFI-CTRL
+
+if ip link show eth10 >/dev/null 2>&1; then
+  ip link set eth10 master br0
+  bridge vlan add vid 120 dev eth10 pvid untagged
+fi
+
+if ip link show eth7 >/dev/null 2>&1; then
+  ip link set eth7 master br0
+  bridge vlan add vid 100 dev eth7 pvid untagged
+fi
+
+ip link add vlan100 link br0 type vlan id 100
+ip link set vlan100 master VRF-PUBLIC
+ip link set vlan100 address $ANYCAST_MAC || true
+ip addr add 198.51.100.1/24 dev vlan100
+ip link set vlan100 up
 
 ip link add vlan4060 link br0 type vlan id 4060
 ip link set vlan4060 master VRF-WIFI-CTRL
 ip link set vlan4060 up
 
+# Inbound internet traffic to DMZ must use VRF-PUBLIC table.
+ip rule add pref 90 iif eth3 to 198.51.100.0/24 lookup 40 2>/dev/null || true
+
+# Inbound internet return traffic to student subnets must use VRF-PEDAGOGY.
+ip rule add pref 100 iif eth3 to 192.168.10.0/24 lookup 30 2>/dev/null || true
+ip rule add pref 101 iif eth3 to 192.168.20.0/24 lookup 30 2>/dev/null || true
+
 # === END PHASE 1 — Phase 2 appends below ===
+
+# =====================================================
+# THEME T1 — BORDER ROUTING — Youcef
+# Stateful guard: allow return traffic, block unsolicited internet->student.
+# =====================================================
+iptables -C FORWARD -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT 2>/dev/null \
+  || iptables -I FORWARD 1 -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT
+iptables -C FORWARD -i eth3 -d 192.168.10.0/24 -m conntrack --ctstate NEW -j DROP 2>/dev/null \
+  || iptables -I FORWARD 2 -i eth3 -d 192.168.10.0/24 -m conntrack --ctstate NEW -j DROP
+iptables -C FORWARD -i eth3 -d 192.168.20.0/24 -m conntrack --ctstate NEW -j DROP 2>/dev/null \
+  || iptables -I FORWARD 3 -i eth3 -d 192.168.20.0/24 -m conntrack --ctstate NEW -j DROP
