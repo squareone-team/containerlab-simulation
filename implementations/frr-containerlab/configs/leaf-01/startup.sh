@@ -10,6 +10,8 @@ sysctl -w net.ipv4.fib_multipath_hash_policy=1
 
 ip link add VRF-PEDAGOGY type vrf table 30
 ip link set VRF-PEDAGOGY up
+ip link add VRF-STAFF type vrf table 20
+ip link set VRF-STAFF up
 ip link add VRF-PUBLIC type vrf table 40
 ip link set VRF-PUBLIC up
 ip link add VRF-ORIENTATION type vrf table 50
@@ -67,8 +69,15 @@ bridge vlan add vid 120 dev vxlan10120 pvid untagged
 bridge vlan add vid 90 dev br0 self
 bridge vlan add vid 100 dev br0 self
 bridge vlan add vid 120 dev br0 self
+bridge vlan add vid 4020 dev br0 self
 bridge vlan add vid 4030 dev br0 self
 bridge vlan add vid 4060 dev br0 self
+
+ip link add vxlan50020 type vxlan id 50020 local $VTEP_IP dstport 4789 nolearning tos inherit
+ip link set vxlan50020 mtu 9000
+ip link set vxlan50020 master br0
+ip link set vxlan50020 up
+bridge vlan add vid 4020 dev vxlan50020 pvid untagged
 
 ip link add vxlan50030 type vxlan id 50030 local $VTEP_IP dstport 4789 nolearning tos inherit
 ip link set vxlan50030 mtu 9000
@@ -81,6 +90,10 @@ ip link set vxlan50060 mtu 9000
 ip link set vxlan50060 master br0
 ip link set vxlan50060 up
 bridge vlan add vid 4060 dev vxlan50060 pvid untagged
+
+ip link add vlan4020 link br0 type vlan id 4020
+ip link set vlan4020 master VRF-STAFF
+ip link set vlan4020 up
 
 ip link add vlan4030 link br0 type vlan id 4030
 ip link set vlan4030 master VRF-PEDAGOGY
@@ -108,6 +121,29 @@ ip link set vlan100 master VRF-PUBLIC
 ip link set vlan100 address $ANYCAST_MAC || true
 ip addr add 198.51.100.1/24 dev vlan100
 ip link set vlan100 up
+
+# Keep public VRF clean: steer only DMZ-originated internal traffic into Ring 1
+# via a dedicated policy-routing table instead of importing internal routes into
+# VRF-PUBLIC itself.
+FW_DMZ_TABLE=140
+FW_INTERNAL_SUBNETS=(
+  192.168.10.0/24
+  192.168.20.0/24
+  192.168.30.0/24
+  192.168.40.0/24
+  192.168.50.0/24
+  192.168.60.0/24
+  192.168.70.0/24
+  192.168.80.0/24
+)
+for SUBNET in "${FW_INTERNAL_SUBNETS[@]}"; do
+  ip route replace table $FW_DMZ_TABLE $SUBNET via 192.168.1.254 dev br-fw-ha
+done
+PREF=91
+for SUBNET in "${FW_INTERNAL_SUBNETS[@]}"; do
+  ip rule add pref $PREF iif vlan100 to $SUBNET lookup $FW_DMZ_TABLE 2>/dev/null || true
+  PREF=$((PREF + 1))
+done
 
 ip link add vlan4060 link br0 type vlan id 4060
 ip link set vlan4060 master VRF-WIFI-CTRL
