@@ -16,13 +16,18 @@ ip route del default 2>/dev/null || true
 ip route add default via 192.168.50.1 dev bond0
 
 for i in 1 2 3 4 5; do
-	if apk update >/dev/null 2>&1 && apk add --no-cache nftables >/dev/null 2>&1; then
+	if apk update >/dev/null 2>&1 && apk add --no-cache nftables rsyslog >/dev/null 2>&1; then
 		break
 	fi
 	sleep 2
 done
 
-cat > /etc/nftables.conf << 'NFT'
+if ! command -v nft >/dev/null 2>&1; then
+	apk add --no-cache nftables >/dev/null 2>&1 || true
+fi
+
+if command -v nft >/dev/null 2>&1; then
+	cat > /etc/nftables.conf << 'NFT'
 flush ruleset
 table inet filter {
 	chain input {
@@ -45,4 +50,27 @@ table inet filter {
 }
 NFT
 
-nft -f /etc/nftables.conf
+	nft -f /etc/nftables.conf
+else
+	echo "WARN: nft not found, skipping nftables policy setup" >&2
+fi
+
+if ! command -v rsyslogd >/dev/null 2>&1; then
+	apk add --no-cache rsyslog >/dev/null 2>&1 || true
+fi
+
+if command -v rsyslogd >/dev/null 2>&1; then
+	cat > /etc/rsyslog.conf << 'RSYSLOG'
+module(load="imuxsock")
+*.* @@192.168.50.70:514
+RSYSLOG
+
+	/usr/sbin/rsyslogd
+elif command -v syslogd >/dev/null 2>&1; then
+	mkdir -p /var/log
+	touch /var/log/messages
+	# Fallback when rsyslog package install fails: use BusyBox syslogd remote forwarding.
+	syslogd -L -O /var/log/messages -R 192.168.50.70:514
+else
+	echo "WARN: no syslog daemon found, skipping remote syslog forwarding" >&2
+fi

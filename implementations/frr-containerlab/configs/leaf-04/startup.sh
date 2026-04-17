@@ -34,6 +34,7 @@ ip link set br0 up
 
 if ip link show eth3 >/dev/null 2>&1; then ip link set eth3 master br0; bridge vlan add vid 50 dev eth3 pvid untagged; fi
 if ip link show eth4 >/dev/null 2>&1; then ip link set eth4 master br0; bridge vlan add vid 40 dev eth4 pvid untagged; fi
+if ip link show eth6 >/dev/null 2>&1; then ip link set eth6 master br0; bridge vlan add vid 50 dev eth6 pvid untagged; fi
 
 for V in 10030 10040 10050; do
   ip link add vxlan$V type vxlan id $V local $VTEP_IP dstport 4789 nolearning tos inherit
@@ -80,6 +81,7 @@ ip link set vlan4020 up
 # === END PHASE 1 — Phase 2 appends below ===
 ip link set eth3 up
 ip link set eth5 up
+ip link set eth6 up
 
 # Ring 4: OOB management for bastion-only SSH
 OOB_IF="eth10"
@@ -88,7 +90,7 @@ ip link set "$OOB_IF" up
 
 # Ring 4: enable SSH daemon for bastion management
 for i in 1 2 3 4 5 6 7 8 9 10; do
-  if apk update >/dev/null 2>&1 && apk add --no-cache openssh-server openssh-client >/dev/null 2>&1; then
+  if apk update >/dev/null 2>&1 && apk add --no-cache openssh-server openssh-client rsyslog >/dev/null 2>&1; then
     break
   fi
   sleep 2
@@ -123,3 +125,10 @@ fi
 
 iptables -C INPUT -i "$OOB_IF" -p tcp --dport 22 -s 172.16.0.50 -j ACCEPT 2>/dev/null || iptables -I INPUT -i "$OOB_IF" -p tcp --dport 22 -s 172.16.0.50 -j ACCEPT
 iptables -C INPUT -i "$OOB_IF" -p tcp --dport 22 -j DROP 2>/dev/null || iptables -A INPUT -i "$OOB_IF" -p tcp --dport 22 -j DROP
+
+cat > /etc/rsyslog.conf << 'RSYSLOG'
+module(load="imuxsock")
+*.* @@192.168.50.70:514
+RSYSLOG
+
+/usr/sbin/rsyslogd
