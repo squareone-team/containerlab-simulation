@@ -1,5 +1,5 @@
 #!/bin/bash
-set -e
+# set -e
 VTEP_IP="10.1.0.14"
 ANYCAST_MAC="00:00:00:11:11:11"
 
@@ -108,4 +108,87 @@ dhcrelay -4 \
   -id vlan50 \
   -id vlan60 \
   -iu vlan50 \
-  192.168.50.40 &
+  192.168.50.40 2>/dev/null & true
+
+
+# SNMP 
+# ── rp_filter: loose mode (not disabled) ────────────────────────────────────
+sysctl -w net.ipv4.conf.all.rp_filter=2      2>/dev/null || true
+sysctl -w net.ipv4.conf.eth1.rp_filter=2     2>/dev/null || true
+sysctl -w net.ipv4.conf.eth2.rp_filter=2     2>/dev/null || true
+sysctl -w net.ipv4.conf.lo.rp_filter=0 
+# Do NOT set accept_local=1 — that was papering over the wrong binding
+ 
+# ── Wait for FRR to assign the loopback IP (health check only) ───────────────
+echo "[snmp] waiting for FRR loopback IP..."
+RETRIES=30
+MY_IP=""
+while [ $RETRIES -gt 0 ]; do
+    MY_IP=$(ip addr show lo 2>/dev/null \
+        | grep 'inet ' \
+        | awk '{print $2}' \
+        | cut -d/ -f1 \
+        | grep -v '^127\.')
+    [ -n "$MY_IP" ] && break
+    sleep 2
+    RETRIES=$((RETRIES - 1))
+done
+ 
+if [ -z "$MY_IP" ]; then
+    echo "[snmp] WARNING: FRR loopback IP never appeared on lo — FRR may have failed"
+    MY_IP="<unknown>"
+fi
+echo "[snmp] FRR loopback IP: $MY_IP"
+ 
+# ── Install net-snmp ─────────────────────────────────────────────────────────
+echo "[snmp] installing net-snmp..."
+echo "https://dl-cdn.alpinelinux.org/alpine/v3.20/community" >> /etc/apk/repositories
+apk update
+apk add --no-cache \
+    --repository https://dl-cdn.alpinelinux.org/alpine/v3.20/community \
+    net-snmp net-snmp-tools
+ 
+mkdir -p /etc/snmp /var/run/net-snmp /var/agentx
+chmod 770 /var/agentx           # NOT 777 — agentx refuses world-writable sockets
+ 
+# ── snmpd.conf ───────────────────────────────────────────────────────────────
+# agentAddress udp:161  — listen on ALL interfaces (0.0.0.0:161)
+# This is the critical fix. The SNMP request arrives on eth1/eth2 from
+# zabbix-server. snmpd must be listening on those interfaces, not just lo.
+# The rocommunity ACL still restricts who can actually poll.
+cat > /etc/snmp/snmpd.conf << 'EOF'
+# Listen on all interfaces — packets arrive on eth1/eth2, not on lo
+agentAddress udp:161
+ 
+# Community — restrict by source subnet
+rocommunity esi-read 10.0.0.0/8
+rocommunity esi-read 192.168.0.0/16
+rocommunity esi-read 172.16.0.0/12
+ 
+# System info
+sysLocation ESI-Datacenter-Lab
+sysContact  noc@esi.internal
+sysServices 72
+ 
+# AgentX — FRR subagent connects here to expose BGP/routing MIBs
+master agentx
+agentXSocket /var/agentx/master
+ 
+# MIB views — expose standard MIBs that Zabbix polls
+view systemview included .1.3.6.1.2.1.1
+view systemview included .1.3.6.1.2.1.2
+view systemview included .1.3.6.1.2.1.4
+view systemview included .1.3.6.1.4.1.2021
+EOF
+ 
+# ── Start snmpd ──────────────────────────────────────────────────────────────
+snmpd -C -c /etc/snmp/snmpd.conf -Lf /var/log/snmpd.log &
+sleep 2
+ 
+if pgrep snmpd > /dev/null; then
+    echo "[snmp] snmpd started — listening on 0.0.0.0:161"
+else
+    echo "[snmp] ERROR: snmpd failed to start — check /var/log/snmpd.log"
+    cat /var/log/snmpd.log 2>/dev/null || true
+fi
+ 
