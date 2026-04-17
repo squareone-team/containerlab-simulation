@@ -128,6 +128,9 @@ topology:
       binds:
         - configs/isp-router-01/daemons:/etc/frr/daemons
         - configs/isp-router-01/frr.conf:/etc/frr/frr.conf
+        - configs/isp-router-01/startup.sh:/startup.sh
+      exec:
+        - sh /startup.sh
 
     isp-router-02:
       kind: linux
@@ -135,6 +138,9 @@ topology:
       binds:
         - configs/isp-router-02/daemons:/etc/frr/daemons
         - configs/isp-router-02/frr.conf:/etc/frr/frr.conf
+        - configs/isp-router-02/startup.sh:/startup.sh
+      exec:
+        - sh /startup.sh
 
     isp-router-03:
       kind: linux
@@ -142,6 +148,9 @@ topology:
       binds:
         - configs/isp-router-03/daemons:/etc/frr/daemons
         - configs/isp-router-03/frr.conf:/etc/frr/frr.conf
+        - configs/isp-router-03/startup.sh:/startup.sh
+      exec:
+        - sh /startup.sh
 
     isp-router-04:
       kind: linux
@@ -323,7 +332,11 @@ topology:
         - sh /startup.sh
     bastion-01:
       kind: linux
-      image: alpine:3.20
+      image: alpine:3.16
+      binds:
+        - configs/bastion-01/startup.sh:/startup.sh
+      exec:
+        - sh /startup.sh
     ids-01:
       kind: linux
       image: alpine:3.20
@@ -415,6 +428,10 @@ topology:
     oob-sw:
       kind: linux
       image: alpine:3.20
+      binds:
+        - configs/oob-sw/startup.sh:/startup.sh
+      exec:
+        - sh /startup.sh
 
   links:
     - endpoints: [ "spine-01:eth1", "leaf-01:eth1" ]
@@ -479,3 +496,15 @@ topology:
     - endpoints: [ "firewall-01:eth3", "firewall-02:eth3" ]
     - endpoints: [ "bastion-01:eth1", "oob-sw:eth1" ]
     - endpoints: [ "prometheus:eth1", "frr-exporter:eth1" ]
+    - endpoints: [ "oob-sw:eth2", "spine-01:eth11" ]
+    - endpoints: [ "oob-sw:eth3", "spine-02:eth11" ]
+    - endpoints: [ "oob-sw:eth4", "leaf-01:eth10" ]
+    - endpoints: [ "oob-sw:eth5", "leaf-02:eth10" ]
+    - endpoints: [ "oob-sw:eth6", "leaf-03:eth10" ]
+    - endpoints: [ "oob-sw:eth7", "leaf-04:eth10" ]
+    - endpoints: [ "oob-sw:eth8", "leaf-05:eth10" ]
+    - endpoints: [ "oob-sw:eth9", "leaf-06:eth10" ]
+    - endpoints: [ "oob-sw:eth10", "leaf-07:eth10" ]
+    - endpoints: [ "oob-sw:eth11", "leaf-08:eth10" ]
+    - endpoints: [ "oob-sw:eth12", "leaf-09:eth10" ]
+    - endpoints: [ "oob-sw:eth13", "leaf-10:eth10" ]

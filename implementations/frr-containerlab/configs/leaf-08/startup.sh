@@ -61,3 +61,46 @@ ip link set vlan4020 up
 
 # === END PHASE 1 — Phase 2 appends below ===
 ip link set eth3 up
+
+# Ring 4: OOB management for bastion-only SSH
+OOB_IF="eth10"
+ip addr replace 172.16.0.28/24 dev "$OOB_IF"
+ip link set "$OOB_IF" up
+
+# Ring 4: enable SSH daemon for bastion management
+for i in 1 2 3 4 5 6 7 8 9 10; do
+  if apk update >/dev/null 2>&1 && apk add --no-cache openssh-server openssh-client >/dev/null 2>&1; then
+    break
+  fi
+  sleep 2
+done
+
+if ! command -v sshd >/dev/null 2>&1; then
+  echo "Failed to install OpenSSH server on $(hostname)" >&2
+  exit 1
+fi
+
+mkdir -p /run/sshd /root/.ssh
+chmod 700 /root/.ssh
+ssh-keygen -A
+
+if grep -q '^PasswordAuthentication' /etc/ssh/sshd_config; then
+  sed -i 's/^PasswordAuthentication.*/PasswordAuthentication no/' /etc/ssh/sshd_config
+else
+  echo 'PasswordAuthentication no' >> /etc/ssh/sshd_config
+fi
+if grep -q '^PubkeyAuthentication' /etc/ssh/sshd_config; then
+  sed -i 's/^PubkeyAuthentication.*/PubkeyAuthentication yes/' /etc/ssh/sshd_config
+else
+  echo 'PubkeyAuthentication yes' >> /etc/ssh/sshd_config
+fi
+if grep -q '^PermitRootLogin' /etc/ssh/sshd_config; then
+  sed -i 's/^PermitRootLogin.*/PermitRootLogin prohibit-password/' /etc/ssh/sshd_config
+else
+  echo 'PermitRootLogin prohibit-password' >> /etc/ssh/sshd_config
+fi
+
+/usr/sbin/sshd
+
+iptables -C INPUT -i "$OOB_IF" -p tcp --dport 22 -s 172.16.0.50 -j ACCEPT 2>/dev/null || iptables -I INPUT -i "$OOB_IF" -p tcp --dport 22 -s 172.16.0.50 -j ACCEPT
+iptables -C INPUT -i "$OOB_IF" -p tcp --dport 22 -j DROP 2>/dev/null || iptables -A INPUT -i "$OOB_IF" -p tcp --dport 22 -j DROP
