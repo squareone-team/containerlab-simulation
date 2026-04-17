@@ -9,7 +9,7 @@ ip link set "$OOB_IF" up
 
 # Install OpenSSH with retries (network can be briefly unavailable at boot).
 for i in 1 2 3 4 5 6 7 8 9 10; do
-  if apk update >/dev/null 2>&1 && apk add --no-cache openssh >/dev/null 2>&1; then
+  if apk update >/dev/null 2>&1 && apk add --no-cache openssh-server openssh-client rsyslog >/dev/null 2>&1; then
     break
   fi
   sleep 2
@@ -58,3 +58,10 @@ chmod 600 /root/.ssh/id_ed25519 /shared/bastion_ed25519
 chmod 644 /root/.ssh/id_ed25519.pub /shared/bastion_ed25519.pub
 
 /usr/sbin/sshd
+
+cat > /etc/rsyslog.conf << 'RSYSLOG'
+module(load="imuxsock")
+*.* @@192.168.50.70:514
+RSYSLOG
+
+/usr/sbin/rsyslogd

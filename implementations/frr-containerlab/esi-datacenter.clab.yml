@@ -403,6 +403,11 @@ topology:
     syslog-server:
       kind: linux
       image: alpine:3.20
+      binds:
+        - configs/syslog-server/startup.sh:/startup.sh
+        - configs/shared:/shared:ro
+      exec:
+        - sh /startup.sh
     wifi-controller:
       kind: linux
       image: alpine:3.20
@@ -507,6 +512,7 @@ topology:
     - endpoints: [ "leaf-01:eth7", "server-dmz-01:eth1" ]
     - endpoints: [ "leaf-03:eth5", "lms-staff:eth1" ]
     - endpoints: [ "leaf-04:eth4", "services-web:eth1" ]
+    - endpoints: [ "leaf-04:eth6", "syslog-server:eth1" ]
     - endpoints: [ "leaf-03:eth3", "ftp-server:eth1" ]
     - endpoints: [ "leaf-01:eth9", "leaf-02:eth9" ]
     - endpoints: [ "campus-bp:eth3", "leaf-01:eth8" ]
