@@ -49,13 +49,19 @@ https://dl-cdn.alpinelinux.org/alpine/edge/community
 EOF
 apk update
 
-apk add --no-cache \
-    mariadb \
-    mariadb-client \
-    zabbix-server-mysql \
-    zabbix-utils \
-    net-snmp \
-    net-snmp-tools
+# apk add --no-cache \
+#     mariadb \
+#     mariadb-client \
+#     zabbix-server-mysql \
+#     zabbix-utils \
+#     net-snmp \
+#     net-snmp-tools
+
+apk add --no-cache net-snmp net-snmp-tools   # snmpget available immediately
+apk add --no-cache mariadb mariadb-client || true
+apk add --no-cache zabbix-server-mysql zabbix-utils 2>/dev/null || \
+apk add --no-cache zabbix-server zabbix-utils 2>/dev/null || \
+    echo "[zabbix] WARNING: zabbix package not found — check apk search zabbix"
 
 log "packages installed"
 
@@ -72,11 +78,17 @@ chown -R mysql:mysql /var/lib/mysql /run/mysqld /var/log/mysql 2>/dev/null || tr
 
 if [ ! -d /var/lib/mysql/zabbix ]; then
     log "initializing MariaDB data directory..."
+    if [ -d /var/lib/mysql/mysql ] && [ ! -d /var/lib/mysql/zabbix ]; then
+        echo "[zabbix] stale MariaDB data detected — cleaning up"
+        rm -rf /var/lib/mysql/*
+    fi
     mysql_install_db \
-        --user=mysql \
-        --datadir=/var/lib/mysql \
-        --skip-test-db \
-        > /var/log/mysql/install.log 2>&1
+    --user=mysql \
+    --datadir=/var/lib/mysql \
+    --skip-test-db \
+    > /var/log/mysql/install.log 2>&1
+    # Show last 5 lines so errors are visible in clab logs
+    tail -5 /var/log/mysql/install.log
 
     log "starting MariaDB (bootstrap)..."
     mysqld_safe \

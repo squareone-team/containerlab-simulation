@@ -143,6 +143,54 @@ topology:
         - configs/isp-router-03/daemons:/etc/frr/daemons
         - configs/isp-router-03/frr.conf:/etc/frr/frr.conf
 
+    isp-router-04:
+      kind: linux
+      image: frrouting/frr:latest
+      binds:
+        - configs/isp-router-04/daemons:/etc/frr/daemons
+        - configs/isp-router-04/frr.conf:/etc/frr/frr.conf
+
+    internet-router-01:
+      kind: linux
+      image: frrouting/frr:latest
+      binds:
+        - configs/internet-router-01/daemons:/etc/frr/daemons
+        - configs/internet-router-01/frr.conf:/etc/frr/frr.conf
+
+    internet-router-02:
+      kind: linux
+      image: frrouting/frr:latest
+      binds:
+        - configs/internet-router-02/daemons:/etc/frr/daemons
+        - configs/internet-router-02/frr.conf:/etc/frr/frr.conf
+
+    internet-client-01:
+      kind: linux
+      image: alpine:3.20
+      exec:
+        - ip addr add 198.18.1.10/24 dev eth1
+        - ip route del default
+        - ip route add default via 198.18.1.1 dev eth1
+
+    internet-client-02:
+      kind: linux
+      image: alpine:3.20
+      exec:
+        - ip addr add 198.18.2.10/24 dev eth1
+        - ip route del default
+        - ip route add default via 198.18.2.1 dev eth1
+
+    internet-web-01:
+      kind: linux
+      image: python:3.11-alpine
+      cmd: sleep infinity
+      binds:
+        - ./configs/internet-web-01/www:/www:ro
+      exec:
+        - sh -c "ip addr add 198.18.3.10/24 dev eth1 && ip link set eth1 up && nohup python3 -m http.server 80 --bind 198.18.3.10 --directory /www >/tmp/http-server.log 2>&1 &"
+        - ip route del default
+        - ip route add default via 198.18.3.1 dev eth1
+
     server-student-01:
       kind: linux
       image: alpine:3.20
@@ -241,9 +289,9 @@ topology:
         - configs/ntp-server/server-client-ntp.sh:/ntp-client.sh
       exec:
         - apk add --no-cache chrony
-        - ip addr add 192.168.100.10/24 dev eth1
+        - ip addr add 198.51.100.10/24 dev eth1
         - ip route del default
-        - ip route add default via 192.168.100.1 dev eth1
+        - ip route add default via 198.51.100.1 dev eth1
         # NTP client
         - sh /ntp-client.sh
 
@@ -326,19 +374,79 @@ topology:
 
     prometheus:
       kind: linux
+      image: prom/prometheus:latest
+      ports:
+        - 9090:9090
+      binds:
+        - configs/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+        - configs/prometheus/alerts.yml:/etc/prometheus/alerts.yml
+    grafana:
+      kind: linux
+      image: grafana/grafana:latest
+      ports:
+        - 3000:3000
+      env:
+        GF_SECURITY_ADMIN_USER: admin
+        GF_SECURITY_ADMIN_PASSWORD: admin
+        GF_USERS_ALLOW_SIGN_UP: "false"
+        GF_METRICS_ENABLED: "true"
+        GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /etc/grafana/provisioning/dashboards/json/esi-fabric-observability.json
+      binds:
+        - configs/grafana/provisioning:/etc/grafana/provisioning
+    frr-exporter:
+      kind: linux
       image: alpine:3.20
+      env:
+        LAB_NAME: esi-datacenter
+      binds:
+        - configs/frr-exporter/metrics:/srv/www/metrics
+        - configs/frr-exporter/generate-metrics.sh:/opt/frr-exporter/generate-metrics.sh
+        - /var/run/docker.sock:/var/run/docker.sock
+      exec:
+        - sh -lc "apk add --no-cache busybox-extras docker-cli jq iproute2 >/dev/null 2>&1 || true;
+          chmod +x /opt/frr-exporter/generate-metrics.sh;
+          nohup /opt/frr-exporter/generate-metrics.sh >/tmp/frr-exporter-loop.log 2>&1
+          &
+          nohup httpd -f -p 9342 -h /srv/www >/tmp/frr-exporter-httpd.log 2>&1
+          &"
     syslog-server:
       kind: linux
       image: alpine:3.20
     wifi-controller:
       kind: linux
       image: alpine:3.20
+      exec:
+        - ip addr add 192.168.10.100/24 dev eth1
+        - ip route del default
+        - ip route add default via 192.168.10.1 dev eth1
     campus-bp:
       kind: linux
       image: alpine:3.20
+      exec:
+        - sh -lc 'ip link add br-student type bridge 2>/dev/null || true; ip link set br-student up || true; ip addr add 192.168.10.1/24 dev br-student 2>/dev/null || true'
+        - sh -lc 'apk add --no-cache iptables >/dev/null 2>&1 || true; for i in $(seq 1 20); do ip link show eth1 >/dev/null 2>&1 && break; sleep 1; done; ip link set eth1 up 2>/dev/null || true; ip addr add 100.10.0.2/30 dev eth1 2>/dev/null || true; ip route del default 2>/dev/null || true; ip route add default via 100.10.0.1 dev eth1 2>/dev/null || true; sysctl -w net.ipv4.ip_forward=1 >/dev/null 2>&1 || true; iptables -t nat -C POSTROUTING -s 192.168.10.0/24 -o eth1 -j MASQUERADE 2>/dev/null || iptables -t nat -A POSTROUTING -s 192.168.10.0/24 -o eth1 -j MASQUERADE'
+        - sh -lc 'for i in $(seq 1 20); do ip link show eth3 >/dev/null 2>&1 &&
+          break; sleep 1; done; ip link set eth3 up 2>/dev/null || true; ip addr
+          add 10.200.0.2/30 dev eth3 2>/dev/null || true; ip route del
+          192.168.10.100/32 2>/dev/null || true; ip route add 192.168.10.100/32
+          via 10.200.0.1 2>/dev/null || true'
+        - sh -lc 'for i in $(seq 1 20); do ip link show eth4 >/dev/null 2>&1 &&
+          break; sleep 1; done; ip link set eth4 up 2>/dev/null || true; ip link
+          set eth4 master br-student 2>/dev/null || true'
+          
+    student-bp-01:
+      kind: linux
+      image: nicolaka/netshoot
+      cmd: sleep infinity
+      exec:
+        - ip addr add 192.168.10.30/24 dev eth1
+        - ip route del default
+        - ip route add default via 192.168.10.1 dev eth1
     oob-sw:
       kind: linux
       image: alpine:3.20
+
+
 
   links:
     - endpoints: ["spine-01:eth1", "leaf-01:eth1"]
@@ -366,6 +474,15 @@ topology:
     - endpoints: ["leaf-01:eth3", "isp-router-01:eth1"]
     - endpoints: ["leaf-02:eth3", "isp-router-02:eth1"]
     - endpoints: ["leaf-01:eth4", "isp-router-03:eth1"]
+    - endpoints: [ "isp-router-01:eth2", "isp-router-04:eth3" ]
+
+    
+    - endpoints: [ "internet-router-01:eth2", "isp-router-04:eth1" ]
+    - endpoints: [ "internet-router-02:eth2", "isp-router-04:eth2" ]
+    - endpoints: [ "internet-client-01:eth1", "internet-router-01:eth1" ]
+    - endpoints: [ "internet-client-02:eth1", "internet-router-02:eth1" ]
+    - endpoints: [ "internet-router-01:eth3", "internet-web-01:eth1" ]
+    - endpoints: [ "isp-router-01:eth3", "campus-bp:eth1" ]
 
     - endpoints: ["leaf-01:eth5", "firewall-01:eth1"]
     - endpoints: ["leaf-02:eth5", "firewall-02:eth1"]
@@ -388,8 +505,12 @@ topology:
     - endpoints: [ "leaf-07:eth9", "leaf-08:eth9" ]
     - endpoints: [ "leaf-09:eth9", "leaf-10:eth9" ]
     - endpoints: [ "campus-bp:eth3", "leaf-01:eth8" ]
+    - endpoints: [ "wifi-controller:eth1", "leaf-01:eth10" ]
+    - endpoints: [ "campus-bp:eth4", "student-bp-01:eth1" ]
     - endpoints: [ "firewall-01:eth3", "firewall-02:eth3" ]
     - endpoints: [ "bastion-01:eth1", "oob-sw:eth1" ]
+    - endpoints: [ "prometheus:eth1", "frr-exporter:eth1" ]
+
     - endpoints: ["leaf-03:eth6", "ntp-server:eth1"]
     - endpoints: ["oob-sw:eth2", "ntp-server:eth2"]
     - endpoints: ["leaf-03:eth7", "dns-server:eth1"]

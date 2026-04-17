@@ -80,7 +80,7 @@ apk add --no-cache dhcrelay
 dhcrelay -4 \
   -id vlan70 \
   -iu vlan70 \
-  192.168.50.40 &
+  192.168.50.40 2>/dev/null &
 
 
 
