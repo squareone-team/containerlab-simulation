@@ -45,8 +45,16 @@ else
   echo 'LoginGraceTime 30' >> /etc/ssh/sshd_config
 fi
 
-if [ ! -f /root/.ssh/id_ed25519 ]; then
+mkdir -p /shared
+if [ -s /shared/bastion_ed25519 ] && [ -s /shared/bastion_ed25519.pub ]; then
+  cp /shared/bastion_ed25519 /root/.ssh/id_ed25519
+  cp /shared/bastion_ed25519.pub /root/.ssh/id_ed25519.pub
+else
   ssh-keygen -t ed25519 -N '' -f /root/.ssh/id_ed25519
+  cp /root/.ssh/id_ed25519 /shared/bastion_ed25519
+  cp /root/.ssh/id_ed25519.pub /shared/bastion_ed25519.pub
 fi
+chmod 600 /root/.ssh/id_ed25519 /shared/bastion_ed25519
+chmod 644 /root/.ssh/id_ed25519.pub /shared/bastion_ed25519.pub
 
 /usr/sbin/sshd

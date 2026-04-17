@@ -196,7 +196,9 @@ topology:
       binds:
         - ./configs/internet-web-01/www:/www:ro
       exec:
-        - sh -c "ip addr add 198.18.3.10/24 dev eth1 && ip link set eth1 up && nohup python3 -m http.server 80 --bind 198.18.3.10 --directory /www >/tmp/http-server.log 2>&1 &"
+        - sh -c "ip addr add 198.18.3.10/24 dev eth1 && ip link set eth1 up &&
+          nohup python3 -m http.server 80 --bind 198.18.3.10 --directory /www
+          >/tmp/http-server.log 2>&1 &"
         - ip route del default
         - ip route add default via 198.18.3.1 dev eth1
 
@@ -335,6 +337,7 @@ topology:
       image: alpine:3.16
       binds:
         - configs/bastion-01/startup.sh:/startup.sh
+        - configs/shared:/shared
       exec:
         - sh /startup.sh
     ids-01:
@@ -352,6 +355,11 @@ topology:
     ftp-server:
       kind: linux
       image: alpine:3.20
+      binds:
+        - configs/ftp-server/startup.sh:/startup.sh
+        - configs/shared:/shared:ro
+      exec:
+        - sh /startup.sh
     zabbix-server:
       kind: linux
       image: alpine:3.20
@@ -386,11 +394,11 @@ topology:
         - configs/frr-exporter/generate-metrics.sh:/opt/frr-exporter/generate-metrics.sh
         - /var/run/docker.sock:/var/run/docker.sock
       exec:
-        - sh -lc "apk add --no-cache busybox-extras docker-cli jq iproute2 >/dev/null 2>&1 || true;
-          chmod +x /opt/frr-exporter/generate-metrics.sh;
-          nohup /opt/frr-exporter/generate-metrics.sh >/tmp/frr-exporter-loop.log 2>&1
-          &
-          nohup httpd -f -p 9342 -h /srv/www >/tmp/frr-exporter-httpd.log 2>&1
+        - sh -lc "apk add --no-cache busybox-extras docker-cli jq iproute2
+          >/dev/null 2>&1 || true; chmod +x
+          /opt/frr-exporter/generate-metrics.sh; nohup
+          /opt/frr-exporter/generate-metrics.sh >/tmp/frr-exporter-loop.log 2>&1
+          & nohup httpd -f -p 9342 -h /srv/www >/tmp/frr-exporter-httpd.log 2>&1
           &"
     syslog-server:
       kind: linux
@@ -406,8 +414,18 @@ topology:
       kind: linux
       image: alpine:3.20
       exec:
-        - sh -lc 'ip link add br-student type bridge 2>/dev/null || true; ip link set br-student up || true; ip addr add 192.168.10.1/24 dev br-student 2>/dev/null || true'
-        - sh -lc 'apk add --no-cache iptables >/dev/null 2>&1 || true; for i in $(seq 1 20); do ip link show eth1 >/dev/null 2>&1 && break; sleep 1; done; ip link set eth1 up 2>/dev/null || true; ip addr add 100.10.0.2/30 dev eth1 2>/dev/null || true; ip route del default 2>/dev/null || true; ip route add default via 100.10.0.1 dev eth1 2>/dev/null || true; sysctl -w net.ipv4.ip_forward=1 >/dev/null 2>&1 || true; iptables -t nat -C POSTROUTING -s 192.168.10.0/24 -o eth1 -j MASQUERADE 2>/dev/null || iptables -t nat -A POSTROUTING -s 192.168.10.0/24 -o eth1 -j MASQUERADE'
+        - sh -lc 'ip link add br-student type bridge 2>/dev/null || true; ip
+          link set br-student up || true; ip addr add 192.168.10.1/24 dev
+          br-student 2>/dev/null || true'
+        - sh -lc 'apk add --no-cache iptables >/dev/null 2>&1 || true; for i in
+          $(seq 1 20); do ip link show eth1 >/dev/null 2>&1 && break; sleep 1;
+          done; ip link set eth1 up 2>/dev/null || true; ip addr add
+          100.10.0.2/30 dev eth1 2>/dev/null || true; ip route del default
+          2>/dev/null || true; ip route add default via 100.10.0.1 dev eth1
+          2>/dev/null || true; sysctl -w net.ipv4.ip_forward=1 >/dev/null 2>&1
+          || true; iptables -t nat -C POSTROUTING -s 192.168.10.0/24 -o eth1 -j
+          MASQUERADE 2>/dev/null || iptables -t nat -A POSTROUTING -s
+          192.168.10.0/24 -o eth1 -j MASQUERADE'
         - sh -lc 'for i in $(seq 1 20); do ip link show eth3 >/dev/null 2>&1 &&
           break; sleep 1; done; ip link set eth3 up 2>/dev/null || true; ip addr
           add 10.200.0.2/30 dev eth3 2>/dev/null || true; ip route del
@@ -476,19 +494,20 @@ topology:
     - endpoints: [ "leaf-09:eth4", "server-student-02:eth1" ]
     - endpoints: [ "leaf-10:eth3", "server-student-01:eth2" ]
     - endpoints: [ "leaf-10:eth4", "server-student-02:eth2" ]
-    - endpoints: [ "leaf-03:eth3", "server-admin-01:eth1" ]
-    - endpoints: [ "leaf-03:eth4", "server-admin-02:eth1" ]
+    - endpoints: [ "leaf-03:eth4", "server-admin-01:eth1" ]
+    - endpoints: [ "leaf-03:eth6", "server-admin-02:eth1" ]
     - endpoints: [ "leaf-04:eth3", "server-admin-01:eth2" ]
     - endpoints: [ "leaf-04:eth5", "server-admin-02:eth2" ]
     - endpoints: [ "leaf-05:eth3", "server-hpc-01:eth1" ]
     - endpoints: [ "leaf-05:eth4", "server-hpc-02:eth1" ]
-    - endpoints: [ "leaf-06:eth3", "server-hpc-01:eth2" ] 
+    - endpoints: [ "leaf-06:eth3", "server-hpc-01:eth2" ]
     - endpoints: [ "leaf-06:eth4", "server-hpc-02:eth2" ]
     - endpoints: [ "leaf-07:eth3", "server-storage-01:eth1" ]
     - endpoints: [ "leaf-08:eth3", "server-storage-01:eth2" ]
     - endpoints: [ "leaf-01:eth7", "server-dmz-01:eth1" ]
     - endpoints: [ "leaf-03:eth5", "lms-staff:eth1" ]
     - endpoints: [ "leaf-04:eth4", "services-web:eth1" ]
+    - endpoints: [ "leaf-03:eth3", "ftp-server:eth1" ]
     - endpoints: [ "leaf-01:eth9", "leaf-02:eth9" ]
     - endpoints: [ "campus-bp:eth3", "leaf-01:eth8" ]
     - endpoints: [ "wifi-controller:eth1", "leaf-01:eth14" ]
@@ -508,3 +527,4 @@ topology:
     - endpoints: [ "oob-sw:eth11", "leaf-08:eth10" ]
     - endpoints: [ "oob-sw:eth12", "leaf-09:eth10" ]
     - endpoints: [ "oob-sw:eth13", "leaf-10:eth10" ]
+    - endpoints: [ "oob-sw:eth14", "ftp-server:eth2" ]
