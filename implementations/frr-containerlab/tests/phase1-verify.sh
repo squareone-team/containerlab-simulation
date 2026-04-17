@@ -93,7 +93,7 @@ r=$($C-leaf-01 ip route show vrf VRF-WIFI-CTRL 2>/dev/null)
 echo "$r" | grep -Eq "^default" && fail "VRF-WIFI-CTRL must not have a default route" || ok "VRF-WIFI-CTRL has no default route"
 
 chk "EVPN Type-5 present" "$C-spine-01 vtysh -c 'show bgp l2vpn evpn route type prefix'" "Route Distinguisher"
-chk "student inter-subnet ping" "$C-server-student-01 ping -c3 -W2 192.168.20.10" "3 (packets )?received"
+chk "student inter-subnet ping" "$C-server-student-01 ping -c3 -W2 192.168.10.20" "3 (packets )?received"
 
 echo
 echo "[TEST] VRF isolation student->staff"
