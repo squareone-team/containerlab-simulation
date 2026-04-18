@@ -110,7 +110,7 @@ fi
 echo
 echo "[TEST] VRF-PUBLIC has no internal routes outside DMZ segment"
 info "command: $C-leaf-01 ip route show vrf VRF-PUBLIC"
-info "expect : no 10/8, no 172.16/12, and no 192.168/16 except 192.168.100.0/24"
+info "expect : no 10/8, no 172.16/12, and no 192.168/16"
 LAST_OUT=$($C-leaf-01 ip route show vrf VRF-PUBLIC 2>/dev/null)
 if echo "$LAST_OUT" | grep -Eq "10\.|172\.(1[6-9]|2[0-9]|3[0-1])\."; then
   fail "VRF-PUBLIC leaks internal 10/8 or 172.16/12 prefixes"
