@@ -199,7 +199,18 @@ docker exec clab-esi-datacenter-firewall-02 nft list ruleset
 docker exec clab-esi-datacenter-firewall-01 cat /usr/local/bin/check_firewall_health.sh
 docker exec clab-esi-datacenter-firewall-01 /usr/local/bin/check_firewall_health.sh
 ```
+## 9100 port testing
 
+```bash
+# From admin cluster to pedagogy cluster:
+# in server-student-01
+nc -lvnp 9100
+
+# in server-admin-01
+nc -vz 192.168.10.10 9100
+
+# expected result: 192.168.10.10 (192.168.10.10:9100) open
+```
 ## Notes
 
 - This Ring 1 merge must coexist with Theme T1 border-routing:
