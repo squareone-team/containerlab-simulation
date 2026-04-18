@@ -14,16 +14,27 @@ wait_for_iface() {
 }
 
 echo "[ntp-server] installing chrony..."
-apk add --no-cache chrony
+apk add --no-cache chrony iproute2
 
-if wait_for_iface eth1; then
-    ip addr add 192.168.50.20/24 dev eth1 2>/dev/null || true
+if wait_for_iface eth1 && wait_for_iface eth3; then
+    ip link add bond0 type bond mode active-backup miimon 100 primary eth1 2>/dev/null || true
+    ip addr flush dev eth1 2>/dev/null || true
+    ip addr flush dev eth3 2>/dev/null || true
+    ip link set eth1 down 2>/dev/null || true
+    ip link set eth3 down 2>/dev/null || true
+    ip link set eth1 master bond0
+    ip link set eth3 master bond0
     ip link set eth1 up
-    ip route add 192.168.0.0/16 via 192.168.50.1 dev eth1 2>/dev/null || true
-    ip route add 10.0.0.0/8    via 192.168.50.1 dev eth1 2>/dev/null || true
-    ip route add 172.16.0.0/12 via 192.168.50.1 dev eth1 2>/dev/null || true
+    ip link set eth3 up
+    ip link set bond0 up
+    sleep 2
+
+    ip addr add 192.168.50.20/24 dev bond0 2>/dev/null || true
+    ip route add 192.168.0.0/16 via 192.168.50.1 dev bond0 2>/dev/null || true
+    ip route add 10.0.0.0/8    via 192.168.50.1 dev bond0 2>/dev/null || true
+    ip route add 172.16.0.0/12 via 192.168.50.1 dev bond0 2>/dev/null || true
 else
-    echo "[ntp-server] WARNING: eth1 never appeared"
+    echo "[ntp-server] WARNING: eth1/eth3 did not appear for bond0"
 fi
 
 mkdir -p /var/log/chrony /var/run/chrony

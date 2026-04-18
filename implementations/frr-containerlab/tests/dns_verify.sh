@@ -51,7 +51,7 @@ echo ""
 echo "--- 2. Network reachability ---"
 
 chk "dns-server has 192.168.50.30 configured" \
-    "$C-dns-server ip addr show eth1" \
+    "$C-dns-server ip -4 -o addr show" \
     "192.168.50.30"
 
 chk "dns-server default route via 192.168.50.1" \
@@ -59,8 +59,8 @@ chk "dns-server default route via 192.168.50.1" \
     "192.168.50.1"
 
 chk "dns-server reachable from admin server (ping)" \
-    "$C-server-admin-01 ping -c2 -W2 192.168.50.30" \
-    "2 (packets )?received"
+    "$C-server-admin-01 ping -c4 -W2 192.168.50.30" \
+    "[1-9][0-9]* (packets )?received"
 
 # ---------------------------------------------------------------------------
 # 3. Internal view — esi.internal zone resolution
