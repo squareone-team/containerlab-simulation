@@ -216,8 +216,8 @@
       "id": "pod2-line1",
       "text": "VRFs: VRF-STAFF(50020), VRF-ADMINISTRATION(50010)",
       "position": {
-        "x": 216.62920322804473,
-        "y": 709.139247270813
+        "x": 222.79745094242526,
+        "y": 723.5318252710341
       },
       "fontSize": 12,
       "fontColor": "#ccfbf1",
@@ -232,7 +232,7 @@
       "text": "VNIs: 10030, 10040, 10050, 10060",
       "position": {
         "x": 228.00447790870749,
-        "y": 736.7262352477975
+        "y": 746.4927304059731
       },
       "fontSize": 12,
       "fontColor": "#ccfbf1",
@@ -696,8 +696,8 @@
       "id": "freeText_1774966321757",
       "text": "AS 65005",
       "position": {
-        "x": 1133.4672443911456,
-        "y": 278.1035144104448
+        "x": 1145.1070330461525,
+        "y": 280.4314721414462
       },
       "fontSize": 20,
       "fontColor": "#bfdbfe",
@@ -1131,16 +1131,16 @@
     {
       "id": "leaf-03",
       "position": {
-        "x": 350,
-        "y": 350
+        "x": 280,
+        "y": 340
       },
       "icon": "leaf"
     },
     {
       "id": "leaf-04",
       "position": {
-        "x": 450,
-        "y": 350
+        "x": 460,
+        "y": 340
       },
       "icon": "leaf",
       "iconCornerRadius": 0
@@ -1149,38 +1149,38 @@
       "id": "leaf-05",
       "position": {
         "x": 600,
-        "y": 350
+        "y": 340
       },
       "icon": "leaf"
     },
     {
       "id": "leaf-06",
       "position": {
-        "x": 700,
-        "y": 350
+        "x": 720,
+        "y": 340
       },
       "icon": "leaf"
     },
     {
       "id": "leaf-07",
       "position": {
-        "x": 850,
-        "y": 350
+        "x": 840,
+        "y": 340
       },
       "icon": "leaf"
     },
     {
       "id": "leaf-08",
       "position": {
-        "x": 950,
-        "y": 350
+        "x": 960,
+        "y": 340
       },
       "icon": "leaf"
     },
     {
       "id": "leaf-09",
       "position": {
-        "x": 1120,
+        "x": 1100,
         "y": 340
       },
       "icon": "leaf"
@@ -1188,7 +1188,7 @@
     {
       "id": "leaf-10",
       "position": {
-        "x": 1200,
+        "x": 1260,
         "y": 340
       },
       "icon": "leaf"
@@ -1224,7 +1224,7 @@
     {
       "id": "lms-staff",
       "position": {
-        "x": 420,
+        "x": 220,
         "y": 600
       },
       "icon": "server",
@@ -1243,8 +1243,8 @@
     {
       "id": "server-admin-01",
       "position": {
-        "x": 380,
-        "y": 660
+        "x": 220,
+        "y": 480
       },
       "icon": "server",
       "iconColor": "#000000",
@@ -1253,8 +1253,8 @@
     {
       "id": "server-admin-02",
       "position": {
-        "x": 320,
-        "y": 620
+        "x": 500,
+        "y": 480
       },
       "icon": "server",
       "iconColor": "#000000",
@@ -1273,7 +1273,7 @@
     {
       "id": "server-hpc-02",
       "position": {
-        "x": 700,
+        "x": 720,
         "y": 600
       },
       "icon": "server",
@@ -1284,7 +1284,7 @@
       "id": "server-storage-01",
       "position": {
         "x": 900,
-        "y": 600
+        "y": 560
       },
       "icon": "server",
       "iconColor": "#000000",
@@ -1303,7 +1303,7 @@
     {
       "id": "server-student-02",
       "position": {
-        "x": 1220,
+        "x": 1260,
         "y": 600
       },
       "icon": "server",
@@ -1313,43 +1313,58 @@
     {
       "id": "oob-sw",
       "position": {
-        "x": -20,
-        "y": 560
-      }
+        "x": 0,
+        "y": 380
+      },
+      "icon": "switch",
+      "iconColor": "#000000",
+      "iconCornerRadius": 5
     },
     {
       "id": "bastion-01",
       "position": {
-        "x": -100,
-        "y": 560
-      }
+        "x": -80,
+        "y": 380
+      },
+      "icon": "client",
+      "iconColor": "#23af79",
+      "iconCornerRadius": 16
     },
     {
       "id": "ntp-server",
       "position": {
-        "x": 350,
-        "y": 950
-      }
+        "x": 300,
+        "y": 620
+      },
+      "icon": "controller",
+      "iconColor": "#a200fa",
+      "iconCornerRadius": 5
     },
     {
       "id": "dns-server",
       "position": {
-        "x": 450,
-        "y": 950
-      }
+        "x": 360,
+        "y": 620
+      },
+      "icon": "controller",
+      "iconColor": "#a200fa",
+      "iconCornerRadius": 0
     },
     {
       "id": "dhcp-server",
       "position": {
-        "x": 550,
-        "y": 950
-      }
+        "x": 420,
+        "y": 620
+      },
+      "icon": "controller",
+      "iconColor": "#a200fa",
+      "iconCornerRadius": 5
     },
     {
       "id": "ftp-server",
       "position": {
         "x": 240,
-        "y": 580
+        "y": 680
       },
       "icon": "server",
       "iconColor": "#3c4858",
@@ -1358,23 +1373,32 @@
     {
       "id": "zabbix-server",
       "position": {
-        "x": -100,
-        "y": 380
-      }
+        "x": -120,
+        "y": 520
+      },
+      "icon": "server",
+      "iconColor": "#23af79",
+      "iconCornerRadius": 5
     },
     {
       "id": "prometheus",
       "position": {
         "x": -260,
         "y": 380
-      }
+      },
+      "icon": "server",
+      "iconColor": "#23af79",
+      "iconCornerRadius": 5
     },
     {
       "id": "syslog-server",
       "position": {
         "x": -20,
-        "y": 380
-      }
+        "y": 520
+      },
+      "icon": "server",
+      "iconColor": "#23af79",
+      "iconCornerRadius": 5
     },
     {
       "id": "wifi-controller",
@@ -1399,14 +1423,20 @@
       "position": {
         "x": -260,
         "y": 460
-      }
+      },
+      "icon": "dcgw",
+      "iconColor": "#23af79",
+      "iconCornerRadius": 5
     },
     {
       "id": "grafana",
       "position": {
         "x": -200,
         "y": 380
-      }
+      },
+      "icon": "server",
+      "iconColor": "#23af79",
+      "iconCornerRadius": 5
     },
     {
       "id": "internet-client-02",
@@ -1468,8 +1498,8 @@
     {
       "id": "services-web",
       "position": {
-        "x": 500,
-        "y": 600
+        "x": 460,
+        "y": 680
       },
       "icon": "server",
       "iconColor": "#000000",

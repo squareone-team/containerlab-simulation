@@ -11,6 +11,7 @@ ip link set eth1 up
 ip link set eth2 up
 ip link set bond0 up
 sleep 2
+apk add --no-cache chrony
 ip addr add 192.168.50.10/24 dev bond0
 ip route del default 2>/dev/null || true
 ip route add default via 192.168.50.1 dev bond0

@@ -10,7 +10,7 @@ topology:
         - configs/spine-01/frr.conf:/etc/frr/frr.conf
         - configs/spine-01/startup.sh:/startup.sh
       exec:
-        - bash /startup.sh
+        - sh /startup.sh
 
     spine-02:
       kind: linux
@@ -20,7 +20,7 @@ topology:
         - configs/spine-02/frr.conf:/etc/frr/frr.conf
         - configs/spine-02/startup.sh:/startup.sh
       exec:
-        - bash /startup.sh
+        - sh /startup.sh
 
     leaf-01:
       kind: linux
@@ -30,7 +30,7 @@ topology:
         - configs/leaf-01/frr.conf:/etc/frr/frr.conf
         - configs/leaf-01/startup.sh:/startup.sh
       exec:
-        - bash /startup.sh
+        - sh /startup.sh
 
     leaf-02:
       kind: linux
@@ -40,7 +40,7 @@ topology:
         - configs/leaf-02/frr.conf:/etc/frr/frr.conf
         - configs/leaf-02/startup.sh:/startup.sh
       exec:
-        - bash /startup.sh
+        - sh /startup.sh
 
     leaf-03:
       kind: linux
@@ -50,7 +50,7 @@ topology:
         - configs/leaf-03/frr.conf:/etc/frr/frr.conf
         - configs/leaf-03/startup.sh:/startup.sh
       exec:
-        - bash /startup.sh
+        - sh /startup.sh
 
     leaf-04:
       kind: linux
@@ -60,7 +60,7 @@ topology:
         - configs/leaf-04/frr.conf:/etc/frr/frr.conf
         - configs/leaf-04/startup.sh:/startup.sh
       exec:
-        - bash /startup.sh
+        - sh /startup.sh
 
     leaf-05:
       kind: linux
@@ -70,7 +70,7 @@ topology:
         - configs/leaf-05/frr.conf:/etc/frr/frr.conf
         - configs/leaf-05/startup.sh:/startup.sh
       exec:
-        - bash /startup.sh
+        - sh /startup.sh
 
     leaf-06:
       kind: linux
@@ -80,7 +80,7 @@ topology:
         - configs/leaf-06/frr.conf:/etc/frr/frr.conf
         - configs/leaf-06/startup.sh:/startup.sh
       exec:
-        - bash /startup.sh
+        - sh /startup.sh
 
     leaf-07:
       kind: linux
@@ -90,7 +90,7 @@ topology:
         - configs/leaf-07/frr.conf:/etc/frr/frr.conf
         - configs/leaf-07/startup.sh:/startup.sh
       exec:
-        - bash /startup.sh
+        - sh /startup.sh
 
     leaf-08:
       kind: linux
@@ -100,7 +100,7 @@ topology:
         - configs/leaf-08/frr.conf:/etc/frr/frr.conf
         - configs/leaf-08/startup.sh:/startup.sh
       exec:
-        - bash /startup.sh
+        - sh /startup.sh
 
     leaf-09:
       kind: linux
@@ -110,7 +110,7 @@ topology:
         - configs/leaf-09/frr.conf:/etc/frr/frr.conf
         - configs/leaf-09/startup.sh:/startup.sh
       exec:
-        - bash /startup.sh
+        - sh /startup.sh
 
     leaf-10:
       kind: linux
@@ -120,7 +120,7 @@ topology:
         - configs/leaf-10/frr.conf:/etc/frr/frr.conf
         - configs/leaf-10/startup.sh:/startup.sh
       exec:
-        - bash /startup.sh
+        - sh /startup.sh
 
     isp-router-01:
       kind: linux
@@ -211,8 +211,10 @@ topology:
         - NET_RAW
       binds:
         - configs/server-student-01/startup.sh:/startup.sh
+        - configs/ntp-server/server-client-ntp.sh:/ntp-client.sh
       exec:
         - sh /startup.sh
+        - sh /ntp-client.sh
 
     server-student-02:
       kind: linux
@@ -223,8 +225,10 @@ topology:
         - NET_RAW
       binds:
         - configs/server-student-02/startup.sh:/startup.sh
+        - configs/ntp-server/server-client-ntp.sh:/ntp-client.sh
       exec:
         - sh /startup.sh
+        - sh /ntp-client.sh
 
     server-admin-01:
       kind: linux
@@ -235,8 +239,10 @@ topology:
         - NET_RAW
       binds:
         - configs/server-admin-01/startup.sh:/startup.sh
+        - configs/ntp-server/server-client-ntp.sh:/ntp-client.sh
       exec:
         - sh /startup.sh
+        - sh /ntp-client.sh
 
     server-admin-02:
       kind: linux
@@ -247,8 +253,10 @@ topology:
         - NET_RAW
       binds:
         - configs/server-admin-02/startup.sh:/startup.sh
+        - configs/ntp-server/server-client-ntp.sh:/ntp-client.sh
       exec:
         - sh /startup.sh
+        - sh /ntp-client.sh
 
     server-hpc-01:
       kind: linux
@@ -259,8 +267,10 @@ topology:
         - NET_RAW
       binds:
         - configs/server-hpc-01/startup.sh:/startup.sh
+        - configs/ntp-server/server-client-ntp.sh:/ntp-client.sh
       exec:
         - sh /startup.sh # <--- Utilise "exec" pour que le serveur reste UP
+        - sh /ntp-client.sh
 
     server-hpc-02:
       kind: linux
@@ -271,8 +281,10 @@ topology:
         - NET_RAW
       binds:
         - configs/server-hpc-02/startup.sh:/startup.sh
+        - configs/ntp-server/server-client-ntp.sh:/ntp-client.sh
       exec:
         - sh /startup.sh
+        - sh /ntp-client.sh
 
     server-storage-01:
       kind: linux
@@ -283,32 +295,46 @@ topology:
         - NET_RAW
       binds:
         - configs/server-storage-01/startup.sh:/startup.sh
+        - configs/ntp-server/server-client-ntp.sh:/ntp-client.sh
       exec:
         - sh /startup.sh
+        - sh /ntp-client.sh
 
     server-dmz-01:
       kind: linux
       image: alpine:3.20
+      binds:
+        - configs/ntp-server/server-client-ntp.sh:/ntp-client.sh
       exec:
+        - apk add --no-cache chrony
         - ip addr add 198.51.100.10/24 dev eth1
         - ip route del default
         - ip route add default via 198.51.100.1 dev eth1
+        - sh /ntp-client.sh
 
     lms-staff:
       kind: linux
       image: alpine:3.20
+      binds:
+        - configs/ntp-server/server-client-ntp.sh:/ntp-client.sh
       exec:
+        - apk add --no-cache chrony
         - ip addr add 192.168.30.10/24 dev eth1
         - ip route del default
         - ip route add default via 192.168.30.1 dev eth1
+        - sh /ntp-client.sh
 
     services-web:
       kind: linux
       image: alpine:3.20
+      binds:
+        - configs/ntp-server/server-client-ntp.sh:/ntp-client.sh
       exec:
+        - apk add --no-cache chrony
         - ip addr add 192.168.40.10/24 dev eth1
         - ip route del default
         - ip route add default via 192.168.40.1 dev eth1
+        - sh /ntp-client.sh
 
     firewall-01:
       kind: linux
@@ -321,6 +347,7 @@ topology:
         - configs/firewall-01/startup.sh:/startup.sh
       exec:
         - sh /startup.sh
+
     firewall-02:
       kind: linux
       image: alpine:3.20
@@ -346,12 +373,28 @@ topology:
     ntp-server:
       kind: linux
       image: alpine:3.20
+      binds:
+        - configs/ntp-server/startup.sh:/startup.sh
+      cmd: sh /startup.sh
+
     dns-server:
       kind: linux
       image: alpine:3.20
+      binds:
+        - configs/dns-server/startup.sh:/setup.sh:ro
+        - configs/dns-server/unbound.conf:/etc/unbound/unbound.conf.seed:ro
+      cmd: /bin/sh /setup.sh
+
     dhcp-server:
       kind: linux
       image: alpine:3.20
+      binds:
+        - configs/dhcp-server/startup.sh:/startup.sh
+      cmd: sh /startup.sh
+      cap-add:
+        - NET_ADMIN
+        - NET_RAW
+
     ftp-server:
       kind: linux
       image: alpine:3.20
@@ -363,6 +406,14 @@ topology:
     zabbix-server:
       kind: linux
       image: alpine:3.20
+      startup-delay: 60
+      binds:
+        - configs/zabbix-server/startup.sh:/startup.sh
+      cmd: sh /startup.sh
+      cap-add:
+        - NET_ADMIN
+        - NET_RAW
+
     prometheus:
       kind: linux
       image: prom/prometheus:latest
@@ -534,3 +585,9 @@ topology:
     - endpoints: [ "oob-sw:eth12", "leaf-09:eth10" ]
     - endpoints: [ "oob-sw:eth13", "leaf-10:eth10" ]
     - endpoints: [ "oob-sw:eth14", "ftp-server:eth2" ]
+
+    - endpoints: [ "leaf-03:eth9", "ntp-server:eth1" ] # changing eth6 to eth9 to avoid conflict with server-admin-02
+    - endpoints: [ "oob-sw:eth15", "ntp-server:eth2" ] # changing eth2 to eth15 to avoid conflict with spine-01
+    - endpoints: [ "leaf-03:eth7", "dns-server:eth1" ]
+    - endpoints: [ "leaf-03:eth8", "dhcp-server:eth1" ]
+    - endpoints: [ "leaf-03:eth11", "zabbix-server:eth1" ] # changing eth10 to eth11 to avoid conflict with oob-sw
