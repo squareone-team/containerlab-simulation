@@ -21,7 +21,6 @@ Thumbs.db
 *~
 *.pdf
 *full.md
-context.md
 # Ansible retry files
 *.retry
 
