@@ -7,6 +7,32 @@ ok()  { echo "  [PASS] $1"; PASS=$((PASS + 1)); return 0; }
 fail(){ echo "  [FAIL] $1"; FAIL=$((FAIL + 1)); return 0; }
 info(){ echo "  [INFO] $1"; return 0; }
 
+discover_nodes() {
+  local pattern="$1"
+  docker ps --format '{{.Names}}' 2>/dev/null \
+    | sed -n -E "s/^clab-esi-datacenter-(${pattern})$/\1/p" \
+    | sort
+}
+
+wait_for_spine_sync() {
+  local node="$1"
+  local retries=30
+  while [ $retries -gt 0 ]; do
+    if $C-$node chronyc sources 2>/dev/null | grep -qE '^\^\*.*192\.168\.50\.20'; then
+      return 0
+    fi
+    retries=$((retries - 1))
+    sleep 2
+  done
+  return 1
+}
+
+SPINE_NODES="$(discover_nodes 'spine-[0-9]+')"
+[ -z "$SPINE_NODES" ] && SPINE_NODES="spine-01 spine-02"
+
+FABRIC_NODES="$(discover_nodes 'spine-[0-9]+|leaf-[0-9]+')"
+[ -z "$FABRIC_NODES" ] && FABRIC_NODES="spine-01 spine-02 leaf-01 leaf-02 leaf-03 leaf-04 leaf-05 leaf-06 leaf-07 leaf-08 leaf-09 leaf-10"
+
 echo "=== T4: NTP Verification ==="
 
 # 1. NTP server process is running
@@ -34,12 +60,17 @@ else
 fi
 
 # 4. NTP server is reachable on UDP/123 from fabric
-$C-spine-01 chronyc sources 2>/dev/null | grep -qE "\^\*|\^\+" \
-  && ok "spine-01: NTP synchronized (active source selected)" \
-  || fail "spine-01: NTP not synchronized"
+FIRST_SPINE="$(echo "$SPINE_NODES" | awk 'NR==1')"
+if [ -n "$FIRST_SPINE" ] && wait_for_spine_sync "$FIRST_SPINE"; then
+  ok "$FIRST_SPINE: NTP synchronized (active source selected)"
+else
+  fail "${FIRST_SPINE:-spine}: NTP not synchronized"
+fi
 
 # 5. Spine nodes are syncing from our server
-for NODE in spine-01 spine-02; do
+for NODE in $SPINE_NODES; do
+  wait_for_spine_sync "$NODE" >/dev/null 2>&1 || true
+
   $C-$NODE chronyc sources 2>/dev/null | grep -q "192.168.50.20" \
     && ok "$NODE: NTP source is 192.168.50.20" \
     || fail "$NODE: not using 192.168.50.20 as NTP source"
@@ -57,8 +88,7 @@ done
 
 # 6. Clock offset < 1s on all FRR nodes (log correlation forensic requirement)
 info "checking clock offset on all FRR nodes (forensic requirement: offset < 1s for log correlation)"
-for NODE in spine-01 spine-02 leaf-01 leaf-02 leaf-03 leaf-04 \
-            leaf-05 leaf-06 leaf-07 leaf-08 leaf-09 leaf-10; do
+for NODE in $FABRIC_NODES; do
 
   TRACKING=$($C-$NODE chronyc tracking 2>/dev/null)
 
@@ -89,7 +119,7 @@ done
 
 # 7. No-PIM guard (T4 requirement from Section 2 reconciliation)
 info "verifying PIM is absent on all fabric nodes (multicast not used in this architecture)"
-for NODE in leaf-01 leaf-03 leaf-05 leaf-07 leaf-09 spine-01 spine-02; do
+for NODE in $FABRIC_NODES; do
   $C-$NODE vtysh -c "show running-config" 2>/dev/null | grep -qE "ip pim|router pim" \
     && fail "$NODE: PIM config found — must be absent per architecture spec" \
     || ok "$NODE: no PIM config (correct)"

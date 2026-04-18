@@ -35,6 +35,9 @@ ip link set br0 up
 if ip link show eth3 >/dev/null 2>&1; then ip link set eth3 master br0; bridge vlan add vid 50 dev eth3 pvid untagged; fi
 if ip link show eth4 >/dev/null 2>&1; then ip link set eth4 master br0; bridge vlan add vid 40 dev eth4 pvid untagged; fi
 if ip link show eth6 >/dev/null 2>&1; then ip link set eth6 master br0; bridge vlan add vid 50 dev eth6 pvid untagged; fi
+if ip link show eth7 >/dev/null 2>&1; then ip link set eth7 master br0; bridge vlan add vid 50 dev eth7 pvid untagged; fi
+if ip link show eth8 >/dev/null 2>&1; then ip link set eth8 master br0; bridge vlan add vid 50 dev eth8 pvid untagged; fi
+if ip link show eth9 >/dev/null 2>&1; then ip link set eth9 master br0; bridge vlan add vid 50 dev eth9 pvid untagged; fi
 
 for V in 10030 10040 10050; do
   ip link add vxlan$V type vxlan id $V local $VTEP_IP dstport 4789 nolearning tos inherit
@@ -82,6 +85,9 @@ ip link set vlan4020 up
 ip link set eth3 up
 ip link set eth5 up
 ip link set eth6 up
+ip link set eth7 up 2>/dev/null || true
+ip link set eth8 up 2>/dev/null || true
+ip link set eth9 up 2>/dev/null || true
 
 # Ring 4: OOB management for bastion-only SSH
 OOB_IF="eth10"
@@ -158,6 +164,8 @@ chronyd -f /etc/chrony.conf &
 
 # CORE-INFRA route leak to global routing table 
 # Needed so FRR nodes (spines/leaves) can reach NTP/DNS in VRF-STAFF via underlay
+# Underlay return path for control-plane sourced from CORE-INFRA services.
+ip rule add to 10.0.0.0/8 lookup main prio 90 2>/dev/null || true
 # ip rule: for packets destined to 192.168.50.0/24, consult VRF-STAFF table (20)
 ip rule add to 192.168.50.0/24 lookup 20 prio 100 2>/dev/null || true
 

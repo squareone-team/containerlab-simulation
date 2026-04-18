@@ -588,6 +588,9 @@ topology:
 
     - endpoints: [ "leaf-03:eth9", "ntp-server:eth1" ] # changing eth6 to eth9 to avoid conflict with server-admin-02
     - endpoints: [ "oob-sw:eth15", "ntp-server:eth2" ] # changing eth2 to eth15 to avoid conflict with spine-01
+    - endpoints: [ "leaf-04:eth9", "ntp-server:eth3" ] # ring1 multihoming for ntp-server data-plane
     - endpoints: [ "leaf-03:eth7", "dns-server:eth1" ]
+    - endpoints: [ "leaf-04:eth7", "dns-server:eth2" ] # ring1 multihoming for dns-server data-plane
     - endpoints: [ "leaf-03:eth8", "dhcp-server:eth1" ]
+    - endpoints: [ "leaf-04:eth8", "dhcp-server:eth2" ] # ring1 multihoming for dhcp-server data-plane
     - endpoints: [ "leaf-03:eth11", "zabbix-server:eth1" ] # changing eth10 to eth11 to avoid conflict with oob-sw

@@ -181,6 +181,8 @@ bridge vlan add vid 50 dev eth11 pvid untagged
 
 # CORE-INFRA route leak to global routing table 
 # Needed so FRR nodes (spines/leaves) can reach NTP/DNS in VRF-STAFF via underlay
+# Underlay return path for control-plane sourced from CORE-INFRA services.
+ip rule add to 10.0.0.0/8 lookup main prio 90 2>/dev/null || true
 # ip rule: for packets destined to 192.168.50.0/24, consult VRF-STAFF table (20)
 ip rule add to 192.168.50.0/24 lookup 20 prio 100 2>/dev/null || true
 

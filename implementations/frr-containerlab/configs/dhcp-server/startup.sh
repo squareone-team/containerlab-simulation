@@ -17,13 +17,24 @@ echo "[dhcp-server] installing Kea DHCP..."
 apk add --no-cache kea
 apk add --no-cache iproute2 
 
-if wait_for_iface eth1; then
-    ip addr add 192.168.50.40/24 dev eth1 2>/dev/null || true
-    ip link set eth1 up
-    ip route add 192.168.0.0/16 via 192.168.50.1 dev eth1 2>/dev/null || true
-    ip route add 10.0.0.0/8    via 192.168.50.1 dev eth1 2>/dev/null || true
+if wait_for_iface eth1 && wait_for_iface eth2; then
+  ip link add bond0 type bond mode active-backup miimon 100 primary eth1 2>/dev/null || true
+  ip addr flush dev eth1 2>/dev/null || true
+  ip addr flush dev eth2 2>/dev/null || true
+  ip link set eth1 down 2>/dev/null || true
+  ip link set eth2 down 2>/dev/null || true
+  ip link set eth1 master bond0
+  ip link set eth2 master bond0
+  ip link set eth1 up
+  ip link set eth2 up
+  ip link set bond0 up
+  sleep 2
+
+  ip addr add 192.168.50.40/24 dev bond0 2>/dev/null || true
+  ip route add 192.168.0.0/16 via 192.168.50.1 dev bond0 2>/dev/null || true
+  ip route add 10.0.0.0/8    via 192.168.50.1 dev bond0 2>/dev/null || true
 else
-    echo "[dhcp-server] WARNING: eth1 never appeared"
+  echo "[dhcp-server] WARNING: eth1/eth2 did not appear for bond0"
 fi
 sleep 2
 
@@ -33,7 +44,7 @@ cat > /etc/kea/kea-dhcp4.conf << 'EOF'
 {
   "Dhcp4": {
     "interfaces-config": {
-      "interfaces": ["eth1"],
+      "interfaces": ["bond0"],
       "dhcp-socket-type": "udp"
     },
     "lease-database": {

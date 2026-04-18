@@ -21,13 +21,13 @@ $C-dhcp-server kea-dhcp4 -t /etc/kea/kea-dhcp4.conf > /dev/null 2>&1 \
 
 # 3. Kea listening on UDP/67
 $C-dhcp-server netstat -ulnp 2>/dev/null | grep -q ":67" \
-  || $C-dhcp-server cat /proc/net/udp 2>/dev/null | grep -q "00000000:0043" \
+  || $C-dhcp-server cat /proc/net/udp 2>/dev/null | grep -qi ":0043" \
   && ok "dhcp-server: listening on UDP/67" \
   || fail "dhcp-server: not listening on UDP/67"
 
 # 4. IP address assigned and reachable
-$C-dhcp-server ip addr show eth1 2>/dev/null | grep -q "192.168.50.40" \
-  && ok "dhcp-server: 192.168.50.40 assigned on eth1" \
+$C-dhcp-server ip -4 -o addr show 2>/dev/null | grep -q "192.168.50.40" \
+  && ok "dhcp-server: 192.168.50.40 address is configured" \
   || fail "dhcp-server: 192.168.50.40 not assigned"
 
 # 5. Reachable from fabric (leaf-03 is on same VLAN 50)

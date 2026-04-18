@@ -11,7 +11,7 @@
 #   Ring 5   : nftables per-host micro-segmentation baseline
 #
 # Dependencies:
-#   eth1 = CORE-INFRA data-plane (leaf-03/04 VLAN50 bridge)
+#   bond0 = CORE-INFRA data-plane (eth1+eth2 on leaf-03/04 VLAN50 bridge)
 #   eth0 = ContainerLab OOB management (172.16.0.0/24)
 # =============================================================================
 
@@ -25,25 +25,50 @@ set -e
 NODE="dns-server"
 log() { echo "[${NODE}] $*"; }
 
+wait_for_iface() {
+    local iface=$1
+    local retries=15
+    while [ $retries -gt 0 ]; do
+        ip link show "$iface" > /dev/null 2>&1 && return 0
+        log "waiting for $iface..."
+        sleep 2
+        retries=$((retries - 1))
+    done
+    return 1
+}
+
 log "Starting DNS server configuration..."
 
 # ---------------------------------------------------------------------------
 # 1. Install packages
 # ---------------------------------------------------------------------------
 log "Installing packages..."
-apk add --no-cache unbound nftables rsyslog bind-tools > /dev/null 2>&1
+apk add --no-cache unbound nftables rsyslog bind-tools iproute2 > /dev/null 2>&1
 
 # ---------------------------------------------------------------------------
 # 2. Network: eth1 = CORE-INFRA (192.168.50.30/24)
 #    Default gateway = 192.168.50.1 (anycast GW on admin-leaf VLAN50 SVI)
 # ---------------------------------------------------------------------------
-log "Configuring eth1 (192.168.50.30/24)..."
-ip addr flush dev eth1 2>/dev/null || true
-ip addr add 192.168.50.30/24 dev eth1
-ip link set eth1 up
-ip route replace default via 192.168.50.1 dev eth1 2>/dev/null || \
-ip route add    default via 192.168.50.1 dev eth1
-log "eth1 ready: $(ip addr show eth1 | grep 'inet ')"
+log "Configuring bond0 (192.168.50.30/24) with eth1+eth2..."
+if wait_for_iface eth1 && wait_for_iface eth2; then
+    ip link add bond0 type bond mode active-backup miimon 100 primary eth1 2>/dev/null || true
+    ip addr flush dev eth1 2>/dev/null || true
+    ip addr flush dev eth2 2>/dev/null || true
+    ip link set eth1 down 2>/dev/null || true
+    ip link set eth2 down 2>/dev/null || true
+    ip link set eth1 master bond0
+    ip link set eth2 master bond0
+    ip link set eth1 up
+    ip link set eth2 up
+    ip link set bond0 up
+    sleep 2
+    ip addr add 192.168.50.30/24 dev bond0 2>/dev/null || true
+    ip route replace default via 192.168.50.1 dev bond0 2>/dev/null || \
+    ip route add    default via 192.168.50.1 dev bond0
+    log "bond0 ready: $(ip addr show bond0 | grep 'inet ')"
+else
+    log "WARNING: eth1/eth2 did not appear for bond0"
+fi
 
 # ---------------------------------------------------------------------------
 # 3. Write Unbound config (split-horizon: internal view + dmz view)
