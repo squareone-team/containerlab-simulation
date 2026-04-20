@@ -43,27 +43,7 @@ fi
 # PHASE 2 — PACKAGES
 # ─────────────────────────────────────────────────────────────────────────────
 log "=== PHASE 2: packages ==="
-cat >> /etc/apk/repositories << 'EOF'
-https://dl-cdn.alpinelinux.org/alpine/v3.20/community
-https://dl-cdn.alpinelinux.org/alpine/edge/community
-EOF
-apk update
-
-# apk add --no-cache \
-#     mariadb \
-#     mariadb-client \
-#     zabbix-server-mysql \
-#     zabbix-utils \
-#     net-snmp \
-#     net-snmp-tools
-
-apk add --no-cache net-snmp net-snmp-tools   # snmpget available immediately
-apk add --no-cache mariadb mariadb-client || true
-apk add --no-cache zabbix-server-mysql zabbix-utils 2>/dev/null || \
-apk add --no-cache zabbix-server zabbix-utils 2>/dev/null || \
-    echo "[zabbix] WARNING: zabbix package not found — check apk search zabbix"
-
-log "packages installed"
+log "packages provided by prebuilt image"
 
 # ─────────────────────────────────────────────────────────────────────────────
 # PHASE 3 — MARIADB

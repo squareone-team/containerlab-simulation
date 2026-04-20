@@ -1,13 +1,6 @@
 #!/bin/sh
 set -eu
 
-for i in 1 2 3 4 5 6 7 8 9 10; do
-  if apk update >/dev/null 2>&1 && apk add --no-cache openssh-server openssh-client nftables rsyslog >/dev/null 2>&1; then
-    break
-  fi
-  sleep 2
-done
-
 if ! command -v sshd >/dev/null 2>&1; then
   echo "Failed to install OpenSSH on ftp-server" >&2
   exit 1
@@ -79,18 +72,10 @@ table inet filter {
 }
 NFT
 
-if ! command -v nft >/dev/null 2>&1; then
-  apk add --no-cache nftables >/dev/null 2>&1 || true
-fi
-
 if command -v nft >/dev/null 2>&1; then
   nft -f /etc/nftables.conf
 else
   echo "WARN: nft not found, skipping nftables policy setup" >&2
-fi
-
-if ! command -v rsyslogd >/dev/null 2>&1; then
-  apk add --no-cache rsyslog >/dev/null 2>&1 || true
 fi
 
 if command -v rsyslogd >/dev/null 2>&1; then

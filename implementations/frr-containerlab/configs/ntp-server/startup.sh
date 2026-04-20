@@ -13,9 +13,6 @@ wait_for_iface() {
     return 1
 }
 
-echo "[ntp-server] installing chrony..."
-apk add --no-cache chrony iproute2
-
 if wait_for_iface eth1 && wait_for_iface eth3; then
     ip link add bond0 type bond mode active-backup miimon 100 primary eth1 2>/dev/null || true
     ip addr flush dev eth1 2>/dev/null || true
