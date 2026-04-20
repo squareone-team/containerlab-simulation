@@ -95,13 +95,6 @@ ip addr replace 172.16.0.24/24 dev "$OOB_IF"
 ip link set "$OOB_IF" up
 
 # Ring 4: enable SSH daemon for bastion management
-for i in 1 2 3 4 5 6 7 8 9 10; do
-  if apk update >/dev/null 2>&1 && apk add --no-cache openssh-server openssh-client rsyslog >/dev/null 2>&1; then
-    break
-  fi
-  sleep 2
-done
-
 if ! command -v sshd >/dev/null 2>&1; then
   echo "Failed to install OpenSSH server on $(hostname)" >&2
   exit 1
@@ -140,8 +133,7 @@ RSYSLOG
 /usr/sbin/rsyslogd
 
 # === NTP CLIENT ===
-# Install chrony
-apk add --no-cache chrony
+# Chrony is preinstalled in the lab image
 
 # Write client config
 cat > /etc/chrony.conf << 'EOF'
@@ -175,7 +167,6 @@ ip route add 192.168.50.0/24 nhid 0 2>/dev/null || \
 ip route add 192.168.50.0/24 dev vlan50 2>/dev/null || true
 
 # === DHCP RELAY ===
-apk add --no-cache dhcrelay
 dhcrelay -4 \
   -id vlan30 \
   -id vlan40 \
@@ -202,7 +193,7 @@ while [ $RETRIES -gt 0 ]; do
         | grep 'inet ' \
         | awk '{print $2}' \
         | cut -d/ -f1 \
-        | grep -v '^127\.')
+    | grep -v '^127\.' || true)
     [ -n "$MY_IP" ] && break
     sleep 2
     RETRIES=$((RETRIES - 1))
@@ -213,14 +204,6 @@ if [ -z "$MY_IP" ]; then
     MY_IP="<unknown>"
 fi
 echo "[snmp] FRR loopback IP: $MY_IP"
-
-# ── Install net-snmp ─────────────────────────────────────────────────────────
-echo "[snmp] installing net-snmp..."
-echo "https://dl-cdn.alpinelinux.org/alpine/v3.20/community" >> /etc/apk/repositories
-apk update
-apk add --no-cache \
-    --repository https://dl-cdn.alpinelinux.org/alpine/v3.20/community \
-    net-snmp net-snmp-tools
 
 mkdir -p /etc/snmp /var/run/net-snmp /var/agentx
 chmod 770 /var/agentx           # NOT 777 — agentx refuses world-writable sockets

@@ -4,7 +4,7 @@ topology:
   nodes:
     spine-01:
       kind: linux
-      image: frrouting/frr:latest
+      image: esi/frr-node:latest
       binds:
         - configs/spine-01/daemons:/etc/frr/daemons
         - configs/spine-01/frr.conf:/etc/frr/frr.conf
@@ -14,7 +14,7 @@ topology:
 
     spine-02:
       kind: linux
-      image: frrouting/frr:latest
+      image: esi/frr-node:latest
       binds:
         - configs/spine-02/daemons:/etc/frr/daemons
         - configs/spine-02/frr.conf:/etc/frr/frr.conf
@@ -24,7 +24,7 @@ topology:
 
     leaf-01:
       kind: linux
-      image: frrouting/frr:latest
+      image: esi/frr-node:latest
       binds:
         - configs/leaf-01/daemons:/etc/frr/daemons
         - configs/leaf-01/frr.conf:/etc/frr/frr.conf
@@ -34,7 +34,7 @@ topology:
 
     leaf-02:
       kind: linux
-      image: frrouting/frr:latest
+      image: esi/frr-node:latest
       binds:
         - configs/leaf-02/daemons:/etc/frr/daemons
         - configs/leaf-02/frr.conf:/etc/frr/frr.conf
@@ -44,7 +44,7 @@ topology:
 
     leaf-03:
       kind: linux
-      image: frrouting/frr:latest
+      image: esi/frr-node:latest
       binds:
         - configs/leaf-03/daemons:/etc/frr/daemons
         - configs/leaf-03/frr.conf:/etc/frr/frr.conf
@@ -54,7 +54,7 @@ topology:
 
     leaf-04:
       kind: linux
-      image: frrouting/frr:latest
+      image: esi/frr-node:latest
       binds:
         - configs/leaf-04/daemons:/etc/frr/daemons
         - configs/leaf-04/frr.conf:/etc/frr/frr.conf
@@ -64,7 +64,7 @@ topology:
 
     leaf-05:
       kind: linux
-      image: frrouting/frr:latest
+      image: esi/frr-node:latest
       binds:
         - configs/leaf-05/daemons:/etc/frr/daemons
         - configs/leaf-05/frr.conf:/etc/frr/frr.conf
@@ -74,7 +74,7 @@ topology:
 
     leaf-06:
       kind: linux
-      image: frrouting/frr:latest
+      image: esi/frr-node:latest
       binds:
         - configs/leaf-06/daemons:/etc/frr/daemons
         - configs/leaf-06/frr.conf:/etc/frr/frr.conf
@@ -84,7 +84,7 @@ topology:
 
     leaf-07:
       kind: linux
-      image: frrouting/frr:latest
+      image: esi/frr-node:latest
       binds:
         - configs/leaf-07/daemons:/etc/frr/daemons
         - configs/leaf-07/frr.conf:/etc/frr/frr.conf
@@ -94,7 +94,7 @@ topology:
 
     leaf-08:
       kind: linux
-      image: frrouting/frr:latest
+      image: esi/frr-node:latest
       binds:
         - configs/leaf-08/daemons:/etc/frr/daemons
         - configs/leaf-08/frr.conf:/etc/frr/frr.conf
@@ -104,7 +104,7 @@ topology:
 
     leaf-09:
       kind: linux
-      image: frrouting/frr:latest
+      image: esi/frr-node:latest
       binds:
         - configs/leaf-09/daemons:/etc/frr/daemons
         - configs/leaf-09/frr.conf:/etc/frr/frr.conf
@@ -114,7 +114,7 @@ topology:
 
     leaf-10:
       kind: linux
-      image: frrouting/frr:latest
+      image: esi/frr-node:latest
       binds:
         - configs/leaf-10/daemons:/etc/frr/daemons
         - configs/leaf-10/frr.conf:/etc/frr/frr.conf
@@ -204,7 +204,7 @@ topology:
 
     server-student-01:
       kind: linux
-      image: alpine:3.20
+      image: esi/alpine-host:3.20
       cap-add:
         - NET_ADMIN
         - SYS_MODULE
@@ -218,7 +218,7 @@ topology:
 
     server-student-02:
       kind: linux
-      image: alpine:3.20
+      image: esi/alpine-host:3.20
       cap-add:
         - NET_ADMIN
         - SYS_MODULE
@@ -232,7 +232,7 @@ topology:
 
     server-admin-01:
       kind: linux
-      image: alpine:3.20
+      image: esi/alpine-host:3.20
       cap-add:
         - NET_ADMIN
         - SYS_MODULE
@@ -246,7 +246,7 @@ topology:
 
     server-admin-02:
       kind: linux
-      image: alpine:3.20
+      image: esi/alpine-host:3.20
       cap-add:
         - NET_ADMIN
         - SYS_MODULE
@@ -260,7 +260,7 @@ topology:
 
     server-hpc-01:
       kind: linux
-      image: alpine:3.20
+      image: esi/alpine-host:3.20
       cap-add:
         - NET_ADMIN
         - SYS_MODULE
@@ -274,7 +274,7 @@ topology:
 
     server-hpc-02:
       kind: linux
-      image: alpine:3.20
+      image: esi/alpine-host:3.20
       cap-add:
         - NET_ADMIN
         - SYS_MODULE
@@ -288,7 +288,7 @@ topology:
 
     server-storage-01:
       kind: linux
-      image: alpine:3.20
+      image: esi/alpine-host:3.20
       cap-add:
         - NET_ADMIN
         - SYS_MODULE
@@ -302,11 +302,10 @@ topology:
 
     server-dmz-01:
       kind: linux
-      image: alpine:3.20
+      image: esi/alpine-host:3.20
       binds:
         - configs/ntp-server/server-client-ntp.sh:/ntp-client.sh
       exec:
-        - apk add --no-cache chrony
         - ip addr add 198.51.100.10/24 dev eth1
         - ip route del default
         - ip route add default via 198.51.100.1 dev eth1
@@ -314,11 +313,10 @@ topology:
 
     lms-staff:
       kind: linux
-      image: alpine:3.20
+      image: esi/alpine-host:3.20
       binds:
         - configs/ntp-server/server-client-ntp.sh:/ntp-client.sh
       exec:
-        - apk add --no-cache chrony
         - ip addr add 192.168.30.10/24 dev eth1
         - ip route del default
         - ip route add default via 192.168.30.1 dev eth1
@@ -326,11 +324,10 @@ topology:
 
     services-web:
       kind: linux
-      image: alpine:3.20
+      image: esi/alpine-host:3.20
       binds:
         - configs/ntp-server/server-client-ntp.sh:/ntp-client.sh
       exec:
-        - apk add --no-cache chrony
         - ip addr add 192.168.40.10/24 dev eth1
         - ip route del default
         - ip route add default via 192.168.40.1 dev eth1
@@ -338,7 +335,7 @@ topology:
 
     firewall-01:
       kind: linux
-      image: alpine:3.20
+      image: esi/alpine-firewall:3.20
       mgmt-ipv4: 172.20.20.101
       binds:
         - configs/firewall-common/startup-common.sh:/opt/firewall-common/startup-common.sh
@@ -350,7 +347,7 @@ topology:
 
     firewall-02:
       kind: linux
-      image: alpine:3.20
+      image: esi/alpine-firewall:3.20
       mgmt-ipv4: 172.20.20.102
       binds:
         - configs/firewall-common/startup-common.sh:/opt/firewall-common/startup-common.sh
@@ -361,7 +358,7 @@ topology:
         - sh /startup.sh
     bastion-01:
       kind: linux
-      image: alpine:3.16
+      image: esi/alpine-host:3.20
       binds:
         - configs/bastion-01/startup.sh:/startup.sh
         - configs/shared:/shared
@@ -372,14 +369,14 @@ topology:
       image: alpine:3.20
     ntp-server:
       kind: linux
-      image: alpine:3.20
+      image: esi/alpine-host:3.20
       binds:
         - configs/ntp-server/startup.sh:/startup.sh
       cmd: sh /startup.sh
 
     dns-server:
       kind: linux
-      image: alpine:3.20
+      image: esi/alpine-services:3.20
       binds:
         - configs/dns-server/startup.sh:/setup.sh:ro
         - configs/dns-server/unbound.conf:/etc/unbound/unbound.conf.seed:ro
@@ -387,7 +384,7 @@ topology:
 
     dhcp-server:
       kind: linux
-      image: alpine:3.20
+      image: esi/alpine-services:3.20
       binds:
         - configs/dhcp-server/startup.sh:/startup.sh
       cmd: sh /startup.sh
@@ -397,7 +394,7 @@ topology:
 
     ftp-server:
       kind: linux
-      image: alpine:3.20
+      image: esi/alpine-host:3.20
       binds:
         - configs/ftp-server/startup.sh:/startup.sh
         - configs/shared:/shared:ro
@@ -405,7 +402,7 @@ topology:
         - sh /startup.sh
     zabbix-server:
       kind: linux
-      image: alpine:3.20
+      image: esi/alpine-zabbix:3.20
       startup-delay: 60
       binds:
         - configs/zabbix-server/startup.sh:/startup.sh
@@ -437,7 +434,7 @@ topology:
         - configs/grafana/provisioning:/etc/grafana/provisioning
     frr-exporter:
       kind: linux
-      image: alpine:3.20
+      image: esi/alpine-exporter:3.20
       env:
         LAB_NAME: esi-datacenter
       binds:
@@ -445,15 +442,13 @@ topology:
         - configs/frr-exporter/generate-metrics.sh:/opt/frr-exporter/generate-metrics.sh
         - /var/run/docker.sock:/var/run/docker.sock
       exec:
-        - sh -lc "apk add --no-cache busybox-extras docker-cli jq iproute2
-          >/dev/null 2>&1 || true; chmod +x
-          /opt/frr-exporter/generate-metrics.sh; nohup
+        - sh -lc "chmod +x /opt/frr-exporter/generate-metrics.sh; nohup
           /opt/frr-exporter/generate-metrics.sh >/tmp/frr-exporter-loop.log 2>&1
           & nohup httpd -f -p 9342 -h /srv/www >/tmp/frr-exporter-httpd.log 2>&1
           &"
     syslog-server:
       kind: linux
-      image: alpine:3.20
+      image: esi/alpine-host:3.20
       binds:
         - configs/syslog-server/startup.sh:/startup.sh
         - configs/shared:/shared:ro
@@ -468,14 +463,13 @@ topology:
         - ip route add default via 192.168.10.1 dev eth1
     campus-bp:
       kind: linux
-      image: alpine:3.20
+      image: esi/alpine-host:3.20
       exec:
         - sh -lc 'ip link add br-student type bridge 2>/dev/null || true; ip
           link set br-student up || true; ip addr add 192.168.10.1/24 dev
           br-student 2>/dev/null || true'
-        - sh -lc 'apk add --no-cache iptables >/dev/null 2>&1 || true; for i in
-          $(seq 1 20); do ip link show eth1 >/dev/null 2>&1 && break; sleep 1;
-          done; ip link set eth1 up 2>/dev/null || true; ip addr add
+        - sh -lc 'for i in $(seq 1 20); do ip link show eth1 >/dev/null 2>&1 &&
+          break; sleep 1; done; ip link set eth1 up 2>/dev/null || true; ip addr add
           100.10.0.2/30 dev eth1 2>/dev/null || true; ip route del default
           2>/dev/null || true; ip route add default via 100.10.0.1 dev eth1
           2>/dev/null || true; sysctl -w net.ipv4.ip_forward=1 >/dev/null 2>&1

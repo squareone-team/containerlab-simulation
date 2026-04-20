@@ -11,21 +11,9 @@ ip link set eth1 up
 ip link set eth2 up
 ip link set bond0 up
 sleep 2
-apk add --no-cache chrony
 ip addr add 192.168.10.20/24 dev bond0
 ip route del default 2>/dev/null || true
 ip route add default via 192.168.10.1 dev bond0
-
-for i in 1 2 3 4 5; do
-	if apk update >/dev/null 2>&1 && apk add --no-cache nftables rsyslog >/dev/null 2>&1; then
-		break
-	fi
-	sleep 2
-done
-
-if ! command -v nft >/dev/null 2>&1; then
-	apk add --no-cache nftables >/dev/null 2>&1 || true
-fi
 
 if command -v nft >/dev/null 2>&1; then
 	cat > /etc/nftables.conf << 'NFT'
@@ -36,6 +24,9 @@ table inet filter {
 		policy drop;
 		iif "lo" accept
 		ct state established,related accept
+		ip protocol icmp accept
+		ip saddr { 192.168.50.0/24, 192.168.60.0/24 } tcp dport 9100 accept
+		ip saddr 192.168.10.0/24 accept
 		ip saddr 172.16.0.50 tcp dport 22 accept
 	}
 
@@ -54,10 +45,6 @@ NFT
 	nft -f /etc/nftables.conf
 else
 	echo "WARN: nft not found, skipping nftables policy setup" >&2
-fi
-
-if ! command -v rsyslogd >/dev/null 2>&1; then
-	apk add --no-cache rsyslog >/dev/null 2>&1 || true
 fi
 
 if command -v rsyslogd >/dev/null 2>&1; then

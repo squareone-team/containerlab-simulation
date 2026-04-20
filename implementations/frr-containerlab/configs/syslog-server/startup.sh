@@ -1,13 +1,6 @@
 #!/bin/sh
 set -eu
 
-for i in 1 2 3 4 5 6 7 8 9 10; do
-  if apk update >/dev/null 2>&1 && apk add --no-cache openssh-server openssh-client rsyslog >/dev/null 2>&1; then
-    break
-  fi
-  sleep 2
-done
-
 if ! command -v rsyslogd >/dev/null 2>&1; then
   echo "Failed to install rsyslog on syslog-server" >&2
   exit 1

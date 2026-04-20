@@ -13,9 +13,6 @@ FW_TRANSIT_GW="${FW_TRANSIT_GW:-192.168.1.252}"
 
 echo "[*] ${FW_NAME} startup script starting..."
 
-echo "[*] Installing required packages..."
-apk add --no-cache keepalived nftables tcpdump curl iputils
-
 sysctl -w net.ipv4.ip_forward=1
 
 echo "[*] Configuring eth1 (Ring 1 interface)..."

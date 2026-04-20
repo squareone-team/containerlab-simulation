@@ -219,7 +219,7 @@ generate_metrics() {
     echo "# TYPE frr_exporter_scrape_duration_seconds gauge"
   } > "$tmp_file"
 
-  frr_containers="$(docker ps --format '{{.Names}} {{.Image}}' | awk '$2 ~ /^frrouting\/frr/ {print $1}' || true)"
+  frr_containers="$(docker ps --format '{{.Names}} {{.Image}}' | awk '$2 ~ /^frrouting\/frr/ || $2 ~ /^esi\/frr-node/ {print $1}' || true)"
   targets_count="$(printf '%s\n' "$frr_containers" | awk 'NF>0 {n++} END {print n+0}')"
 
   printf 'frr_exporter_target_containers %s\n' "$targets_count" >> "$tmp_file"

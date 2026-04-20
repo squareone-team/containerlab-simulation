@@ -157,4 +157,10 @@ else
 fi
 
 echo "Results: $PASS passed / $FAIL failed"
-[ $FAIL -eq 0 ] && echo "Phase 1 + Correction STABLE" || echo "NOT ready — fix failures above"
+if [ $FAIL -eq 0 ]; then
+  echo "Phase 1 + Correction STABLE"
+  exit 0
+fi
+
+echo "NOT ready — fix failures above"
+exit 1

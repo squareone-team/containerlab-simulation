@@ -40,12 +40,6 @@ wait_for_iface() {
 log "Starting DNS server configuration..."
 
 # ---------------------------------------------------------------------------
-# 1. Install packages
-# ---------------------------------------------------------------------------
-log "Installing packages..."
-apk add --no-cache unbound nftables rsyslog bind-tools iproute2 > /dev/null 2>&1
-
-# ---------------------------------------------------------------------------
 # 2. Network: eth1 = CORE-INFRA (192.168.50.30/24)
 #    Default gateway = 192.168.50.1 (anycast GW on admin-leaf VLAN50 SVI)
 # ---------------------------------------------------------------------------

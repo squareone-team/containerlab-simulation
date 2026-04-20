@@ -1,5 +1,4 @@
 #!/bin/sh
-apk add --no-cache chrony 2>/dev/null
 mkdir -p /var/log/chrony /var/run/chrony
 
 cat > /etc/chrony.conf << 'EOF'

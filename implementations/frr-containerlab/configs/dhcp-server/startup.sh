@@ -13,9 +13,24 @@ wait_for_iface() {
     return 1
 }
 
-echo "[dhcp-server] installing Kea DHCP..."
-apk add --no-cache kea
-apk add --no-cache iproute2 
+wait_for_iface_running() {
+  local iface=$1
+  local retries=${2:-90}
+  while [ "$retries" -gt 0 ]; do
+    if ip link show "$iface" > /dev/null 2>&1; then
+      local state
+      local carrier
+      state="$(cat "/sys/class/net/$iface/operstate" 2>/dev/null || echo down)"
+      carrier="$(cat "/sys/class/net/$iface/carrier" 2>/dev/null || echo 0)"
+      if [ "$state" = "up" ] && [ "$carrier" = "1" ]; then
+        return 0
+      fi
+    fi
+    sleep 1
+    retries=$((retries - 1))
+  done
+  return 1
+}
 
 if wait_for_iface eth1 && wait_for_iface eth2; then
   ip link add bond0 type bond mode active-backup miimon 100 primary eth1 2>/dev/null || true
@@ -36,7 +51,12 @@ if wait_for_iface eth1 && wait_for_iface eth2; then
 else
   echo "[dhcp-server] WARNING: eth1/eth2 did not appear for bond0"
 fi
-sleep 2
+
+if wait_for_iface_running bond0 120; then
+  echo "[dhcp-server] bond0 is running with carrier"
+else
+  echo "[dhcp-server] WARNING: bond0 is not running yet; Kea may fail to bind UDP/67"
+fi
 
 mkdir -p /etc/kea /var/log/kea /var/run/kea
 

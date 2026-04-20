@@ -7,14 +7,7 @@ OOB_IF="eth1"
 ip addr replace 172.16.0.50/24 dev "$OOB_IF"
 ip link set "$OOB_IF" up
 
-# Install OpenSSH with retries (network can be briefly unavailable at boot).
-for i in 1 2 3 4 5 6 7 8 9 10; do
-  if apk update >/dev/null 2>&1 && apk add --no-cache openssh-server openssh-client rsyslog >/dev/null 2>&1; then
-    break
-  fi
-  sleep 2
-done
-
+# OpenSSH and rsyslog are preinstalled in the lab image.
 if ! command -v ssh >/dev/null 2>&1; then
   echo "Failed to install OpenSSH on bastion" >&2
   exit 1
