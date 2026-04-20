@@ -21,6 +21,50 @@ run_in_container() {
   docker exec "${CLAB_PREFIX}-${node}" sh -lc "$*"
 }
 
+wait_for_listener() {
+  local node="$1"
+  local port="$2"
+  local timeout="${3:-10}"
+  local elapsed=0
+
+  while (( elapsed < timeout )); do
+    if run_in_container "$node" "port_hex=\$(printf '%04X' $port); awk -v port=\"\$port_hex\" '\$2 ~ \":\" port \"\$\" && \$4 == \"0A\" {found=1} END {exit(found ? 0 : 1)}' /proc/net/tcp /proc/net/tcp6 2>/dev/null"; then
+      return 0
+    fi
+    sleep 1
+    elapsed=$((elapsed + 1))
+  done
+
+  return 1
+}
+
+wait_for_payload() {
+  local node="$1"
+  local logfile="$2"
+  local token="$3"
+  local timeout="${4:-10}"
+  local elapsed=0
+
+  while (( elapsed < timeout )); do
+    if run_in_container "$node" "grep -Fqx '$token' '$logfile'"; then
+      return 0
+    fi
+    sleep 1
+    elapsed=$((elapsed + 1))
+  done
+
+  return 1
+}
+
+start_nc_listener() {
+  local node="$1"
+  local port="$2"
+  local logfile="$3"
+
+  run_in_container "$node" "pkill nc >/dev/null 2>&1 || true; rm -f '$logfile'; nohup nc -l -p $port >'$logfile' 2>&1 </dev/null &"
+  wait_for_listener "$node" "$port"
+}
+
 get_master_fw() {
   if docker exec "$FW1" sh -lc "ip -4 addr show eth1 | grep -q '192.168.1.254/24'"; then
     echo "$FW1"
@@ -34,7 +78,7 @@ get_master_fw() {
 get_rule_packets() {
   local fw="$1"
   local fragment="$2"
-  docker exec "$fw" sh -lc "nft list chain inet filter forward | grep -F \"$fragment\" | sed -n 's/.*counter packets \\([0-9][0-9]*\\) bytes.*/\\1/p' | head -n1"
+  docker exec "$fw" sh -lc "nft list chain inet filter forward | grep -F \"$fragment\" | sed -n 's/.*counter packets \\([0-9][0-9]*\\) bytes.*/\\1/p' | head -n1" || true
 }
 
 cleanup() {
@@ -63,18 +107,38 @@ ok "Master firewall detected: $MASTER_FW"
 
 ALLOW_RULE="ip saddr @cluster_2_admin ip daddr @cluster_1_pedagogy tcp dport { 53, 9100 } ct state new"
 ALLOW_TOKEN="RING1_ALLOW_$(date +%s)"
+ALLOW_ATTEMPTS=6
+allow_delivered=0
+allow_success_attempt=""
 
-run_in_container "server-student-01" "pkill nc >/dev/null 2>&1 || true; rm -f /tmp/ring1-student-9100.log; (nc -l -p 9100 >/tmp/ring1-student-9100.log 2>&1 &)"
-sleep 1
 before_allow="$(get_rule_packets "$MASTER_FW" "$ALLOW_RULE")"
-run_in_container "server-admin-01" "printf '%s\n' '$ALLOW_TOKEN' | nc -w 3 192.168.10.10 9100 >/dev/null 2>&1 || true"
-sleep 2
+
+# A single admin -> student attempt can hash onto different fabric buckets because
+# the destination host is dual-homed. We retry a few real payload deliveries so
+# this script stays scoped to Ring 1 firewall validation instead of random ECMP
+# luck elsewhere in the topology.
+for attempt in $(seq 1 "$ALLOW_ATTEMPTS"); do
+  attempt_token="${ALLOW_TOKEN}_${attempt}"
+
+  if ! start_nc_listener "server-student-01" 9100 "/tmp/ring1-student-9100.log"; then
+    continue
+  fi
+
+  run_in_container "server-admin-01" "printf '%s\n' '$attempt_token' | nc -w 3 192.168.10.10 9100 >/dev/null 2>&1 || true"
+
+  if wait_for_payload "server-student-01" "/tmp/ring1-student-9100.log" "$attempt_token" 3; then
+    allow_delivered=1
+    allow_success_attempt="$attempt"
+    break
+  fi
+done
+
 after_allow="$(get_rule_packets "$MASTER_FW" "$ALLOW_RULE")"
 
-if run_in_container "server-student-01" "grep -Fqx '$ALLOW_TOKEN' /tmp/ring1-student-9100.log"; then
-  ok "Admin -> Pedagogy 9100 delivered a real payload"
+if (( allow_delivered == 1 )); then
+  ok "Admin -> Pedagogy 9100 delivered a real payload (attempt $allow_success_attempt/$ALLOW_ATTEMPTS)"
 else
-  ko "Admin -> Pedagogy 9100 did not deliver the expected payload"
+  ko "Admin -> Pedagogy 9100 did not deliver the expected payload after $ALLOW_ATTEMPTS attempts"
 fi
 
 if [[ -n "$before_allow" && -n "$after_allow" && "$after_allow" -gt "$before_allow" ]]; then
@@ -86,14 +150,17 @@ fi
 DROP_RULE="ip saddr @cluster_1_pedagogy ip daddr @cluster_2_admin"
 DROP_TOKEN="RING1_DROP_$(date +%s)"
 
-run_in_container "server-admin-01" "pkill nc >/dev/null 2>&1 || true; rm -f /tmp/ring1-admin-9101.log; (nc -l -p 9101 >/tmp/ring1-admin-9101.log 2>&1 &)"
-sleep 1
+if start_nc_listener "server-admin-01" 9101 "/tmp/ring1-admin-9101.log"; then
+  ok "Admin listener on 9101 is ready"
+else
+  ko "Admin listener on 9101 did not become ready"
+fi
+
 before_drop="$(get_rule_packets "$MASTER_FW" "$DROP_RULE")"
 run_in_container "server-student-01" "printf '%s\n' '$DROP_TOKEN' | nc -w 3 192.168.50.10 9101 >/dev/null 2>&1 || true"
-sleep 2
 after_drop="$(get_rule_packets "$MASTER_FW" "$DROP_RULE")"
 
-if run_in_container "server-admin-01" "grep -Fqx '$DROP_TOKEN' /tmp/ring1-admin-9101.log"; then
+if wait_for_payload "server-admin-01" "/tmp/ring1-admin-9101.log" "$DROP_TOKEN" 3; then
   ko "Pedagogy -> Admin 9101 unexpectedly delivered a payload"
 else
   ok "Pedagogy -> Admin 9101 payload was blocked"

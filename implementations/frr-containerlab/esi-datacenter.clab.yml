@@ -544,6 +544,7 @@ topology:
 
     - endpoints: [ "leaf-01:eth5", "firewall-01:eth1" ]
     - endpoints: [ "leaf-02:eth5", "firewall-02:eth1" ]
+    - endpoints: [ "leaf-01:eth9", "leaf-02:eth9" ]
     - endpoints: [ "leaf-01:eth6", "ids-01:eth1" ]
 
     - endpoints: [ "leaf-09:eth3", "server-student-01:eth1" ]
