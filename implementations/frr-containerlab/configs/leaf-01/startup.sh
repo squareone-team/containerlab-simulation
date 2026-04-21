@@ -66,6 +66,8 @@ ip rule add iif br-fw-ha to 192.168.10.0/24 lookup 30 prio 10000 || true
 ip rule add iif br-fw-ha to 192.168.20.0/24 lookup 30 prio 10001 || true
 ip rule add iif br-fw-ha to 192.168.50.0/24 lookup 20 prio 10002 || true
 ip rule add iif br-fw-ha to 192.168.60.0/24 lookup 20 prio 10003 || true
+ip rule add iif br-fw-ha to 10.200.0.0/30 lookup 60 prio 10004 || true
+ip rule add iif br-fw-ha to 192.168.110.0/24 lookup 60 prio 10005 || true
 ip rule add iif br-fw-ha from 192.168.50.0/24 lookup 30 prio 10010 || true
 ip rule add iif br-fw-ha from 192.168.60.0/24 lookup 30 prio 10011 || true
 ip rule add iif br-fw-ha from 192.168.10.0/24 lookup 20 prio 10012 || true
@@ -125,6 +127,7 @@ ip link set vlan120 address $ANYCAST_MAC || true
 ip addr add 192.168.10.1/24 dev vlan120
 ip link set vlan120 up
 ip route replace 192.168.10.100/32 dev vlan120 vrf VRF-WIFI-CTRL
+ip route replace 192.168.110.0/24 via 10.200.0.2 dev eth8 vrf VRF-WIFI-CTRL
 
 if ip link show eth14 >/dev/null 2>&1; then
   ip link set eth14 master br0
@@ -155,6 +158,8 @@ FW_INTERNAL_SUBNETS="
 192.168.60.0/24
 192.168.70.0/24
 192.168.80.0/24
+10.200.0.0/30
+192.168.110.0/24
 "
 
 for SUBNET in $FW_INTERNAL_SUBNETS; do
@@ -164,6 +169,27 @@ done
 PREF=91
 for SUBNET in $FW_INTERNAL_SUBNETS; do
     ip rule add pref "$PREF" iif vlan100 to "$SUBNET" lookup "$FW_DMZ_TABLE" 2>/dev/null || true
+  PREF=$((PREF + 1))
+done
+
+# Campus traffic keeps its dedicated micro-VRF uplink, but only the shared
+# service IPs and the explicit DMZ test subnet are steered through Ring 1.
+# No broader internal prefixes leak.
+FW_CAMPUS_TABLE=160
+FW_CAMPUS_SERVICE_IPS="
+192.168.50.20/32
+192.168.50.30/32
+192.168.50.40/32
+198.51.100.0/24
+"
+
+for SUBNET in $FW_CAMPUS_SERVICE_IPS; do
+  ip route replace table "$FW_CAMPUS_TABLE" "$SUBNET" via 192.168.1.254 dev br-fw-ha
+done
+
+PREF=86
+for SUBNET in $FW_CAMPUS_SERVICE_IPS; do
+  ip rule add pref "$PREF" iif eth8 to "$SUBNET" lookup "$FW_CAMPUS_TABLE" 2>/dev/null || true
   PREF=$((PREF + 1))
 done
 
