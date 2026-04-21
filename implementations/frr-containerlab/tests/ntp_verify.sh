@@ -117,6 +117,16 @@ for NODE in $FABRIC_NODES; do
          info "$NODE: large offset usually means node just started — wait 30s and retry"; }
 done
 
+# 6b. server endpoint still tracks lab NTP source after DHCP cycle
+if $C-server-student-01 sh -lc 'command -v chronyc >/dev/null 2>&1'; then
+  $C-server-student-01 chronyc tracking 2>/dev/null | grep -qE "Reference ID\s*:.*192\\.168\\.50\\.20" \
+    && ok "server-student-01: chronyc tracking references 192.168.50.20" \
+    || fail "server-student-01: chronyc tracking does not reference 192.168.50.20"
+else
+  info "server-student-01: chronyc not found, skipping NTP source check"
+fi
+
+
 # 7. No-PIM guard (T4 requirement from Section 2 reconciliation)
 info "verifying PIM is absent on all fabric nodes (multicast not used in this architecture)"
 for NODE in $FABRIC_NODES; do

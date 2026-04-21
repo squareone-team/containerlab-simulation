@@ -336,6 +336,23 @@ ping_with_retry "student-bp-01 can reach internet-web-01 (198.18.3.10)" \
   "2 (packets )?received"
 
 echo
+ping_with_retry "student-bp-01 can reach server-dmz-01 (198.51.100.10)" \
+  "$C-student-bp-01 ping -c2 -W2 198.51.100.10" \
+  "2 (packets )?received"
+
+cmd_match "student-bp-01 resolves dmz-server-01.esi.internal via dns-server" \
+  "$C-student-bp-01 nslookup dmz-server-01.esi.internal 192.168.50.30" \
+  "Address: 198\\.51\\.100\\.10|Address.*198\\.51\\.100\\.10"
+
+cmd_match "student-bp-01 HTTP GET dmz-server-01 returns expected page" \
+  "$C-student-bp-01 curl -fsS --max-time 5 http://dmz-server-01.esi.internal" \
+  "ESI Datacenter DMZ test service is reachable"
+
+cmd_match "student-bp-01 HTTP HEAD dmz-server-01 returns 200" \
+  "$C-student-bp-01 curl -sSI --max-time 5 http://dmz-server-01.esi.internal" \
+  "HTTP/[0-9.]+ 200"
+
+echo
 ping_with_retry "internet-client-01 can reach server-dmz-01 (198.51.100.10)" \
   "$C-internet-client-01 ping -c2 -W2 198.51.100.10" \
   "2 (packets )?received"
