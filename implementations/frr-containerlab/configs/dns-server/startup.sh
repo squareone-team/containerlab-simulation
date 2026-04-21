@@ -72,7 +72,10 @@ UNBOUND_DIR="/etc/unbound"
 mkdir -p "${UNBOUND_DIR}"
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-if [ -f "${SCRIPT_DIR}/unbound.conf" ]; then
+if [ -f "${UNBOUND_DIR}/unbound.conf.seed" ]; then
+    cp "${UNBOUND_DIR}/unbound.conf.seed" "${UNBOUND_DIR}/unbound.conf"
+    log "Copied mounted unbound.conf seed"
+elif [ -f "${SCRIPT_DIR}/unbound.conf" ]; then
     cp "${SCRIPT_DIR}/unbound.conf" "${UNBOUND_DIR}/unbound.conf"
     log "Copied unbound.conf from script directory"
 else

@@ -47,6 +47,8 @@ ip link set eth9 master br-fw-ha
 ip link set eth5 up
 ip link set eth9 up
 ip addr add 192.168.1.253/24 dev br-fw-ha
+ip route replace 10.200.0.0/30 via 192.168.1.252 dev br-fw-ha
+ip route replace 192.168.110.0/24 via 192.168.1.252 dev br-fw-ha
 
 # Policy routing for packets returning from the firewall transit segment.
 ip rule add iif br-fw-ha to 192.168.10.0/24 lookup 30 prio 10000 || true

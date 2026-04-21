@@ -304,11 +304,11 @@ topology:
       kind: linux
       image: esi/alpine-host:3.20
       binds:
+        - configs/server-dmz-01/startup.sh:/startup.sh
+        - configs/server-dmz-01/www:/www:ro
         - configs/ntp-server/server-client-ntp.sh:/ntp-client.sh
       exec:
-        - ip addr add 198.51.100.10/24 dev eth1
-        - ip route del default
-        - ip route add default via 198.51.100.1 dev eth1
+        - sh /startup.sh
         - sh /ntp-client.sh
 
     lms-staff:
@@ -464,35 +464,19 @@ topology:
     campus-bp:
       kind: linux
       image: esi/alpine-host:3.20
+      binds:
+        - configs/campus-bp/startup.sh:/startup.sh
       exec:
-        - sh -lc 'ip link add br-student type bridge 2>/dev/null || true; ip
-          link set br-student up || true; ip addr add 192.168.10.1/24 dev
-          br-student 2>/dev/null || true'
-        - sh -lc 'for i in $(seq 1 20); do ip link show eth1 >/dev/null 2>&1 &&
-          break; sleep 1; done; ip link set eth1 up 2>/dev/null || true; ip addr add
-          100.10.0.2/30 dev eth1 2>/dev/null || true; ip route del default
-          2>/dev/null || true; ip route add default via 100.10.0.1 dev eth1
-          2>/dev/null || true; sysctl -w net.ipv4.ip_forward=1 >/dev/null 2>&1
-          || true; iptables -t nat -C POSTROUTING -s 192.168.10.0/24 -o eth1 -j
-          MASQUERADE 2>/dev/null || iptables -t nat -A POSTROUTING -s
-          192.168.10.0/24 -o eth1 -j MASQUERADE'
-        - sh -lc 'for i in $(seq 1 20); do ip link show eth3 >/dev/null 2>&1 &&
-          break; sleep 1; done; ip link set eth3 up 2>/dev/null || true; ip addr
-          add 10.200.0.2/30 dev eth3 2>/dev/null || true; ip route del
-          192.168.10.100/32 2>/dev/null || true; ip route add 192.168.10.100/32
-          via 10.200.0.1 2>/dev/null || true'
-        - sh -lc 'for i in $(seq 1 20); do ip link show eth4 >/dev/null 2>&1 &&
-          break; sleep 1; done; ip link set eth4 up 2>/dev/null || true; ip link
-          set eth4 master br-student 2>/dev/null || true'
+        - sh /startup.sh
 
     student-bp-01:
       kind: linux
       image: nicolaka/netshoot
+      binds:
+        - configs/student-bp-01/startup.sh:/startup.sh
       cmd: sleep infinity
       exec:
-        - ip addr add 192.168.10.30/24 dev eth1
-        - ip route del default
-        - ip route add default via 192.168.10.1 dev eth1
+        - sh /startup.sh
     oob-sw:
       kind: linux
       image: alpine:3.20
