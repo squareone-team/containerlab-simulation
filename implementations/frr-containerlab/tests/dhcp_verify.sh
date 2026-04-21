@@ -7,6 +7,53 @@ ok()  { echo "  [PASS] $1"; PASS=$((PASS + 1)); return 0; }
 fail(){ echo "  [FAIL] $1"; FAIL=$((FAIL + 1)); return 0; }
 info(){ echo "  [INFO] $1"; return 0; }
 
+restore_bond_static() {
+  local NODE="$1"
+  local STATIC_IP="$2"
+  local GW="$3"
+
+  $C-$NODE sh -lc "
+    ip addr flush dev bond0
+    ip addr add ${STATIC_IP}/24 dev bond0
+    ip route replace default via ${GW} dev bond0
+  " >/dev/null 2>&1 \
+    && ok "$NODE: restored static ${STATIC_IP}/24" \
+    || fail "$NODE: failed to restore static ${STATIC_IP}/24"
+}
+
+bond_dhcp_smoke() {
+  local NODE="$1"
+  local SUBNET_PREFIX="$2"
+  local PEER_IP="$3"
+  local STATIC_IP="$4"
+  local GW="$5"
+
+  local OUT
+  OUT="$($C-$NODE sh -lc '
+    ip addr flush dev bond0
+    ip route del default 2>/dev/null || true
+    udhcpc -f -q -n -t 3 -T 3 -i bond0
+  ' 2>&1)"
+
+  if [ $? -eq 0 ]; then
+    ok "$NODE: udhcpc obtained lease on bond0"
+  else
+    fail "$NODE: udhcpc failed to obtain lease on bond0"
+    info "$NODE udhcpc output:"
+    echo "$OUT" | sed 's/^/    /'
+  fi
+
+  $C-$NODE sh -lc "ip -4 -o addr show dev bond0" 2>/dev/null | grep -Eq "inet ${SUBNET_PREFIX}\\." \
+    && ok "$NODE: bond0 received ${SUBNET_PREFIX}.x address" \
+    || fail "$NODE: bond0 did not receive ${SUBNET_PREFIX}.x address"
+
+  $C-$NODE ping -c2 -W2 "$PEER_IP" >/dev/null 2>&1 \
+    && ok "$NODE: can reach peer ${PEER_IP} after DHCP lease" \
+    || fail "$NODE: cannot reach peer ${PEER_IP} after DHCP lease"
+
+  restore_bond_static "$NODE" "$STATIC_IP" "$GW"
+}
+
 echo "=== T4: DHCP Verification ==="
 
 # 1. Kea process running
@@ -34,20 +81,10 @@ $C-dhcp-server ip -4 -o addr show 2>/dev/null | grep -q "192.168.50.40" \
 $C-leaf-03 ping -c2 -W2 192.168.50.40 > /dev/null 2>&1 \
   && ok "dhcp-server: reachable from leaf-03 (same subnet)" \
   || fail "dhcp-server: not reachable from leaf-03"
-
-# 6. Reachable from remote leaf (relay path through EVPN)
-$C-leaf-09 ping -c2 -W2 192.168.50.40 > /dev/null 2>&1 \
-  && ok "dhcp-server: reachable from leaf-09 (EVPN relay path)" \
-  || { fail "dhcp-server: not reachable from leaf-09 (relay path broken)"; \
-       info "check: ip route show vrf VRF-STAFF on leaf-09 — 192.168.50.0/24 must be present via EVPN Type-5"; }
-
-# 7. DHCP relay running on leaf SVIs
-for NODE in leaf-03 leaf-09; do
-  $C-$NODE pgrep -x dhcrelay > /dev/null 2>&1 \
-    && ok "$NODE: dhcrelay process running" \
-    || { fail "$NODE: dhcrelay not running"; \
-         info "$NODE: dhcrelay must forward client DISCOVER packets to 192.168.50.40"; }
-done
+  
+# 7. Bonded endpoint DHCP smoke tests (udhcpc applies lease on bond0)
+bond_dhcp_smoke "server-student-01" "192.168.10" "192.168.10.20" "192.168.10.10" "192.168.10.1"
+bond_dhcp_smoke "server-hpc-01" "192.168.70" "192.168.70.20" "192.168.70.10" "192.168.70.1"
 
 # 8. Static reservations: infrastructure IPs are in config
 for HOST_IP in 192.168.50.20 192.168.50.30 192.168.50.40 192.168.50.50 192.168.50.60 192.168.50.70; do
