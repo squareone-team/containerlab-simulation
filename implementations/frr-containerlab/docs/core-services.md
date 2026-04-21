@@ -92,6 +92,22 @@ docker exec clab-esi-datacenter-lms-staff sh -lc '
 '
 ```
 
+or for bond0:
+```bash
+docker exec clab-esi-datacenter-server-hpc-01 /bin/sh -lc '
+  ip addr flush dev bond0
+  udhcpc -f -q -n -t 3 -T 3 -i bond0
+'
+```
+works also with server-student-01/02, server-storage-01, and server-admin-01/02
+to recover from a failed DHCP:
+```bash
+docker exec clab-esi-datacenter-server-student-01 /bin/sh -lc '
+  ip addr add 192.168.70.10/24 dev bond0
+  ip route del default 2>/dev/null
+'
+```
+
 Expected result:
 
 - `udhcpc` should obtain a lease from `192.168.50.40`

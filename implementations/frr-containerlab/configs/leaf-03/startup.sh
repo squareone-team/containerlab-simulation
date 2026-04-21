@@ -184,13 +184,12 @@ ip route add 192.168.50.0/24 nhid 0 2>/dev/null || \
 ip route add 192.168.50.0/24 dev vlan50 2>/dev/null || true
 
 # === DHCP RELAY ===
-
-dhcrelay -4 \
-  -id vlan30 \
-  -id vlan40 \
-  -id vlan50 \
-  -iu vlan50 \
-  192.168.50.40 2>/dev/null &
+nohup python3 /usr/local/bin/esi-dhcp-relay.py \
+  --server 192.168.50.40 \
+  --relay-ip "$VTEP_IP" \
+  --interface vlan30=192.168.30.1 \
+  --interface vlan40=192.168.40.1 \
+  --interface vlan50=192.168.50.1 >/var/log/esi-dhcp-relay.log 2>&1 &
 
 
 # SNMP 

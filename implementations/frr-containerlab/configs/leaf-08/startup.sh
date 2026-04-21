@@ -128,10 +128,10 @@ mkdir -p /var/log/chrony
 chronyd -f /etc/chrony.conf &
 
 # === DHCP RELAY ===
-dhcrelay -4 \
-  -id vlan80 \
-  -iu vlan80 \
-  192.168.50.40 2>/dev/null & true
+nohup python3 /usr/local/bin/esi-dhcp-relay.py \
+  --server 192.168.50.40 \
+  --relay-ip "$VTEP_IP" \
+  --interface vlan80=192.168.80.1 >/var/log/esi-dhcp-relay.log 2>&1 &
 
 
 
