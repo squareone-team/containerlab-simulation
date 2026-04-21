@@ -128,11 +128,10 @@ mkdir -p /var/log/chrony
 chronyd -f /etc/chrony.conf &
 
 # === DHCP RELAY ===
-# No local vlan50 — upstream path is via VRF-STAFF EVPN Type-5 route to 192.168.50.0/24 on leaf-03
-dhcrelay -4 \
-  -id vlan70 \
-  -iu vlan70 \
-  192.168.50.40 &
+nohup python3 /usr/local/bin/esi-dhcp-relay.py \
+  --server 192.168.50.40 \
+  --relay-ip "$VTEP_IP" \
+  --interface vlan70=192.168.70.1 >/var/log/esi-dhcp-relay.log 2>&1 &
 
 
 # SNMP 

@@ -128,15 +128,10 @@ mkdir -p /var/log/chrony
 chronyd -f /etc/chrony.conf &
 
 # === DHCP RELAY ===
-
-# Route to DHCP server (VRF-STAFF) via spine underlay — needed for dhcrelay upstream path
-ip route add 192.168.50.0/24 via 10.0.0.18 dev eth1 src 10.1.0.20 2>/dev/null || true
-ip route add 192.168.50.0/24 via 10.0.1.18 dev eth2 src 10.1.0.20 2>/dev/null || true
-
-dhcrelay -4 \
-  -id vlan10 \
-  -iu eth1 \
-  192.168.50.40 &
+nohup python3 /usr/local/bin/esi-dhcp-relay.py \
+  --server 192.168.50.40 \
+  --relay-ip "$VTEP_IP" \
+  --interface vlan10=192.168.10.1 >/var/log/esi-dhcp-relay.log 2>&1 &
 
 
 
