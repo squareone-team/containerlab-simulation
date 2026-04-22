@@ -4,7 +4,7 @@ set +e
 LAB="esi-datacenter"
 C="docker exec clab-${LAB}"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-LAB_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
+LAB_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 RUNBOOK="${LAB_ROOT}/configs/orientation-runbook.sh"
 
 PASS=0

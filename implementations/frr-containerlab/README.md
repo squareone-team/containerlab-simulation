@@ -27,6 +27,29 @@ sudo containerlab destroy -t esi-datacenter.clab.yml --cleanup
 - Baseline verification script: `tests/phase1-verify.sh`
 - Companion note: `tests/README-tests.md`
 
+## Resilience Testing
+
+Use the node-isolation helper to simulate outages without destroying containers.
+
+```bash
+# List available nodes from topology
+bash scripts/resiliancy/simulate_node_down.sh --list
+
+# Isolate a node
+bash scripts/resiliancy/simulate_node_down.sh --node leaf-01
+
+# Restore the node
+bash scripts/resiliancy/simulate_node_down.sh --node leaf-01 --restore
+
+# Show currently isolated nodes
+bash scripts/resiliancy/simulate_node_down.sh --status
+
+# Run post-resilience health checks (firewall/spine/leaf/bond)
+bash scripts/tests/resilience_postcheck.sh
+```
+
+Detailed usage and troubleshooting: `scripts/resiliancy/README.md`
+
 ## Monitoring Stack (Prometheus + Grafana)
 
 The lab includes an engineer-focused monitoring profile for simulation telemetry.
