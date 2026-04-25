@@ -96,6 +96,13 @@ echo "Ring 1 IP (eth1): $(ip addr show eth1 | grep 'inet ' | awk '{print $2}')"
 echo "VIP (when MASTER): 192.168.1.254/24"
 echo "nftables rules: $(nft list ruleset 2>/dev/null | grep -c 'rule ' || echo 'Not loaded')"
 echo "Keepalived: $(ps aux | grep -q '[k]eepalived' && echo 'Running' || echo 'Not running')"
+if [ -x /usr/local/bin/fw-live-watch.sh ]; then
+    echo "Live packet watcher: /usr/local/bin/fw-live-watch.sh"
+    echo "Capture log path: /var/log/fw-live-watch.log (overwritten on each run)"
+fi
+if [ -x /usr/local/bin/fw-summary.sh ]; then
+    echo "Traffic summary: /usr/local/bin/fw-summary.sh"
+fi
 echo "=========================================="
 
 exit 0
