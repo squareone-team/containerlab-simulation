@@ -16,6 +16,11 @@ ip addr add 192.168.70.30/24 dev bond0
 ip route del default 2>/dev/null || true
 ip route add default via 192.168.70.1 dev bond0
 
+cat > /etc/resolv.conf << 'EOF'
+search esi.internal
+nameserver 192.168.50.30
+EOF
+
 mkdir -p /srv/notebooks /var/log/jupyter
 
 if command -v nft >/dev/null 2>&1; then
