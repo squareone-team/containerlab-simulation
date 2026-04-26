@@ -64,6 +64,14 @@ test_admin_to_hpc_rule_present() {
     rule_present "ip saddr @cluster_2_admin ip daddr @cluster_3_hpc tcp dport 6818-6830 ct state new"
 }
 
+test_admin_to_hpc_jupyter_rule_present() {
+    rule_present "ip saddr @cluster_2_admin ip daddr @cluster_3_hpc tcp dport 8080 ct state new"
+}
+
+test_pedagogy_to_hpc_jupyter_rule_present() {
+    rule_present "ip saddr @cluster_1_pedagogy ip daddr @cluster_3_hpc tcp dport 8080 ct state new"
+}
+
 test_general_to_storage_rule_present() {
     rule_present "ip saddr @cluster_1_pedagogy ip daddr @cluster_5_storage tcp dport { 111, 2049, 3260 } ct state new"
 }
@@ -101,6 +109,8 @@ assert_ok "default deny policy present" test_default_deny_present
 assert_ok "stateful base rule present with counters" test_stateful_base_rule_present
 assert_ok "rule Admin->Pedagogy present with counters" test_admin_to_general_rule_present
 assert_ok "rule Admin->HPC present with counters" test_admin_to_hpc_rule_present
+assert_ok "rule Admin->HPC Jupyter present with counters" test_admin_to_hpc_jupyter_rule_present
+assert_ok "rule Pedagogy->HPC Jupyter present with counters" test_pedagogy_to_hpc_jupyter_rule_present
 assert_ok "rule Pedagogy->Storage present with counters" test_general_to_storage_rule_present
 assert_ok "rule Admin->Storage present with counters" test_admin_to_storage_rule_present
 assert_ok "rule Pedagogy->Admin explicit drop present with counters" test_general_to_admin_drop_present
