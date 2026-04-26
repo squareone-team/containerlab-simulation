@@ -178,7 +178,9 @@ cat > /etc/kea/kea-dhcp4.conf << 'EOF'
           { "hw-address": "00:00:00:00:70:0a", "ip-address": "192.168.70.10",
             "hostname": "server-hpc-01" },
           { "hw-address": "00:00:00:00:70:14", "ip-address": "192.168.70.20",
-            "hostname": "server-hpc-02" }
+            "hostname": "server-hpc-02" },
+          { "hw-address": "00:00:00:00:70:1e", "ip-address": "192.168.70.30",
+            "hostname": "server-hpc-jupyter" }
         ]
       },
       {
