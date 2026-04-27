@@ -34,6 +34,7 @@ ip link set br0 up
 
 if ip link show eth3 >/dev/null 2>&1; then ip link set eth3 master br0; bridge vlan add vid 70 dev eth3 pvid untagged; fi
 if ip link show eth4 >/dev/null 2>&1; then ip link set eth4 master br0; bridge vlan add vid 70 dev eth4 pvid untagged; fi
+if ip link show eth5 >/dev/null 2>&1; then ip link set eth5 master br0; bridge vlan add vid 70 dev eth5 pvid untagged; fi
 
 ip link add vxlan10070 type vxlan id 10070 local $VTEP_IP dstport 4789 nolearning tos inherit
 ip link set vxlan10070 mtu 9000
