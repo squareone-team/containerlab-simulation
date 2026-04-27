@@ -308,6 +308,8 @@ topology:
       exec:
         - sh /startup.sh
         - sh /ntp-client.sh
+      ports:
+        - 8888:8080
 
     server-storage-01:
       kind: linux
