@@ -294,23 +294,6 @@ topology:
         - sh /startup.sh
         - sh /ntp-client.sh
 
-    server-hpc-jupyter:
-      kind: linux
-      image: esi/alpine-jupyter:3.20
-      cap-add:
-        - NET_ADMIN
-        - SYS_MODULE
-        - NET_RAW
-      binds:
-        - configs/server-hpc-jupyter/startup.sh:/startup.sh
-        - configs/ntp-server/server-client-ntp.sh:/ntp-client.sh
-        - configs/server-hpc-jupyter/notebooks:/srv/notebooks
-      exec:
-        - sh /startup.sh
-        - sh /ntp-client.sh
-      ports:
-        - 8888:8080
-
     server-storage-01:
       kind: linux
       image: esi/alpine-host:3.20
@@ -560,10 +543,8 @@ topology:
     - endpoints: [ "leaf-04:eth5", "server-admin-02:eth2" ]
     - endpoints: [ "leaf-05:eth3", "server-hpc-01:eth1" ]
     - endpoints: [ "leaf-05:eth4", "server-hpc-02:eth1" ]
-    - endpoints: [ "leaf-05:eth5", "server-hpc-jupyter:eth1" ]
     - endpoints: [ "leaf-06:eth3", "server-hpc-01:eth2" ]
     - endpoints: [ "leaf-06:eth4", "server-hpc-02:eth2" ]
-    - endpoints: [ "leaf-06:eth5", "server-hpc-jupyter:eth2" ]
     - endpoints: [ "leaf-07:eth3", "server-storage-01:eth1" ]
     - endpoints: [ "leaf-08:eth3", "server-storage-01:eth2" ]
     - endpoints: [ "leaf-01:eth7", "server-dmz-01:eth1" ]
