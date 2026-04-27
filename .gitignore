@@ -29,7 +29,3 @@ debug/
 # Keep the initial snapshot
 !.config-backups/
 !.config-backups/initial/
-
-# Jupyter notebook checkpoints
-.ipynb_checkpoints/
-implementations/frr-containerlab/configs/server-hpc-jupyter/notebooks/*.ipynb

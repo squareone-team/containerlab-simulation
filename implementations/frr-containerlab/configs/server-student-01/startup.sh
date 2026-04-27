@@ -16,11 +16,6 @@ ip addr add 192.168.10.10/24 dev bond0
 ip route del default 2>/dev/null || true
 ip route add default via 192.168.10.1 dev bond0
 
-cat > /etc/resolv.conf << 'EOF'
-search esi.internal
-nameserver 192.168.50.30
-EOF
-
 if command -v nft >/dev/null 2>&1; then
 	cat > /etc/nftables.conf << 'NFT'
 flush ruleset

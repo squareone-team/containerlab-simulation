@@ -183,9 +183,6 @@ view:
   # Storage pod
   local-data: "ftp-server.esi.internal.     300 IN A 192.168.80.10"
   local-data: "ftp.esi.internal.            300 IN A 192.168.80.10"
-    # AI/HPC Jupyter host
-    local-data: "server-hpc-jupyter.esi.internal. 300 IN A 192.168.70.30"
-    local-data: "hpc-jupyter.esi.internal.        300 IN A 192.168.70.30"
   # WiFi controller
   local-data: "wifi-controller.esi.internal. 300 IN A 192.168.10.100"
   local-data: "wifi.esi.internal.           300 IN A 192.168.10.100"
