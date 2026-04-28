@@ -69,7 +69,7 @@ Options:
   --dry-run            Print commands without executing them
   --no-wait            Skip post-toggle convergence wait
   --wait <seconds>     Override convergence wait time (default: auto)
-  --force              Allow isolating a node whose peer is already isolated
+  --force              Allow unsupported multi-node/shared-link isolation
   --list               List topology nodes and link counts
   --status             Show nodes currently marked as isolated
   --topology <file>    Override the default topology file
@@ -232,15 +232,15 @@ list_topology_nodes() {
       }
 
       indent = leading_ws_len($0)
-
-      # Reached the next sibling/top-level block.
       if (indent <= nodes_indent) {
         exit
       }
 
-      if (indent == nodes_indent + 2 &&
-          match($0, /^[[:space:]]*([A-Za-z0-9_-]+):[[:space:]]*$/, m)) {
-        print m[1]
+      if (indent == nodes_indent + 2 && $0 ~ /^[[:space:]]*[A-Za-z0-9_-]+:[[:space:]]*$/) {
+        line = $0
+        sub(/^[[:space:]]*/, "", line)
+        sub(/:[[:space:]]*$/, "", line)
+        print line
       }
     }
   ' "$TOPOLOGY_FILE"
@@ -261,43 +261,42 @@ node_exists() {
 collect_links() {
   local node="$1"
   awk -v node="$node" '
+    function emit(a, b, left, right) {
+      split(a, left,  ":")
+      split(b, right, ":")
+      if      (left[1]  == node) printf "%s\t%s\t%s\t%s\n", left[1],  left[2],  right[1], right[2]
+      else if (right[1] == node) printf "%s\t%s\t%s\t%s\n", right[1], right[2], left[1],  left[2]
+    }
+
     /^[[:space:]]*links:[[:space:]]*$/ { in_links=1; ep_count=0; delete ep; next }
     !in_links { next }
 
-    # ── inline format ────────────────────────────────────────────────────
-    match($0, /endpoints:[[:space:]]*\[[[:space:]]*"([^"]+)",[[:space:]]*"([^"]+)"[[:space:]]*\]/, m) {
-      split(m[1], left,  ":")
-      split(m[2], right, ":")
-      if      (left[1]  == node) printf "%s\t%s\t%s\t%s\n", left[1],  left[2],  right[1], right[2]
-      else if (right[1] == node) printf "%s\t%s\t%s\t%s\n", right[1], right[2], left[1],  left[2]
+    # Inline format: endpoints: ["a:eth1", "b:eth2"]
+    /endpoints:[[:space:]]*\[/ {
+      line = $0
+      sub(/^.*endpoints:[[:space:]]*\[/, "", line)
+      sub(/\].*$/, "", line)
+      gsub(/["'"'"']/ , "", line)
+      gsub(/[[:space:]]/, "", line)
+      split(line, parts, ",")
+      if (parts[1] != "" && parts[2] != "") {
+        emit(parts[1], parts[2])
+      }
       ep_count = 0; delete ep
       next
     }
 
-    # ── block format — reset accumulator on new endpoints: key ───────────
+    # Block format: endpoints: followed by two - "node:iface" lines
     /endpoints:[[:space:]]*$/ { ep_count = 0; delete ep; next }
 
-    # ── block format — collect "  - \"node:iface\"" lines ───────────────
-    match($0, /^[[:space:]]*-[[:space:]]+"([^"]+)"/, m) {
-      ep[ep_count++] = m[1]
+    /^[[:space:]]*-[[:space:]]*["'"'"']?[^"'"'"'[:space:]]+:[^"'"'"'[:space:]]+["'"'"']?/ {
+      line = $0
+      sub(/^[[:space:]]*-[[:space:]]*/, "", line)
+      gsub(/["'"'"']/, "", line)
+      gsub(/[[:space:]]/, "", line)
+      ep[ep_count++] = line
       if (ep_count == 2) {
-        split(ep[0], left,  ":")
-        split(ep[1], right, ":")
-        if      (left[1]  == node) printf "%s\t%s\t%s\t%s\n", left[1],  left[2],  right[1], right[2]
-        else if (right[1] == node) printf "%s\t%s\t%s\t%s\n", right[1], right[2], left[1],  left[2]
-        ep_count = 0; delete ep
-      }
-      next
-    }
-
-    # ── block format — handle single-quoted variants ─────────────────────
-    match($0, /^[[:space:]]*-[[:space:]]+"'"'"'([^'"'"']+)'"'"'"/, m) {
-      ep[ep_count++] = m[1]
-      if (ep_count == 2) {
-        split(ep[0], left,  ":")
-        split(ep[1], right, ":")
-        if      (left[1]  == node) printf "%s\t%s\t%s\t%s\n", left[1],  left[2],  right[1], right[2]
-        else if (right[1] == node) printf "%s\t%s\t%s\t%s\n", right[1], right[2], left[1],  left[2]
+        emit(ep[0], ep[1])
         ep_count = 0; delete ep
       }
       next
@@ -306,14 +305,92 @@ collect_links() {
 }
 
 list_nodes() {
-  while read -r node_name; do
+  local isolated_nodes
+  isolated_nodes="$(state_list_isolated || true)"
+
+  awk '
+    function leading_ws_len(s, t) {
+      t = s
+      sub(/^[[:space:]]+/, "", t)
+      return length(s) - length(t)
+    }
+    function add_node(n) {
+      if (n != "" && !(n in seen)) {
+        seen[n] = 1
+        nodes[++node_count] = n
+      }
+    }
+    function count_link(a, b, left, right) {
+      split(a, left,  ":")
+      split(b, right, ":")
+      if (left[1] != "")  link_count[left[1]]++
+      if (right[1] != "") link_count[right[1]]++
+    }
+
+    /^[[:space:]]*nodes:[[:space:]]*$/ {
+      in_nodes = 1
+      nodes_indent = leading_ws_len($0)
+      next
+    }
+    in_nodes {
+      if ($0 ~ /^[[:space:]]*$/ || $0 ~ /^[[:space:]]*#/) next
+      indent = leading_ws_len($0)
+      if (indent <= nodes_indent) in_nodes = 0
+      else if (indent == nodes_indent + 2 && $0 ~ /^[[:space:]]*[A-Za-z0-9_-]+:[[:space:]]*$/) {
+        line = $0
+        sub(/^[[:space:]]*/, "", line)
+        sub(/:[[:space:]]*$/, "", line)
+        add_node(line)
+      }
+    }
+
+    /^[[:space:]]*links:[[:space:]]*$/ { in_links = 1; ep_count = 0; delete ep; next }
+    !in_links { next }
+
+    /endpoints:[[:space:]]*\[/ {
+      line = $0
+      sub(/^.*endpoints:[[:space:]]*\[/, "", line)
+      sub(/\].*$/, "", line)
+      gsub(/"/, "", line)
+      gsub(/\047/, "", line)
+      gsub(/[[:space:]]/, "", line)
+      split(line, parts, ",")
+      if (parts[1] != "" && parts[2] != "") count_link(parts[1], parts[2])
+      ep_count = 0; delete ep
+      next
+    }
+
+    /endpoints:[[:space:]]*$/ { ep_count = 0; delete ep; next }
+
+    /^[[:space:]]*-/ {
+      line = $0
+      sub(/^[[:space:]]*-[[:space:]]*/, "", line)
+      gsub(/"/, "", line)
+      gsub(/\047/, "", line)
+      gsub(/[[:space:]]/, "", line)
+      if (index(line, ":") == 0) next
+      ep[ep_count++] = line
+      if (ep_count == 2) {
+        count_link(ep[0], ep[1])
+        ep_count = 0; delete ep
+      }
+      next
+    }
+
+    END {
+      for (i = 1; i <= node_count; i++) {
+        n = nodes[i]
+        printf "%s\t%d\n", n, link_count[n] + 0
+      }
+    }
+  ' "$TOPOLOGY_FILE" | sort | while IFS=$'\t' read -r node_name link_count; do
     [[ -n "$node_name" ]] || continue
-    local link_count marker=""
-    link_count="$(collect_links "$node_name" | wc -l | tr -d ' ')"
-    state_is_isolated "$node_name" && marker=" [ISOLATED]" || true
+    local marker=""
+    printf '%s\n' "$isolated_nodes" | grep -qxF -- "$node_name" && marker=" [ISOLATED]" || true
     printf "%-26s %2s links%s\n" "$node_name" "$link_count" "$marker"
-  done < <(list_topology_nodes | sort)
+  done
 }
+
 
 # ── docker helpers ───────────────────────────────────────────────────────────
 resolve_docker_cmd() {
@@ -596,13 +673,55 @@ do_convergence_wait() {
   printf "\r  Convergence wait complete.          \n"
 }
 
-# ── safety guard: shared-link isolation check ────────────────────────────────
+# ── safety guard: cumulative isolation policy ────────────────────────────────
 # If node A and node B share a link and BOTH are isolated, restoring A first
 # will attempt "no shutdown" into a still-down peer — that is safe (the
 # interface state will be UP on A's side once restored).  However, toggling
 # BOTH sides of the same link to DOWN is technically harmless but can confuse
 # operators.  We warn and require --force.
-check_shared_isolation() {
+#
+# The service topology is built and tested around a single-failure envelope.
+# Sequential tests are fine, but stacked failures such as leaf+spine or both
+# leaves in the same redundancy pair can break DHCP/core-service reachability.
+is_spine_node() {
+  [[ "$1" == spine-* ]]
+}
+
+is_leaf_node() {
+  [[ "$1" == leaf-* ]]
+}
+
+redundancy_peer() {
+  case "$1" in
+    leaf-01) printf '%s\n' leaf-02 ;;
+    leaf-02) printf '%s\n' leaf-01 ;;
+    leaf-03) printf '%s\n' leaf-04 ;;
+    leaf-04) printf '%s\n' leaf-03 ;;
+    leaf-05) printf '%s\n' leaf-06 ;;
+    leaf-06) printf '%s\n' leaf-05 ;;
+    leaf-07) printf '%s\n' leaf-08 ;;
+    leaf-08) printf '%s\n' leaf-07 ;;
+    leaf-09) printf '%s\n' leaf-10 ;;
+    leaf-10) printf '%s\n' leaf-09 ;;
+    *) return 1 ;;
+  esac
+}
+
+contains_node() {
+  local needle="$1"; shift
+  local node
+  for node in "$@"; do
+    [[ "$node" == "$needle" ]] && return 0
+  done
+  return 1
+}
+
+join_words() {
+  local IFS=' '
+  printf '%s' "$*"
+}
+
+check_isolation_policy() {
   local node="$1"
   local -a already_isolated=()
 
@@ -612,7 +731,14 @@ check_shared_isolation() {
 
   (( ${#already_isolated[@]} == 0 )) && return 0
 
-  local -a shared=()
+  local -a shared=() isolated_leafs=() isolated_spines=() violations=()
+  local iso peer redundant_peer violation
+
+  for iso in "${already_isolated[@]}"; do
+    is_leaf_node "$iso" && isolated_leafs+=("$iso")
+    is_spine_node "$iso" && isolated_spines+=("$iso")
+  done
+
   while IFS=$'\t' read -r _ _ peer _; do
     for iso in "${already_isolated[@]}"; do
       [[ "$peer" == "$iso" ]] && shared+=("$iso")
@@ -620,13 +746,34 @@ check_shared_isolation() {
   done < <(collect_links "$node")
 
   if (( ${#shared[@]} > 0 )); then
-    warn "Node '$node' shares topology links with already-isolated node(s): ${shared[*]}"
-    warn "This means BOTH ends of at least one link will be admin-down."
-    warn "Restoration order matters: restore peers before '$node' (or vice-versa)."
-    if (( ! FORCE )); then
-      die "Use --force to proceed, or restore ${shared[*]} first."
+    violations+=("Node '$node' shares topology links with already-isolated node(s): $(join_words "${shared[@]}").")
+  fi
+
+  if is_leaf_node "$node" && (( ${#isolated_spines[@]} > 0 )); then
+    violations+=("Leaf '$node' would be isolated while spine(s) are already isolated: $(join_words "${isolated_spines[@]}").")
+  fi
+
+  if is_spine_node "$node" && (( ${#isolated_leafs[@]} > 0 )); then
+    violations+=("Spine '$node' would be isolated while leaf node(s) are already isolated: $(join_words "${isolated_leafs[@]}").")
+  fi
+
+  if is_leaf_node "$node"; then
+    redundant_peer="$(redundancy_peer "$node" || true)"
+    if [[ -n "$redundant_peer" ]] && contains_node "$redundant_peer" "${already_isolated[@]}"; then
+      violations+=("Leaf '$node' is paired with already-isolated '$redundant_peer'.")
     fi
-    warn "--force specified — proceeding despite shared isolation."
+  fi
+
+  if (( ${#violations[@]} > 0 )); then
+    warn "Isolation policy detected an unsupported cumulative outage:"
+    for violation in "${violations[@]}"; do
+      warn "  - $violation"
+    done
+    warn "Run resiliency tests one node at a time, restoring each node before the next target."
+    if (( ! FORCE )); then
+      die "Use --force only for intentional multi-failure experiments."
+    fi
+    warn "--force specified — proceeding outside the tested single-failure envelope."
   fi
 }
 
@@ -692,7 +839,7 @@ sanitise_rows
 
 # ── pre-flight checks ────────────────────────────────────────────────────────
 if (( ! RESTORE )); then
-  check_shared_isolation "$TARGET_NODE"
+  check_isolation_policy "$TARGET_NODE"
 fi
 
 if (( RESTORE )) && ! state_is_isolated "$TARGET_NODE"; then

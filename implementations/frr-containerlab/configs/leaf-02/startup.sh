@@ -128,6 +128,44 @@ seed_l3vni_rmacs() {
       done
 }
 
+seed_l2vni_macs() {
+  local vni="$1" vlan="$2" vxlan="$3" svi="$4"
+
+  [ -e "/sys/class/net/$vxlan" ] || return 0
+
+  bridge fdb del "$ANYCAST_MAC" dev "$vxlan" vlan "$vlan" master 2>/dev/null || true
+  bridge fdb del "$ANYCAST_MAC" dev "$vxlan" self 2>/dev/null || true
+
+  vtysh -c "show bgp l2vpn evpn route type multicast" 2>/dev/null \
+    | awk -v vni="$vni" -v self="$VTEP_IP" '
+        BEGIN {
+          ipv4 = "^([0-9]{1,3}\.){3}[0-9]{1,3}$"
+          rt_re = "RT:[0-9]+:" vni "([^0-9]|$)"
+        }
+        function reset_route() {
+          in_route = 0
+          nh = ""
+        }
+        /\[3\]:/ {
+          in_route = 1
+          nh = ""
+          next
+        }
+        in_route && $1 ~ ipv4 { nh = $1; next }
+        in_route && /RT:/ {
+          if ($0 ~ rt_re && nh != "" && nh != self) {
+            print nh
+          }
+          reset_route()
+          next
+        }
+      ' \
+    | while read -r nh; do
+        bridge fdb del 00:00:00:00:00:00 dev "$vxlan" dst "$nh" self 2>/dev/null || true
+        bridge fdb append 00:00:00:00:00:00 dev "$vxlan" dst "$nh" self 2>/dev/null || true
+      done
+}
+
 start_l3vni_rmac_seed_loop() {
   local pidfile="/run/l3vni-rmac-seed.pid"
 
@@ -138,6 +176,8 @@ start_l3vni_rmac_seed_loop() {
   (
     sleep 8
     while true; do
+      seed_l2vni_macs 10090 90 vxlan10090 vlan90
+      seed_l2vni_macs 10100 100 vxlan10100 vlan100
       seed_l3vni_rmacs 50020 4020 vxlan50020 vlan4020
       seed_l3vni_rmacs 50030 4030 vxlan50030 vlan4030
       sleep 30

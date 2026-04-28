@@ -28,18 +28,22 @@ iptables -A INPUT -p udp --dport 4789 -j DROP
 ip link add VRF-STAFF type vrf table 20
 ip link set VRF-STAFF up
 
+ip link add VRF-ADMINISTRATION type vrf table 10
+ip link set VRF-ADMINISTRATION up
+
 ip link add br0 type bridge vlan_filtering 1 vlan_default_pvid 0
 ip link set br0 mtu 9000
 ip link set br0 up
 
 if ip link show eth3 >/dev/null 2>&1; then ip link set eth3 master br0; bridge vlan add vid 50 dev eth3 pvid untagged; fi
 if ip link show eth4 >/dev/null 2>&1; then ip link set eth4 master br0; bridge vlan add vid 40 dev eth4 pvid untagged; fi
+if ip link show eth5 >/dev/null 2>&1; then ip link set eth5 master br0; bridge vlan add vid 60 dev eth5 pvid untagged; fi
 if ip link show eth6 >/dev/null 2>&1; then ip link set eth6 master br0; bridge vlan add vid 50 dev eth6 pvid untagged; fi
 if ip link show eth7 >/dev/null 2>&1; then ip link set eth7 master br0; bridge vlan add vid 50 dev eth7 pvid untagged; fi
 if ip link show eth8 >/dev/null 2>&1; then ip link set eth8 master br0; bridge vlan add vid 50 dev eth8 pvid untagged; fi
 if ip link show eth9 >/dev/null 2>&1; then ip link set eth9 master br0; bridge vlan add vid 50 dev eth9 pvid untagged; fi
 
-for V in 10030 10040 10050; do
+for V in 10030 10040 10050 10060; do
   ip link add vxlan$V type vxlan id $V local $VTEP_IP dstport 4789 nolearning tos inherit
   ip link set vxlan$V mtu 9000
   ip link set vxlan$V master br0
@@ -48,10 +52,19 @@ done
 bridge vlan add vid 30 dev vxlan10030 pvid untagged
 bridge vlan add vid 40 dev vxlan10040 pvid untagged
 bridge vlan add vid 50 dev vxlan10050 pvid untagged
+bridge vlan add vid 60 dev vxlan10060 pvid untagged
 bridge vlan add vid 30 dev br0 self
 bridge vlan add vid 40 dev br0 self
 bridge vlan add vid 50 dev br0 self
+bridge vlan add vid 60 dev br0 self
+bridge vlan add vid 4010 dev br0 self
 bridge vlan add vid 4020 dev br0 self
+
+ip link add vxlan50010 type vxlan id 50010 local $VTEP_IP dstport 4789 nolearning tos inherit
+ip link set vxlan50010 mtu 9000
+ip link set vxlan50010 master br0
+ip link set vxlan50010 up
+bridge vlan add vid 4010 dev vxlan50010 pvid untagged
 
 ip link add vxlan50020 type vxlan id 50020 local $VTEP_IP dstport 4789 nolearning tos inherit
 ip link set vxlan50020 mtu 9000
@@ -76,6 +89,16 @@ ip link set vlan50 master VRF-STAFF
 ip link set vlan50 address $ANYCAST_MAC || true
 ip addr add 192.168.50.1/24 dev vlan50
 ip link set vlan50 up
+
+ip link add vlan60 link br0 type vlan id 60
+ip link set vlan60 master VRF-ADMINISTRATION
+ip link set vlan60 address $ANYCAST_MAC || true
+ip addr add 192.168.60.1/24 dev vlan60
+ip link set vlan60 up
+
+ip link add vlan4010 link br0 type vlan id 4010
+ip link set vlan4010 master VRF-ADMINISTRATION
+ip link set vlan4010 up
 
 ip link add vlan4020 link br0 type vlan id 4020
 ip link set vlan4020 master VRF-STAFF
@@ -110,6 +133,44 @@ seed_l3vni_rmacs() {
       done
 }
 
+seed_l2vni_macs() {
+  local vni="$1" vlan="$2" vxlan="$3" svi="$4"
+
+  [ -e "/sys/class/net/$vxlan" ] || return 0
+
+  bridge fdb del "$ANYCAST_MAC" dev "$vxlan" vlan "$vlan" master 2>/dev/null || true
+  bridge fdb del "$ANYCAST_MAC" dev "$vxlan" self 2>/dev/null || true
+
+  vtysh -c "show bgp l2vpn evpn route type multicast" 2>/dev/null \
+    | awk -v vni="$vni" -v self="$VTEP_IP" '
+        BEGIN {
+          ipv4 = "^([0-9]{1,3}\.){3}[0-9]{1,3}$"
+          rt_re = "RT:[0-9]+:" vni "([^0-9]|$)"
+        }
+        function reset_route() {
+          in_route = 0
+          nh = ""
+        }
+        /\[3\]:/ {
+          in_route = 1
+          nh = ""
+          next
+        }
+        in_route && $1 ~ ipv4 { nh = $1; next }
+        in_route && /RT:/ {
+          if ($0 ~ rt_re && nh != "" && nh != self) {
+            print nh
+          }
+          reset_route()
+          next
+        }
+      ' \
+    | while read -r nh; do
+        bridge fdb del 00:00:00:00:00:00 dev "$vxlan" dst "$nh" self 2>/dev/null || true
+        bridge fdb append 00:00:00:00:00:00 dev "$vxlan" dst "$nh" self 2>/dev/null || true
+      done
+}
+
 start_l3vni_rmac_seed_loop() {
   local pidfile="/run/l3vni-rmac-seed.pid"
 
@@ -120,6 +181,11 @@ start_l3vni_rmac_seed_loop() {
   (
     sleep 8
     while true; do
+      seed_l2vni_macs 10030 30 vxlan10030 vlan30
+      seed_l2vni_macs 10040 40 vxlan10040 vlan40
+      seed_l2vni_macs 10050 50 vxlan10050 vlan50
+      seed_l2vni_macs 10060 60 vxlan10060 vlan60
+      seed_l3vni_rmacs 50010 4010 vxlan50010 vlan4010
       seed_l3vni_rmacs 50020 4020 vxlan50020 vlan4020
       sleep 30
     done
@@ -208,11 +274,15 @@ chronyd -f /etc/chrony.conf &
 ip rule add to 10.0.0.0/8 lookup main prio 90 2>/dev/null || true
 # ip rule: for packets destined to 192.168.50.0/24, consult VRF-STAFF table (20)
 ip rule add to 192.168.50.0/24 lookup 20 prio 100 2>/dev/null || true
+ip rule add to 192.168.60.0/24 lookup 10 prio 101 2>/dev/null || true
 
 # Add a static route in the main table so FRR BGP can advertise the prefix to spines
 # Actual forwarding is handled by the ip rule above
 ip route add 192.168.50.0/24 nhid 0 2>/dev/null || \
 ip route add 192.168.50.0/24 dev vlan50 2>/dev/null || true
+
+ip route add 192.168.60.0/24 nhid 0 2>/dev/null || \
+ip route add 192.168.60.0/24 dev vlan60 2>/dev/null || true
 
 # === DHCP RELAY ===
 nohup python3 /usr/local/bin/esi-dhcp-relay.py \
@@ -220,7 +290,8 @@ nohup python3 /usr/local/bin/esi-dhcp-relay.py \
   --relay-ip "$VTEP_IP" \
   --interface vlan30=192.168.30.1 \
   --interface vlan40=192.168.40.1 \
-  --interface vlan50=192.168.50.1 >/var/log/esi-dhcp-relay.log 2>&1 &
+  --interface vlan50=192.168.50.1 \
+  --interface vlan60=192.168.60.1 >/var/log/esi-dhcp-relay.log 2>&1 &
 
 
 # SNMP 
