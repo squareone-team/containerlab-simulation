@@ -257,6 +257,12 @@ for SUBNET in $FW_INTERNAL_SUBNETS; do
   ip route replace table "$FW_DMZ_TABLE" "$SUBNET" via 192.168.1.254 dev br-fw-ha
 done
 
+PREF=70
+for SUBNET in $FW_INTERNAL_SUBNETS; do
+  ip rule add pref "$PREF" iif VRF-PUBLIC to "$SUBNET" lookup "$FW_DMZ_TABLE" 2>/dev/null || true
+  PREF=$((PREF + 1))
+done
+
 PREF=91
 for SUBNET in $FW_INTERNAL_SUBNETS; do
     ip rule add pref "$PREF" iif vlan100 to "$SUBNET" lookup "$FW_DMZ_TABLE" 2>/dev/null || true
@@ -276,6 +282,12 @@ FW_CAMPUS_SERVICE_IPS="
 
 for SUBNET in $FW_CAMPUS_SERVICE_IPS; do
   ip route replace table "$FW_CAMPUS_TABLE" "$SUBNET" via 192.168.1.254 dev br-fw-ha
+done
+
+PREF=80
+for SUBNET in $FW_CAMPUS_SERVICE_IPS; do
+  ip rule add pref "$PREF" iif VRF-WIFI-CTRL to "$SUBNET" lookup "$FW_CAMPUS_TABLE" 2>/dev/null || true
+  PREF=$((PREF + 1))
 done
 
 PREF=86
