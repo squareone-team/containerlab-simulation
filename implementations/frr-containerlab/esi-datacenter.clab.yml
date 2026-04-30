@@ -245,9 +245,16 @@ topology:
         - NET_ADMIN
         - SYS_MODULE
         - NET_RAW
+        - SYS_ADMIN
+        - SYS_PTRACE
       binds:
         - configs/server-admin-01/startup.sh:/startup.sh
         - configs/ntp-server/server-client-ntp.sh:/ntp-client.sh
+        - configs/admin/slurm.conf:/shared-configs/slurm.conf:ro
+        - configs/admin/slurmdbd.conf:/shared-configs/slurmdbd.conf:ro
+        - configs/admin/jupyterhub_config.py:/shared-configs/jupyterhub_config.py:ro
+        - configs/admin/mariadb-init.sql:/shared-configs/mariadb-init.sql:ro
+        - configs/admin/pam-users-init.sh:/shared-configs/pam-users-init.sh:ro
       exec:
         - sh /startup.sh
         - sh /ntp-client.sh
@@ -273,11 +280,14 @@ topology:
         - NET_ADMIN
         - SYS_MODULE
         - NET_RAW
+        - SYS_ADMIN
+        - SYS_PTRACE
       binds:
         - configs/server-hpc-01/startup.sh:/startup.sh
         - configs/ntp-server/server-client-ntp.sh:/ntp-client.sh
+        - configs/admin/slurm.conf:/shared-configs/slurm.conf:ro
       exec:
-        - sh /startup.sh # <--- Utilise "exec" pour que le serveur reste UP
+        - sh /startup.sh
         - sh /ntp-client.sh
 
     server-hpc-02:
@@ -287,9 +297,12 @@ topology:
         - NET_ADMIN
         - SYS_MODULE
         - NET_RAW
+        - SYS_ADMIN
+        - SYS_PTRACE
       binds:
         - configs/server-hpc-02/startup.sh:/startup.sh
         - configs/ntp-server/server-client-ntp.sh:/ntp-client.sh
+        - configs/admin/slurm.conf:/shared-configs/slurm.conf:ro
       exec:
         - sh /startup.sh
         - sh /ntp-client.sh
@@ -301,10 +314,11 @@ topology:
         - NET_ADMIN
         - SYS_MODULE
         - NET_RAW
+        - SYS_ADMIN
+        - SYS_PTRACE
       binds:
         - configs/server-hpc-jupyter/startup.sh:/startup.sh
         - configs/ntp-server/server-client-ntp.sh:/ntp-client.sh
-        - configs/server-hpc-jupyter/notebooks:/srv/notebooks
       exec:
         - sh /startup.sh
         - sh /ntp-client.sh
@@ -318,9 +332,12 @@ topology:
         - NET_ADMIN
         - SYS_MODULE
         - NET_RAW
+        - SYS_ADMIN
+        - SYS_PTRACE
       binds:
         - configs/server-storage-01/startup.sh:/startup.sh
         - configs/ntp-server/server-client-ntp.sh:/ntp-client.sh
+        - configs/storage-01/exports:/etc/exports:ro
       exec:
         - sh /startup.sh
         - sh /ntp-client.sh
