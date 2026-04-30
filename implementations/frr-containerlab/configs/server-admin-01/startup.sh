@@ -21,6 +21,8 @@ set -e
 log() { echo "[ADMIN-STARTUP] $*"; }
 die() { echo "[ADMIN-STARTUP] ERROR: $*" >&2; exit 1; }
 
+NOLOGIN_SHELL="$(command -v nologin || echo /sbin/nologin)"
+
 # ==============================================================================
 # 1. NETWORK SETUP
 # ==============================================================================
@@ -101,11 +103,11 @@ fi
 
 log "Initializing MariaDB..."
 mkdir -p /var/lib/mysql /var/log/mysql
-if ! command -v mariadb >/dev/null 2>&1; then
-	log "Installing MariaDB..."
-	apk add --no-cache mariadb mariadb-client 2>/dev/null || \
-	apt-get update -qq && apt-get install -y mariadb-server mariadb-client 2>/dev/null || \
-	die "Failed to install MariaDB"
+if ! command -v mariadbd >/dev/null 2>&1 && ! command -v mysqld >/dev/null 2>&1; then
+	die "MariaDB server not installed (build esi/naas:bookworm)"
+fi
+if ! command -v mysql >/dev/null 2>&1; then
+	die "MariaDB client not installed (build esi/naas:bookworm)"
 fi
 
 # Initialize MariaDB data directory if empty
@@ -126,6 +128,7 @@ sleep 3
 # Initialize databases and users
 log "Creating JupyterHub and SLURM databases..."
 mysql -u root << 'MYSQLEOF' || true
+FLUSH PRIVILEGES;
 CREATE DATABASE IF NOT EXISTS slurm_acct_db;
 CREATE DATABASE IF NOT EXISTS jupyterhub CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 CREATE USER IF NOT EXISTS 'slurm'@'192.168.50.%' IDENTIFIED BY 'slurm_pass';
@@ -148,25 +151,34 @@ log "MariaDB initialized"
 log "Initializing SLURM..."
 
 # Create slurm user if not exists
-id slurm >/dev/null 2>&1 || useradd -r -m -d /var/spool/slurm-llnl slurm
+if ! id slurm >/dev/null 2>&1; then
+	if command -v useradd >/dev/null 2>&1; then
+		groupadd -r slurm 2>/dev/null || true
+		useradd -r -m -d /var/spool/slurm-llnl -s "$NOLOGIN_SHELL" -g slurm slurm
+	else
+		grep -q '^slurm:' /etc/group 2>/dev/null || addgroup -S slurm
+		adduser -D -H -G slurm -s "$NOLOGIN_SHELL" -h /var/spool/slurm-llnl slurm
+	fi
+fi
 
 # Create directories
 mkdir -p /var/spool/slurm-llnl /var/log/slurm /run/slurm
 chown -R slurm:slurm /var/spool/slurm-llnl /var/log/slurm /run/slurm
 
 # Install SLURM if not present
-if ! command -v slurmctld >/dev/null 2>&1; then
-	log "Installing SLURM..."
-	apk add --no-cache slurm slurm-dev munge 2>/dev/null || \
-	(apt-get update -qq && apt-get install -y slurm-wlm slurm-wlm-basic-plugins munge 2>/dev/null) || \
-	die "Failed to install SLURM"
+if ! command -v slurmctld >/dev/null 2>&1 || ! command -v slurmdbd >/dev/null 2>&1; then
+	die "SLURM not installed (build esi/naas:bookworm)"
+fi
+if ! command -v sacctmgr >/dev/null 2>&1; then
+	die "SLURM accounting tools not installed (build esi/naas:bookworm)"
 fi
 
 # Copy SLURM config
 cp /shared-configs/slurm.conf /etc/slurm/slurm.conf
 cp /shared-configs/slurmdbd.conf /etc/slurm/slurmdbd.conf
 chown slurm:slurm /etc/slurm/slurm.conf /etc/slurm/slurmdbd.conf
-chmod 640 /etc/slurm/slurm.conf /etc/slurm/slurmdbd.conf
+chmod 640 /etc/slurm/slurm.conf
+chmod 600 /etc/slurm/slurmdbd.conf
 
 log "SLURM files configured"
 
@@ -176,6 +188,9 @@ log "SLURM files configured"
 
 log "Initializing Munge (SLURM auth)..."
 mkdir -p /var/run/munge /etc/munge /var/log/munge
+if ! command -v munged >/dev/null 2>&1; then
+	die "Munge not installed (build esi/naas:bookworm)"
+fi
 if ! [ -f /etc/munge/munge.key ]; then
 	dd if=/dev/urandom bs=1 count=1024 of=/etc/munge/munge.key 2>/dev/null
 	chmod 400 /etc/munge/munge.key
@@ -226,16 +241,21 @@ sh /shared-configs/pam-users-init.sh
 
 log "Setting up JupyterHub..."
 
-# Install JupyterHub and dependencies
 if ! command -v jupyterhub >/dev/null 2>&1; then
-	log "Installing JupyterHub and dependencies..."
-	apk add --no-cache python3 py3-pip py3-cryptography 2>/dev/null || \
-	(apt-get update -qq && apt-get install -y python3 python3-pip python3-venv 2>/dev/null) || \
-	die "Failed to install Python"
-	
-	pip3 install --no-cache-dir jupyterhub jupyterlab notebook ipykernel jupyterhub-pamela \
-		sqlalchemy pymysql cryptography || \
-	die "Failed to install JupyterHub packages"
+	die "JupyterHub not installed (build esi/naas:bookworm)"
+fi
+if ! command -v configurable-http-proxy >/dev/null 2>&1; then
+	die "configurable-http-proxy not installed (build esi/naas:bookworm)"
+fi
+
+if ! id jupyterhub >/dev/null 2>&1; then
+	if command -v useradd >/dev/null 2>&1; then
+		groupadd -r jupyterhub 2>/dev/null || true
+		useradd -r -m -d /var/lib/jupyterhub -s "$NOLOGIN_SHELL" -g jupyterhub jupyterhub
+	else
+		grep -q '^jupyterhub:' /etc/group 2>/dev/null || addgroup -S jupyterhub
+		adduser -D -H -G jupyterhub -s "$NOLOGIN_SHELL" -h /var/lib/jupyterhub jupyterhub
+	fi
 fi
 
 # Create JupyterHub directories
@@ -293,5 +313,4 @@ log "  - SLURM DBD (6819)"
 log "  - Munge auth (11002)"
 log "  - JupyterHub (8080)"
 
-# Keep container running
-tail -f /dev/null
+

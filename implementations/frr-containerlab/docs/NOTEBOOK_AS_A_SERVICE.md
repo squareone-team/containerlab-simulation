@@ -2,7 +2,9 @@
 
 ## Overview
 
-This document explains the Notebook-as-a-Service deployment in the ESI Datacenter Lab. It replaces the previous shared-token Jupyter model with a production-like system using:
+This document explains the Notebook-as-a-Service deployment in the ESI
+Datacenter Lab. It replaces the previous shared-token Jupyter model with a
+production-like system using:
 
 - **JupyterHub**: Multi-user notebook server with PAM authentication
 - **SLURM**: Job scheduler for notebook execution (CPU and GPU partitions)
@@ -94,12 +96,12 @@ Notebook files persisted on Storage pod
 
 Four user groups are created with different permissions:
 
-| Group | GID | Access | Partition | QoS |
-|-------|-----|--------|-----------|-----|
-| students | 5001 | CPU only | cpu | cpu_default (limited) |
-| researchers | 5002 | CPU only | cpu | cpu_default |
-| gpu-users | 5003 | CPU + GPU | both | gpu_standard (limited) |
-| admins | 5004 | All | all | admin_qos (unlimited) |
+| Group       | GID  | Access    | Partition | QoS                    |
+| ----------- | ---- | --------- | --------- | ---------------------- |
+| students    | 5001 | CPU only  | cpu       | cpu_default (limited)  |
+| researchers | 5002 | CPU only  | cpu       | cpu_default            |
+| gpu-users   | 5003 | CPU + GPU | both      | gpu_standard (limited) |
+| admins      | 5004 | All       | all       | admin_qos (unlimited)  |
 
 ### Pre-created Test Users
 
@@ -152,7 +154,8 @@ All nodes mount the same storage paths:
 
 ### Storage Consistency
 
-- All nodes (Admin, HPC workers, JupyterHub frontend) mount the same `/home` and `/shared` paths
+- All nodes (Admin, HPC workers, JupyterHub frontend) mount the same `/home` and
+  `/shared` paths
 - uid/gid mapping is consistent across all nodes
 - Notebooks saved by one user are visible to that user from any node
 - Shared directories are readable/writable by designated groups
@@ -185,13 +188,17 @@ All nodes mount the same storage paths:
 Firewall rules are configured in nftables:
 
 **Admin Pod** (server-admin-01):
-- Allow HPC pod (192.168.70.0/24) → MySQL (3306), SLURM controller (6817), SLURM dbd (6819)
+
+- Allow HPC pod (192.168.70.0/24) → MySQL (3306), SLURM controller (6817), SLURM
+  dbd (6819)
 
 **HPC Pods** (workers):
+
 - Allow Admin pod → SLURM daemon (6818), Munge (11002)
 - Allow Storage pod → NFS (2049, 111)
 
 **Storage Pod** (server-storage-01):
+
 - Allow HPC + Admin pods → NFS (2049, 111), RPC (111)
 
 ### TLS
@@ -205,15 +212,15 @@ Firewall rules are configured in nftables:
 
 ### Key Settings
 
-| Setting | Value | Notes |
-|---------|-------|-------|
-| Authenticator | PAM | Local Linux accounts |
-| Spawner | LocalProcessSpawner | Runs on HPC workers via SLURM |
-| Database | MariaDB | Persistent session tracking |
-| Hub Port (internal) | 8000 | On Admin pod |
-| Proxy Port (frontend) | 8080 | On JupyterHub frontend (exposed as 8888 on host) |
-| Cookie Age | 7 days | User session timeout |
-| Idle Timeout | 1 hour | Notebook server idle timeout |
+| Setting               | Value               | Notes                                            |
+| --------------------- | ------------------- | ------------------------------------------------ |
+| Authenticator         | PAM                 | Local Linux accounts                             |
+| Spawner               | LocalProcessSpawner | Runs on HPC workers via SLURM                    |
+| Database              | MariaDB             | Persistent session tracking                      |
+| Hub Port (internal)   | 8000                | On Admin pod                                     |
+| Proxy Port (frontend) | 8080                | On JupyterHub frontend (exposed as 8888 on host) |
+| Cookie Age            | 7 days              | User session timeout                             |
+| Idle Timeout          | 1 hour              | Notebook server idle timeout                     |
 
 ### Kernel Specs
 
@@ -231,7 +238,7 @@ cpu: Default partition
   Nodes: hpc-01, hpc-02
   CPUs: 4 per node
   Memory: 7500 MB per node
-  
+
 gpu: GPU partition
   Nodes: hpc-01 (if GPU present)
   Max Time: 4 hours (gpu_standard QoS)
@@ -275,18 +282,25 @@ The verification script (`verify-notebook-as-a-service.sh`) tests:
 ### Troubleshooting Startup
 
 **Admin pod slow to start**
+
 - MariaDB initialization takes ~10-15 seconds
 - SLURM daemons take ~5 seconds
 - Check: `docker logs clab-esi-datacenter-server-admin-01`
 
 **HPC workers not connecting to SLURM**
-- Check Munge key exists: `docker exec clab-esi-datacenter-server-admin-01 ls -la /etc/munge/munge.key`
-- Check firewall rules: `docker exec clab-esi-datacenter-server-hpc-01 nft list ruleset`
+
+- Check Munge key exists:
+  `docker exec clab-esi-datacenter-server-admin-01 ls -la /etc/munge/munge.key`
+- Check firewall rules:
+  `docker exec clab-esi-datacenter-server-hpc-01 nft list ruleset`
 
 **NFS mounts failing**
+
 - Check Storage pod is running: `docker ps | grep storage`
-- Check NFS exports: `docker exec clab-esi-datacenter-server-storage-01 exportfs -v`
-- Check mount attempt: `docker logs clab-esi-datacenter-server-hpc-01 | grep NFS`
+- Check NFS exports:
+  `docker exec clab-esi-datacenter-server-storage-01 exportfs -v`
+- Check mount attempt:
+  `docker logs clab-esi-datacenter-server-hpc-01 | grep NFS`
 
 ## Accessing JupyterHub
 
@@ -310,7 +324,8 @@ https://192.168.70.30:8080/
 ### Login
 
 - **Username**: Any PAM user (e.g., `student-01`, `researcher-01`, `admin`)
-- **Password**: Empty (PAM local auth for lab, configure real auth in production)
+- **Password**: Empty (PAM local auth for lab, configure real auth in
+  production)
 - **First Access**: Select kernel profile (CPU or GPU)
 
 ## Submitting Jobs to SLURM

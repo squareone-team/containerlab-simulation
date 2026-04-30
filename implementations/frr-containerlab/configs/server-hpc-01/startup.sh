@@ -19,6 +19,16 @@ set -e
 log() { echo "[HPC-01-STARTUP] $*"; }
 die() { echo "[HPC-01-STARTUP] ERROR: $*" >&2; exit 1; }
 
+NOLOGIN_SHELL="$(command -v nologin || echo /sbin/nologin)"
+
+is_mounted() {
+	if command -v mountpoint >/dev/null 2>&1; then
+		mountpoint -q "$1"
+	else
+		grep -qs " $1 " /proc/mounts
+	fi
+}
+
 # ==============================================================================
 # 1. NETWORK SETUP
 # ==============================================================================
@@ -100,20 +110,27 @@ fi
 
 log "Initializing SLURM worker (slurmd)..."
 
+if ! command -v slurmd >/dev/null 2>&1; then
+	die "SLURM worker not installed (build esi/naas:bookworm)"
+fi
+if ! command -v munged >/dev/null 2>&1; then
+	die "Munge not installed (build esi/naas:bookworm)"
+fi
+
 # Create slurm user if not exists
-id slurm >/dev/null 2>&1 || useradd -r -m -d /var/spool/slurm-llnl slurm
+if ! id slurm >/dev/null 2>&1; then
+	if command -v useradd >/dev/null 2>&1; then
+		groupadd -r slurm 2>/dev/null || true
+		useradd -r -m -d /var/spool/slurm-llnl -s "$NOLOGIN_SHELL" -g slurm slurm
+	else
+		grep -q '^slurm:' /etc/group 2>/dev/null || addgroup -S slurm
+		adduser -D -H -G slurm -s "$NOLOGIN_SHELL" -h /var/spool/slurm-llnl slurm
+	fi
+fi
 
 # Create directories
 mkdir -p /var/spool/slurm-llnl /var/log/slurm /run/slurm
 chown -R slurm:slurm /var/spool/slurm-llnl /var/log/slurm /run/slurm
-
-# Install SLURM if not present
-if ! command -v slurmd >/dev/null 2>&1; then
-	log "Installing SLURM..."
-	apk add --no-cache slurm slurm-dev munge 2>/dev/null || \
-	(apt-get update -qq && apt-get install -y slurm-wlm slurm-wlm-basic-plugins munge 2>/dev/null) || \
-	die "Failed to install SLURM"
-fi
 
 # Copy SLURM config (same as controller, but only used for node registration)
 cp /shared-configs/slurm.conf /etc/slurm/slurm.conf
@@ -154,29 +171,25 @@ log "Munge started"
 
 log "Setting up NFS mounts..."
 
-# Install NFS client
 if ! command -v mount.nfs >/dev/null 2>&1; then
-	log "Installing NFS client..."
-	apk add --no-cache nfs-utils 2>/dev/null || \
-	(apt-get update -qq && apt-get install -y nfs-common 2>/dev/null) || \
-	die "Failed to install NFS client"
+	die "NFS client not installed (build esi/naas:bookworm)"
 fi
 
 # Create mount points
 mkdir -p /home /shared
 
 # Mount /home from storage
-if ! mountpoint -q /home; then
+if ! is_mounted /home; then
 	log "Mounting /home from 192.168.80.10:/home..."
-	mount -t nfs -o rw,soft,timeo=30,retrans=3 192.168.80.10:/home /home || \
-		log "WARN: Failed to mount /home, will retry"
+	mount -t nfs -o rw,soft,timeo=5,retrans=1 192.168.80.10:/home /home || \
+		log "WARN: Failed to mount /home (storage may not be ready yet)"
 fi
 
 # Mount /shared from storage
-if ! mountpoint -q /shared; then
+if ! is_mounted /shared; then
 	log "Mounting /shared from 192.168.80.10:/shared..."
-	mount -t nfs -o rw,soft,timeo=30,retrans=3 192.168.80.10:/shared /shared || \
-		log "WARN: Failed to mount /shared, will retry"
+	mount -t nfs -o rw,soft,timeo=5,retrans=1 192.168.80.10:/shared /shared || \
+		log "WARN: Failed to mount /shared (storage may not be ready yet)"
 fi
 
 log "NFS mounts configured"
@@ -218,5 +231,4 @@ log "  - SLURM worker (6818)"
 log "  - Munge auth (11002)"
 log "  - NFS mounts (/home, /shared)"
 
-# Keep container running
-tail -f /dev/null
+

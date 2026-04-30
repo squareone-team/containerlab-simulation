@@ -240,7 +240,8 @@ topology:
 
     server-admin-01:
       kind: linux
-      image: esi/alpine-host:3.20
+      image: esi/naas:bookworm
+      cmd: sleep infinity
       cap-add:
         - NET_ADMIN
         - SYS_MODULE
@@ -275,7 +276,8 @@ topology:
 
     server-hpc-01:
       kind: linux
-      image: esi/alpine-host:3.20
+      image: esi/naas:bookworm
+      cmd: sleep infinity
       cap-add:
         - NET_ADMIN
         - SYS_MODULE
@@ -292,7 +294,8 @@ topology:
 
     server-hpc-02:
       kind: linux
-      image: esi/alpine-host:3.20
+      image: esi/naas:bookworm
+      cmd: sleep infinity
       cap-add:
         - NET_ADMIN
         - SYS_MODULE
@@ -309,7 +312,8 @@ topology:
 
     server-hpc-jupyter:
       kind: linux
-      image: esi/alpine-jupyter:3.20
+      image: esi/naas:bookworm
+      cmd: sleep infinity
       cap-add:
         - NET_ADMIN
         - SYS_MODULE
@@ -323,11 +327,12 @@ topology:
         - sh /startup.sh
         - sh /ntp-client.sh
       ports:
-        - 8888:8080
+        - 18888:8080
 
     server-storage-01:
       kind: linux
-      image: esi/alpine-host:3.20
+      image: esi/naas:bookworm
+      cmd: sleep infinity
       cap-add:
         - NET_ADMIN
         - SYS_MODULE

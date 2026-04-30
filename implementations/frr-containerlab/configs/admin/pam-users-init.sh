@@ -18,6 +18,10 @@ set -e
 log() { echo "[PAM-INIT] $*"; }
 die() { echo "[PAM-INIT] ERROR: $*" >&2; exit 1; }
 
+group_exists() {
+  grep -q "^$1:" /etc/group 2>/dev/null
+}
+
 # ============================================================================
 # 1. Create Groups (ensure consistent GIDs for UID/GID mapping)
 # ============================================================================
@@ -25,20 +29,20 @@ die() { echo "[PAM-INIT] ERROR: $*" >&2; exit 1; }
 log "Creating user groups..."
 
 # Students group: 5001
-getent group students >/dev/null || \
-  groupadd -g 5001 students || die "Failed to create students group"
+group_exists students || \
+	groupadd -g 5001 students || die "Failed to create students group"
 
 # Researchers group: 5002
-getent group researchers >/dev/null || \
-  groupadd -g 5002 researchers || die "Failed to create researchers group"
+group_exists researchers || \
+	groupadd -g 5002 researchers || die "Failed to create researchers group"
 
 # GPU users group: 5003 (subset of researchers/admins who can access GPU)
-getent group gpu-users >/dev/null || \
-  groupadd -g 5003 gpu-users || die "Failed to create gpu-users group"
+group_exists gpu-users || \
+	groupadd -g 5003 gpu-users || die "Failed to create gpu-users group"
 
 # Admins group: 5004
-getent group admins >/dev/null || \
-  groupadd -g 5004 admins || die "Failed to create admins group"
+group_exists admins || \
+	groupadd -g 5004 admins || die "Failed to create admins group"
 
 log "Groups created/verified"
 
@@ -54,7 +58,9 @@ create_user_if_missing() {
   local home="/home/${username}"
   
   if ! id "$username" >/dev/null 2>&1; then
-    useradd -m -u "$uid" -g "$uid" -d "$home" -s /bin/bash "$username" || \
+    group_exists "$username" || \
+      groupadd -g "$uid" "$username" || die "Failed to create group for $username"
+    useradd -m -u "$uid" -g "$username" -d "$home" -s /bin/sh "$username" || \
       die "Failed to create user $username"
     log "Created user: $username (uid=$uid, home=$home)"
   else
@@ -64,9 +70,8 @@ create_user_if_missing() {
   # Add to supplementary groups if specified
   if [ -n "$groups" ]; then
     for grp in $groups; do
-      if getent group "$grp" >/dev/null; then
-        usermod -a -G "$grp" "$username" || \
-          die "Failed to add $username to group $grp"
+      if group_exists "$grp"; then
+        usermod -a -G "$grp" "$username" 2>/dev/null || true
       fi
     done
   fi
@@ -134,7 +139,7 @@ log "Sudoers configured"
 
 log "Verification:"
 log "  Groups:"
-getent group | grep -E "^(students|researchers|gpu-users|admins):" || true
+grep -E "^(students|researchers|gpu-users|admins):" /etc/group || true
 
 log "  Users:"
 for user in admin researcher-01 researcher-02 student-01 student-02 student-03; do

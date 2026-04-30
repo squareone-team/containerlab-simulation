@@ -19,6 +19,14 @@ set -e
 log() { echo "[JUPYTER-FRONTEND-STARTUP] $*"; }
 die() { echo "[JUPYTER-FRONTEND-STARTUP] ERROR: $*" >&2; exit 1; }
 
+is_mounted() {
+	if command -v mountpoint >/dev/null 2>&1; then
+		mountpoint -q "$1"
+	else
+		grep -qs " $1 " /proc/mounts
+	fi
+}
+
 # ==============================================================================
 # 1. NETWORK SETUP
 # ==============================================================================
@@ -102,30 +110,25 @@ fi
 # ==============================================================================
 
 log "Setting up NFS mounts..."
-
-# Install NFS client
 if ! command -v mount.nfs >/dev/null 2>&1; then
-	log "Installing NFS client..."
-	apk add --no-cache nfs-utils 2>/dev/null || \
-	(apt-get update -qq && apt-get install -y nfs-common 2>/dev/null) || \
-	die "Failed to install NFS client"
+	die "NFS client not installed (build esi/alpine-jupyter:3.20)"
 fi
 
 # Create mount points
 mkdir -p /home /shared
 
 # Mount /home from storage (for persistent notebooks)
-if ! mountpoint -q /home; then
+if ! is_mounted /home; then
 	log "Mounting /home from 192.168.80.10:/home..."
-	mount -t nfs -o rw,soft,timeo=30,retrans=3 192.168.80.10:/home /home || \
-		log "WARN: Failed to mount /home, will retry"
+	mount -t nfs -o rw,soft,timeo=5,retrans=1 192.168.80.10:/home /home || \
+		log "WARN: Failed to mount /home (storage may not be ready yet)"
 fi
 
 # Mount /shared from storage
-if ! mountpoint -q /shared; then
+if ! is_mounted /shared; then
 	log "Mounting /shared from 192.168.80.10:/shared..."
-	mount -t nfs -o rw,soft,timeo=30,retrans=3 192.168.80.10:/shared /shared || \
-		log "WARN: Failed to mount /shared, will retry"
+	mount -t nfs -o rw,soft,timeo=5,retrans=1 192.168.80.10:/shared /shared || \
+		log "WARN: Failed to mount /shared (storage may not be ready yet)"
 fi
 
 log "NFS mounts configured"
@@ -134,20 +137,26 @@ log "NFS mounts configured"
 # 4. WAIT FOR JUPYTERHUB CONTROLLER
 # ==============================================================================
 
-log "Waiting for JupyterHub controller on Admin pod (192.168.50.10:8000)..."
-max_retries=30
-retry=0
-while ! nc -z 192.168.50.10 8000 2>/dev/null; do
-	retry=$((retry + 1))
-	if [ $retry -gt $max_retries ]; then
-		log "WARNING: JupyterHub controller not responding (may start later)"
-		break
+log "Starting background check for JupyterHub controller (192.168.50.10:8000)..."
+(
+	if ! command -v nc >/dev/null 2>&1; then
+		log "WARN: netcat not found, skipping controller readiness check"
+		exit 0
 	fi
-	log "  Retry $retry/$max_retries..."
-	sleep 2
-done
+	max_retries=30
+	retry=0
+	while ! nc -z 192.168.50.10 8000 2>/dev/null; do
+		retry=$((retry + 1))
+		if [ $retry -gt $max_retries ]; then
+			log "WARNING: JupyterHub controller not responding after ${max_retries} retries"
+			exit 1
+		fi
+		sleep 2
+	done
+	log "JupyterHub controller reachable at 192.168.50.10:8000"
+) &
 
-log "JupyterHub frontend ready!"
+log "JupyterHub frontend startup continuing (controller check running in background)..."
 
 # ==============================================================================
 # 5. PROXY CONFIGURATION
@@ -189,5 +198,4 @@ log "  - NFS mounts (/home, /shared)"
 log "  - Frontend listening on port 8080"
 log "  - Connected to controller: 192.168.50.10:8000"
 
-# Keep container running
-tail -f /dev/null
+

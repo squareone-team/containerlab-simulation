@@ -99,13 +99,14 @@ fi
 # ==============================================================================
 
 log "Installing and configuring NFS server..."
-
-# Install NFS server
-if ! command -v nfsd >/dev/null 2>&1; then
-	log "Installing NFS server..."
-	apk add --no-cache nfs-utils 2>/dev/null || \
-	(apt-get update -qq && apt-get install -y nfs-kernel-server 2>/dev/null) || \
-	die "Failed to install NFS server"
+if ! command -v rpc.nfsd >/dev/null 2>&1 && ! command -v nfsd >/dev/null 2>&1; then
+	die "NFS server not installed (build esi/alpine-naas:3.20)"
+fi
+if ! command -v exportfs >/dev/null 2>&1; then
+	die "exportfs not installed (build esi/alpine-naas:3.20)"
+fi
+if ! command -v rpcbind >/dev/null 2>&1; then
+	die "rpcbind not installed (build esi/alpine-naas:3.20)"
 fi
 
 # Create export directories
@@ -130,22 +131,7 @@ log "NFS directories initialized"
 # 4. NFS EXPORTS CONFIGURATION
 # ==============================================================================
 
-log "Configuring NFS exports..."
-
-# Write NFS exports file
-cat > /etc/exports << 'EXPORTS'
-# NFS Exports for ESI Datacenter JupyterHub
-# /home  - user notebook homes
-# /shared - shared projects and courses
-
-/home                192.168.70.0/24(rw,no_subtree_check,no_root_squash,all_squash,anonuid=0,anongid=0)
-/home                192.168.50.0/24(rw,no_subtree_check,no_root_squash,all_squash,anonuid=0,anongid=0)
-
-/shared              192.168.70.0/24(rw,no_subtree_check,no_root_squash,all_squash,anonuid=0,anongid=0)
-/shared              192.168.50.0/24(rw,no_subtree_check,no_root_squash,all_squash,anonuid=0,anongid=0)
-EXPORTS
-
-log "NFS exports configured"
+log "NFS exports are provided via read-only mount..."
 
 # ==============================================================================
 # 5. START NFS DAEMONS
@@ -228,5 +214,4 @@ log "Exports:"
 log "  - /home (HPC + Admin pods)"
 log "  - /shared (HPC + Admin pods)"
 
-# Keep container running
-tail -f /dev/null
+

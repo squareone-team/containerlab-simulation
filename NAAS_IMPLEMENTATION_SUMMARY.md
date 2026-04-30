@@ -2,29 +2,42 @@
 
 ## Completion Status: ✅ COMPLETE
 
-All tasks for implementing Notebook-as-a-Service (NaaS) with JupyterHub + SLURM + NFS persistence have been completed and committed to the repository.
+All tasks for implementing Notebook-as-a-Service (NaaS) with JupyterHub +
+SLURM + NFS persistence have been completed and committed to the repository.
 
 ## What Was Implemented
 
 ### 1. Configuration Templates
-- ✅ **slurm.conf** - HPC cluster definition with cpu/gpu partitions, node definitions, QoS per group
+
+- ✅ **slurm.conf** - HPC cluster definition with cpu/gpu partitions, node
+  definitions, QoS per group
 - ✅ **slurmdbd.conf** - SLURM accounting daemon configuration
-- ✅ **jupyterhub_config.py** - JupyterHub controller with PAM auth, TLS, MariaDB persistence
-- ✅ **mariadb-init.sql** - Database initialization for SLURM accounting and JupyterHub metadata
-- ✅ **pam-users-init.sh** - User/group creation (students, researchers, gpu-users, admins)
+- ✅ **jupyterhub_config.py** - JupyterHub controller with PAM auth, TLS,
+  MariaDB persistence
+- ✅ **mariadb-init.sql** - Database initialization for SLURM accounting and
+  JupyterHub metadata
+- ✅ **pam-users-init.sh** - User/group creation (students, researchers,
+  gpu-users, admins)
 - ✅ **exports** - NFS server export configuration for /home and /shared
 
 ### 2. Infrastructure Startup Scripts (Completely Redesigned)
-- ✅ **server-admin-01/startup.sh** - Admin pod with MariaDB, SLURM controller, JupyterHub, Munge
+
+- ✅ **server-admin-01/startup.sh** - Admin pod with MariaDB, SLURM controller,
+  JupyterHub, Munge
 - ✅ **server-hpc-01/startup.sh** - SLURM worker with NFS mounts
 - ✅ **server-hpc-02/startup.sh** - SLURM worker with NFS mounts
-- ✅ **server-hpc-jupyter/startup.sh** - JupyterHub frontend proxy (replaced token model)
-- ✅ **server-storage-01/startup.sh** - NFS server for persistent notebook storage
+- ✅ **server-hpc-jupyter/startup.sh** - JupyterHub frontend proxy (replaced
+  token model)
+- ✅ **server-storage-01/startup.sh** - NFS server for persistent notebook
+  storage
 
 ### 3. Orchestration
-- ✅ **esi-datacenter.clab.yml** - Updated topology with config binds and capabilities
+
+- ✅ **esi-datacenter.clab.yml** - Updated topology with config binds and
+  capabilities
 
 ### 4. Testing & Documentation
+
 - ✅ **verify-notebook-as-a-service.sh** - Comprehensive verification script
 - ✅ **NOTEBOOK_AS_A_SERVICE.md** - Complete architecture and usage guide
 
@@ -59,6 +72,7 @@ All tasks for implementing Notebook-as-a-Service (NaaS) with JupyterHub + SLURM 
 ## Key Features
 
 ### Authentication & Authorization
+
 - **Model**: PAM local accounts (configurable for LDAP/AD)
 - **User Groups**: students, researchers, gpu-users, admins
 - **Pre-created Test Users**:
@@ -67,6 +81,7 @@ All tasks for implementing Notebook-as-a-Service (NaaS) with JupyterHub + SLURM 
   - student-01 (3001), student-02 (3002), student-03 (3003)
 
 ### Compute Scheduling
+
 - **Scheduler**: SLURM Workload Manager
 - **Partitions**: cpu (hpc-01, hpc-02), gpu (hpc-01)
 - **QoS Limits Per Group**:
@@ -76,12 +91,14 @@ All tasks for implementing Notebook-as-a-Service (NaaS) with JupyterHub + SLURM 
   - admins: unlimited
 
 ### Storage Model
+
 - **Location**: server-storage-01 (NFS server)
 - **Mount Points**: /home (user notebooks), /shared (projects)
 - **Persistence**: Survives pod restarts if Storage pod persists
 - **Ownership**: Consistent uid/gid across all nodes
 
 ### Security
+
 - **TLS**: Self-signed certificates on JupyterHub frontend
 - **Firewall**: nftables rules on all pods (restrictive inbound)
 - **Port Mapping**: Only 8080 (JupyterHub) exposed to users
@@ -139,27 +156,33 @@ esi-datacenter.clab.yml               # Updated topology (binds & caps)
 ## Deployment Steps
 
 ### 1. Deploy the Lab
+
 ```bash
 cd implementations/frr-containerlab
 sudo containerlab deploy -t esi-datacenter.clab.yml
 ```
 
 ### 2. Wait for Initialization (30-45 seconds)
+
 ```bash
 sleep 30
 ```
 
 ### 3. Run Verification
+
 ```bash
 bash ../../scripts/tests/verify-notebook-as-a-service.sh
 ```
 
 ### 4. Access JupyterHub
+
 - **From host**: https://localhost:8888/ (port 8888 → container 8080)
 - **From lab nodes**: https://hpc-jupyter.esi.internal:8080/
-- **Login**: Use pre-created user (student-01, researcher-01, admin) with empty password
+- **Login**: Use pre-created user (student-01, researcher-01, admin) with empty
+  password
 
 ### 5. Submit Notebook Jobs
+
 - Create notebook cell
 - Select kernel (Python 3 CPU or GPU)
 - Jupyter kernel runs as SLURM job
@@ -183,40 +206,45 @@ Run the verification script and check:
 ## Existing Repository Conventions Preserved
 
 ✅ **Topology**
+
 - Kept existing pod structure (Admin, HPC, Storage)
 - Maintained VLAN assignments and interface bonding
 - Preserved ntp-server integration
 
 ✅ **Firewall**
+
 - Extended nftables with SLURM/JupyterHub/MySQL/NFS ports
 - Kept existing pod-to-pod firewall rules
 - Added capability for service-to-service access
 
 ✅ **DNS**
+
 - Used existing DNS resolver (192.168.50.30)
 - Maintained hpc-jupyter.esi.internal entry
 - No changes to DNS config needed (already has the A record)
 
 ✅ **Logging**
+
 - Remote syslog forwarding to 192.168.50.70:514
 - Integrated into existing syslog-server
 
 ✅ **NTP**
+
 - Kept ntp-server integration (server-client-ntp.sh)
 - All nodes sync time with centralized NTP
 
 ## Differences from Current Setup
 
-| Aspect | Previous (Token Model) | New (JupyterHub + SLURM) |
-|--------|------------------------|--------------------------|
-| Auth | Shared static token | PAM local accounts |
-| Notebook Server | Standalone on hpc-jupyter | JupyterHub controller on Admin pod |
-| Job Scheduling | None (single server) | SLURM with partitions & QoS |
-| Storage | Bind mount `/srv/notebooks` | NFS persistent /home & /shared |
-| Database | None | MariaDB for SLURM accounting + JupyterHub |
-| GPU Support | No | Yes (gpu partition with gpu-users group) |
-| Multi-user | Limited (single token) | Full multi-user with per-user homes |
-| Scalability | N/A (static server) | Add more HPC workers, retains auth |
+| Aspect          | Previous (Token Model)      | New (JupyterHub + SLURM)                  |
+| --------------- | --------------------------- | ----------------------------------------- |
+| Auth            | Shared static token         | PAM local accounts                        |
+| Notebook Server | Standalone on hpc-jupyter   | JupyterHub controller on Admin pod        |
+| Job Scheduling  | None (single server)        | SLURM with partitions & QoS               |
+| Storage         | Bind mount `/srv/notebooks` | NFS persistent /home & /shared            |
+| Database        | None                        | MariaDB for SLURM accounting + JupyterHub |
+| GPU Support     | No                          | Yes (gpu partition with gpu-users group)  |
+| Multi-user      | Limited (single token)      | Full multi-user with per-user homes       |
+| Scalability     | N/A (static server)         | Add more HPC workers, retains auth        |
 
 ## Next Steps for Production
 
@@ -252,6 +280,7 @@ Run the verification script and check:
 ## Troubleshooting
 
 ### Services Not Starting
+
 ```bash
 # Check Admin pod logs
 docker logs clab-esi-datacenter-server-admin-01
@@ -264,6 +293,7 @@ docker exec clab-esi-datacenter-server-admin-01 mysqld_safe &
 ```
 
 ### NFS Mount Failures
+
 ```bash
 # Check Storage pod NFS daemons
 docker exec clab-esi-datacenter-server-storage-01 ps aux | grep nfs
@@ -277,6 +307,7 @@ docker exec clab-esi-datacenter-server-hpc-01 \
 ```
 
 ### SLURM Not Recognizing Workers
+
 ```bash
 # Check controller logs
 docker exec clab-esi-datacenter-server-admin-01 tail -f /var/log/slurm/slurmctld.log
@@ -299,6 +330,5 @@ docker exec clab-esi-datacenter-server-hpc-01 slurmd -Dv
 
 ---
 
-**Implementation Date**: 2026-04-30
-**Status**: Production-Ready for Lab Use
+**Implementation Date**: 2026-04-30 **Status**: Production-Ready for Lab Use
 **Last Updated**: 2026-04-30
