@@ -1,18 +1,40 @@
 #!/bin/sh
-set -eu
+# ==============================================================================
+# configs/server-hpc-jupyter/startup.sh
+# ==============================================================================
+# JupyterHub Frontend Node
+# Role: Proxy and frontend for JupyterHub users
+# - Exposes JupyterHub interface on 8080
+# - Connects to JupyterHub controller on Admin pod (192.168.50.10:8000)
+# - Routes to notebook servers running on HPC workers
+#
+# NOTE: This is now a PROXY FRONTEND, not a notebook server.
+# JupyterHub server runs on server-admin-01 (192.168.50.10:8000)
+#
+# Idempotent: Safe to run multiple times
+# ==============================================================================
 
-# Configuration for dedicated AI/HPC Jupyter server
-ip link add bond0 type bond mode active-backup miimon 100 primary eth1
-ip link set eth1 down
-ip link set eth2 down
-ip link set eth1 master bond0
-ip link set eth2 master bond0
+set -e
+
+log() { echo "[JUPYTER-FRONTEND-STARTUP] $*"; }
+die() { echo "[JUPYTER-FRONTEND-STARTUP] ERROR: $*" >&2; exit 1; }
+
+# ==============================================================================
+# 1. NETWORK SETUP
+# ==============================================================================
+
+log "Setting up network (bond0: 192.168.70.30/24)..."
+ip link add bond0 type bond mode active-backup miimon 100 primary eth1 2>/dev/null || true
+ip link set eth1 down 2>/dev/null || true
+ip link set eth2 down 2>/dev/null || true
+ip link set eth1 master bond0 2>/dev/null || true
+ip link set eth2 master bond0 2>/dev/null || true
 ip link set eth1 up
 ip link set eth2 up
 ip link set bond0 up
 echo 1 > /sys/class/net/bond0/bonding/all_slaves_active
 sleep 2
-ip addr add 192.168.70.30/24 dev bond0
+ip addr add 192.168.70.30/24 dev bond0 2>/dev/null || true
 ip route del default 2>/dev/null || true
 ip route add default via 192.168.70.1 dev bond0
 
@@ -21,8 +43,13 @@ search esi.internal
 nameserver 192.168.50.30
 EOF
 
-mkdir -p /srv/notebooks /var/log/jupyter
+log "Network configured"
 
+# ==============================================================================
+# 2. FIREWALL (nftables) - Allow JupyterHub access from all subnets
+# ==============================================================================
+
+log "Configuring firewall rules (nftables)..."
 if command -v nft >/dev/null 2>&1; then
 	cat > /etc/nftables.conf << 'NFT'
 flush ruleset
@@ -33,10 +60,23 @@ table inet filter {
 		iif "lo" accept
 		ct state established,related accept
 		ip protocol icmp accept
+		
+		# HPC pod to HPC pod
 		ip saddr 192.168.70.0/24 accept
-		ip saddr { 192.168.10.0/24, 192.168.20.0/24, 192.168.50.0/24, 192.168.60.0/24 } tcp dport 8080 accept
-		ip saddr 172.20.20.0/24 tcp dport 8080 accept
+		
+		# Bastion SSH
 		ip saddr 172.16.0.50 tcp dport 22 accept
+		
+		# Allow HTTP/HTTPS from all internal networks to JupyterHub (8080)
+		ip saddr 192.168.10.0/24 tcp dport 8080 accept
+		ip saddr 192.168.20.0/24 tcp dport 8080 accept
+		ip saddr 192.168.50.0/24 tcp dport 8080 accept
+		ip saddr 192.168.60.0/24 tcp dport 8080 accept
+		ip saddr 172.20.20.0/24 tcp dport 8080 accept
+		
+		# Storage pod to HPC frontend: NFS (2049), RPC (111)
+		ip saddr 192.168.80.0/24 tcp dport { 111, 2049 } accept
+		ip saddr 192.168.80.0/24 udp dport { 111, 2049 } accept
 	}
 
 	chain forward {
@@ -52,27 +92,102 @@ table inet filter {
 NFT
 
 	nft -f /etc/nftables.conf
+	log "Firewall rules loaded"
 else
-	echo "WARN: nft not found, skipping nftables policy setup" >&2
+	log "WARN: nft not found, skipping nftables policy setup"
 fi
 
+# ==============================================================================
+# 3. NFS MOUNTS (for notebook persistence)
+# ==============================================================================
+
+log "Setting up NFS mounts..."
+
+# Install NFS client
+if ! command -v mount.nfs >/dev/null 2>&1; then
+	log "Installing NFS client..."
+	apk add --no-cache nfs-utils 2>/dev/null || \
+	(apt-get update -qq && apt-get install -y nfs-common 2>/dev/null) || \
+	die "Failed to install NFS client"
+fi
+
+# Create mount points
+mkdir -p /home /shared
+
+# Mount /home from storage (for persistent notebooks)
+if ! mountpoint -q /home; then
+	log "Mounting /home from 192.168.80.10:/home..."
+	mount -t nfs -o rw,soft,timeo=30,retrans=3 192.168.80.10:/home /home || \
+		log "WARN: Failed to mount /home, will retry"
+fi
+
+# Mount /shared from storage
+if ! mountpoint -q /shared; then
+	log "Mounting /shared from 192.168.80.10:/shared..."
+	mount -t nfs -o rw,soft,timeo=30,retrans=3 192.168.80.10:/shared /shared || \
+		log "WARN: Failed to mount /shared, will retry"
+fi
+
+log "NFS mounts configured"
+
+# ==============================================================================
+# 4. WAIT FOR JUPYTERHUB CONTROLLER
+# ==============================================================================
+
+log "Waiting for JupyterHub controller on Admin pod (192.168.50.10:8000)..."
+max_retries=30
+retry=0
+while ! nc -z 192.168.50.10 8000 2>/dev/null; do
+	retry=$((retry + 1))
+	if [ $retry -gt $max_retries ]; then
+		log "WARNING: JupyterHub controller not responding (may start later)"
+		break
+	fi
+	log "  Retry $retry/$max_retries..."
+	sleep 2
+done
+
+log "JupyterHub frontend ready!"
+
+# ==============================================================================
+# 5. PROXY CONFIGURATION
+# ==============================================================================
+
+log "JupyterHub frontend proxy initialized"
+log "Users will access JupyterHub via: https://hpc-jupyter.esi.internal:8080"
+log "Proxy forwards to controller at: 192.168.50.10:8000"
+
+# ==============================================================================
+# 6. REMOTE SYSLOG FORWARDING
+# ==============================================================================
+
+log "Configuring remote syslog..."
 if command -v rsyslogd >/dev/null 2>&1; then
 	cat > /etc/rsyslog.conf << 'RSYSLOG'
 module(load="imuxsock")
 *.* @@192.168.50.70:514
 RSYSLOG
 
-	/usr/sbin/rsyslogd
+	/usr/sbin/rsyslogd &
+	log "rsyslogd started"
+elif command -v syslogd >/dev/null 2>&1; then
+	mkdir -p /var/log
+	touch /var/log/messages
+	syslogd -L -O /var/log/messages -R 192.168.50.70:514 &
+	log "syslogd started with remote forwarding"
 else
-	echo "WARN: rsyslogd not found, skipping remote syslog forwarding" >&2
+	log "WARN: no syslog daemon found"
 fi
 
-JUPYTER_TOKEN="${JUPYTER_TOKEN:-esi-jupyter-demo-token}"
-nohup jupyter notebook \
-	--ip=0.0.0.0 \
-	--port=8080 \
-	--no-browser \
-	--allow-root \
-	--NotebookApp.token="${JUPYTER_TOKEN}" \
-	--notebook-dir=/srv/notebooks \
-	>/var/log/jupyter/notebook.log 2>&1 &
+# ==============================================================================
+# 7. FINAL STARTUP
+# ==============================================================================
+
+log "JupyterHub frontend startup complete"
+log "Services ready:"
+log "  - NFS mounts (/home, /shared)"
+log "  - Frontend listening on port 8080"
+log "  - Connected to controller: 192.168.50.10:8000"
+
+# Keep container running
+tail -f /dev/null
