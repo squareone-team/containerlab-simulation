@@ -80,11 +80,13 @@ c.Spawner.http_timeout = 300
 c.Spawner.start_timeout = 300
 
 # Notebook directory per-user (NFS-mounted from server-storage-01 everywhere).
+c.Spawner.cmd = ['/usr/local/bin/jupyterhub-singleuser']
 c.Spawner.notebook_dir = '/home/{username}'
 c.Spawner.default_url = '/lab'
 
 # Conservative default profile: one CPU notebook on the cpu partition.
 c.BatchSpawnerBase.exec_prefix = 'sudo -E -u {username}'
+c.BatchSpawnerBase.batchspawner_singleuser_cmd = '/usr/local/bin/batchspawner-singleuser'
 c.BatchSpawnerBase.req_nprocs = '1'
 c.BatchSpawnerBase.req_runtime = '02:00:00'
 c.BatchSpawnerBase.req_memory = '2G'
