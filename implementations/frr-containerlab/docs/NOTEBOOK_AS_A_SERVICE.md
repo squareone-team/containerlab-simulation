@@ -21,10 +21,12 @@ production-like system using:
 ├─────────────────────────────────────────────────────┤
 │  server-admin-01:                                   │
 │    - JupyterHub Controller (8000 internal)          │
+│    - JupyterHub Hub API (8081, worker callbacks)    │
 │    - SLURM Controller slurmctld (6817)              │
 │    - SLURM Accounting Daemon slurmdbd (6819)        │
 │    - MariaDB (3306)                                 │
 │    - Munge Auth Daemon (11002)                      │
+│    - NFS Client (/home, /shared mounts)             │
 └─────────────────────────────────────────────────────┘
                          ↕ (internal)
 ┌─────────────────────────────────────────────────────┐
@@ -32,13 +34,13 @@ production-like system using:
 ├─────────────────────────────────────────────────────┤
 │  server-hpc-jupyter (192.168.70.30):                │
 │    - JupyterHub Frontend Proxy (8080)               │
-│    - NFS Client (/home, /shared mounts)             │
-│    - Exposed on host: localhost:8888                │
+│    - Exposed on host: localhost:18880               │
 │                                                     │
 │  server-hpc-01 (192.168.70.10):                    │
 │  server-hpc-02 (192.168.70.20):                    │
 │    - SLURM Worker Daemon slurmd (6818)              │
 │    - CPU & GPU partition nodes                      │
+│    - Matching Linux users/groups for SLURM setuid   │
 │    - NFS Client mounts                              │
 └─────────────────────────────────────────────────────┘
                          ↕ (NFS + metadata)
@@ -59,7 +61,7 @@ production-like system using:
 ```
 User Browser
     ↓
-https://hpc-jupyter.esi.internal:8080
+https://localhost:18880/ or https://hpc-jupyter.esi.internal:8080
     ↓
 server-hpc-jupyter (frontend proxy)
     ↓
@@ -73,9 +75,9 @@ User approved → Session created
 ### 2. Notebook Execution
 
 ```
-User submits Jupyter notebook
+User starts a notebook server
     ↓
-JupyterHub spawns notebook server as SLURM job
+JupyterHub BatchSpawner/SlurmSpawner submits a SLURM job
     ↓
 sbatch → SLURM Controller slurmctld
     ↓
@@ -83,7 +85,7 @@ SLURM routes to CPU or GPU partition:
   - CPU: hpc-01, hpc-02
   - GPU: hpc-01 (if configured)
     ↓
-Notebook kernel runs as user process
+Notebook server and kernels run as the user on a SLURM worker
     ↓
 /home/{username} NFS mount
     ↓
@@ -105,7 +107,8 @@ Four user groups are created with different permissions:
 
 ### Pre-created Test Users
 
-Users are initialized on server-admin-01 during startup:
+Users are initialized with the same UID/GID on server-admin-01,
+server-hpc-01, and server-hpc-02 during startup:
 
 ```
 Admin users:
@@ -154,9 +157,10 @@ All nodes mount the same storage paths:
 
 ### Storage Consistency
 
-- All nodes (Admin, HPC workers, JupyterHub frontend) mount the same `/home` and
-  `/shared` paths
+- server-admin-01 and the SLURM workers mount the same `/home` and `/shared`
+  paths from server-storage-01
 - uid/gid mapping is consistent across all nodes
+- NFS exports preserve user UID/GID; user-created files are not squashed to root
 - Notebooks saved by one user are visible to that user from any node
 - Shared directories are readable/writable by designated groups
 
@@ -190,11 +194,12 @@ Firewall rules are configured in nftables:
 **Admin Pod** (server-admin-01):
 
 - Allow HPC pod (192.168.70.0/24) → MySQL (3306), SLURM controller (6817), SLURM
-  dbd (6819)
+  dbd (6819), JupyterHub public proxy (8000), and Hub API callbacks (8081)
 
 **HPC Pods** (workers):
 
 - Allow Admin pod → SLURM daemon (6818), Munge (11002)
+- Allow Admin pod → notebook server callback ports (1024-65535)
 - Allow Storage pod → NFS (2049, 111)
 
 **Storage Pod** (server-storage-01):
@@ -203,9 +208,9 @@ Firewall rules are configured in nftables:
 
 ### TLS
 
-- JupyterHub uses self-signed TLS certificate (generated on startup)
-- Certificate: `/etc/jupyterhub/jupyterhub.crt`
-- Key: `/etc/jupyterhub/jupyterhub.key`
+- TLS terminates on server-hpc-jupyter via configurable-http-proxy
+- Certificate: `/etc/jupyterhub-proxy/ssl/server.crt`
+- Key: `/etc/jupyterhub-proxy/ssl/server.key`
 - Valid for: hpc-jupyter.esi.internal
 
 ## JupyterHub Configuration
@@ -215,16 +220,17 @@ Firewall rules are configured in nftables:
 | Setting               | Value               | Notes                                            |
 | --------------------- | ------------------- | ------------------------------------------------ |
 | Authenticator         | PAM                 | Local Linux accounts                             |
-| Spawner               | LocalProcessSpawner | Runs on HPC workers via SLURM                    |
+| Spawner               | BatchSpawner SlurmSpawner | Submits notebook servers to SLURM workers |
 | Database              | MariaDB             | Persistent session tracking                      |
 | Hub Port (internal)   | 8000                | On Admin pod                                     |
-| Proxy Port (frontend) | 8080                | On JupyterHub frontend (exposed as 8888 on host) |
+| Hub API Port          | 8081                | Reachable by notebook jobs on workers            |
+| Proxy Port (frontend) | 8080                | On JupyterHub frontend (exposed as 18880 on host) |
 | Cookie Age            | 7 days              | User session timeout                             |
 | Idle Timeout          | 1 hour              | Notebook server idle timeout                     |
 
 ### Kernel Specs
 
-Users can select notebook profiles:
+Users can select notebook server profiles:
 
 - **Python 3 (CPU)** → routed to cpu partition
 - **Python 3 (GPU)** → routed to gpu partition (gpu-users only)
@@ -262,8 +268,8 @@ admin_qos:        Unlimited
 # Deploy lab
 sudo containerlab deploy -t esi-datacenter.clab.yml
 
-# Wait for services to start (~30 seconds)
-sleep 30
+# Wait for services to start (~60 seconds)
+sleep 60
 
 # Run verification
 bash scripts/tests/verify-notebook-as-a-service.sh
@@ -275,9 +281,15 @@ The verification script (`verify-notebook-as-a-service.sh`) tests:
 
 - Admin pod services (MariaDB, SLURM, JupyterHub)
 - HPC worker connectivity
-- NFS mounts on workers
+- NFS mounts on admin and workers
+- Matching Linux users/groups on workers
+- Normal-user SLURM client access
 - JupyterHub frontend connectivity
 - Network DNS resolution
+
+The advanced verifier (`verify-naas-advanced.sh`) additionally logs into the
+Hub API, spawns a student notebook through SLURM, confirms the active SLURM job,
+and creates a notebook file under storage-backed `/home/student-01`.
 
 ### Troubleshooting Startup
 
@@ -314,8 +326,8 @@ curl -k https://hpc-jupyter.esi.internal:8080/
 ### From Host Machine
 
 ```bash
-# Via Docker port mapping (localhost:8888)
-https://localhost:8888/
+# Via Docker port mapping (localhost:18880)
+https://localhost:18880/
 
 # Or via container network (if configured)
 https://192.168.70.30:8080/
@@ -324,8 +336,8 @@ https://192.168.70.30:8080/
 ### Login
 
 - **Username**: Any PAM user (e.g., `student-01`, `researcher-01`, `admin`)
-- **Password**: Empty (PAM local auth for lab, configure real auth in
-  production)
+- **Password**: Same as username in the lab (for example `student-01` /
+  `student-01`)
 - **First Access**: Select kernel profile (CPU or GPU)
 
 ## Submitting Jobs to SLURM

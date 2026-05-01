@@ -12,8 +12,8 @@ SLURM + NFS persistence have been completed and committed to the repository.
 - ✅ **slurm.conf** - HPC cluster definition with cpu/gpu partitions, node
   definitions, QoS per group
 - ✅ **slurmdbd.conf** - SLURM accounting daemon configuration
-- ✅ **jupyterhub_config.py** - JupyterHub controller with PAM auth, TLS,
-  MariaDB persistence
+- ✅ **jupyterhub_config.py** - JupyterHub controller with PAM auth,
+  BatchSpawner/SlurmSpawner, CPU/GPU profiles, and MariaDB persistence
 - ✅ **mariadb-init.sql** - Database initialization for SLURM accounting and
   JupyterHub metadata
 - ✅ **pam-users-init.sh** - User/group creation (students, researchers,
@@ -23,11 +23,12 @@ SLURM + NFS persistence have been completed and committed to the repository.
 ### 2. Infrastructure Startup Scripts (Completely Redesigned)
 
 - ✅ **server-admin-01/startup.sh** - Admin pod with MariaDB, SLURM controller,
-  JupyterHub, Munge
-- ✅ **server-hpc-01/startup.sh** - SLURM worker with NFS mounts
-- ✅ **server-hpc-02/startup.sh** - SLURM worker with NFS mounts
-- ✅ **server-hpc-jupyter/startup.sh** - JupyterHub frontend proxy (replaced
-  token model)
+  JupyterHub, Munge, and NFS mounts for `/home` and `/shared`
+- ✅ **server-hpc-01/startup.sh** - SLURM worker with NFS mounts and matching
+  Linux users/groups
+- ✅ **server-hpc-02/startup.sh** - SLURM worker with NFS mounts and matching
+  Linux users/groups
+- ✅ **server-hpc-jupyter/startup.sh** - HTTPS frontend proxy only
 - ✅ **server-storage-01/startup.sh** - NFS server for persistent notebook
   storage
 
@@ -38,14 +39,16 @@ SLURM + NFS persistence have been completed and committed to the repository.
 
 ### 4. Testing & Documentation
 
-- ✅ **verify-notebook-as-a-service.sh** - Comprehensive verification script
+- ✅ **verify-notebook-as-a-service.sh** - Baseline verification script
+- ✅ **verify-naas-advanced.sh** - Functional verification for SLURM-backed
+  notebook spawn and storage-backed notebook writes
 - ✅ **NOTEBOOK_AS_A_SERVICE.md** - Complete architecture and usage guide
 
 ## Architecture Summary
 
 ```
 ┌──────────────────────────────────────────────────────────┐
-│ User Browser → https://hpc-jupyter.esi.internal:8080    │
+│ User Browser → https://localhost:18880/                 │
 └──────────────────────────────────────────────────────────┘
                             ↓
 ┌──────────────────────────────────────────────────────────┐
@@ -56,6 +59,7 @@ SLURM + NFS persistence have been completed and committed to the repository.
 ┌──────────────────────────────────────────────────────────┐
 │   Admin Pod: server-admin-01 (192.168.50.10)             │
 │  - JupyterHub Controller (8000 internal)                 │
+│  - Hub API for worker callbacks (8081)                   │
 │  - SLURM Controller slurmctld (6817)                     │
 │  - SLURM Accounting slurmdbd (6819)                      │
 │  - MariaDB (3306)                                        │
@@ -82,6 +86,7 @@ SLURM + NFS persistence have been completed and committed to the repository.
 
 ### Compute Scheduling
 
+- **Spawner**: BatchSpawner `SlurmSpawner`
 - **Scheduler**: SLURM Workload Manager
 - **Partitions**: cpu (hpc-01, hpc-02), gpu (hpc-01)
 - **QoS Limits Per Group**:
@@ -95,16 +100,17 @@ SLURM + NFS persistence have been completed and committed to the repository.
 - **Location**: server-storage-01 (NFS server)
 - **Mount Points**: /home (user notebooks), /shared (projects)
 - **Persistence**: Survives pod restarts if Storage pod persists
-- **Ownership**: Consistent uid/gid across all nodes
+- **Ownership**: Consistent uid/gid across admin and workers; exports preserve
+  user UID/GID instead of squashing writes to root
 
 ### Security
 
 - **TLS**: Self-signed certificates on JupyterHub frontend
 - **Firewall**: nftables rules on all pods (restrictive inbound)
-- **Port Mapping**: Only 8080 (JupyterHub) exposed to users
+- **Port Mapping**: Host `18880` maps to frontend `8080`
 - **Internal Ports**:
   - 6817 (SLURM controller), 6819 (SLURM dbd)
-  - 3306 (MariaDB), 11002 (Munge)
+  - 3306 (MariaDB), 11002 (Munge), 8081 (Hub API callbacks)
   - 2049 (NFS), 111 (RPC)
 
 ## Git Commits Made
@@ -119,6 +125,10 @@ SLURM + NFS persistence have been completed and committed to the repository.
 7. feat: Update Storage pod startup script for NFS server
 8. feat: Update topology to bind Notebook-as-a-Service configs
 9. docs: Add verification script and Notebook-as-a-Service documentation
+10. feat: spawn JupyterHub notebooks through SLURM
+11. fix: mount shared storage and users for SLURM notebooks
+12. test: verify SLURM-backed notebook spawning
+13. fix: keep Jupyter frontend as HTTPS proxy only
 ```
 
 ## File Structure
@@ -148,7 +158,8 @@ docs/
   └── NOTEBOOK_AS_A_SERVICE.md         # Complete usage guide
 
 scripts/tests/
-  └── verify-notebook-as-a-service.sh  # Verification script
+  ├── verify-notebook-as-a-service.sh  # Baseline verification script
+  └── verify-naas-advanced.sh          # Functional spawn/storage verifier
 
 esi-datacenter.clab.yml               # Updated topology (binds & caps)
 ```
@@ -162,30 +173,31 @@ cd implementations/frr-containerlab
 sudo containerlab deploy -t esi-datacenter.clab.yml
 ```
 
-### 2. Wait for Initialization (30-45 seconds)
+### 2. Wait for Initialization (~60 seconds)
 
 ```bash
-sleep 30
+sleep 60
 ```
 
 ### 3. Run Verification
 
 ```bash
-bash ../../scripts/tests/verify-notebook-as-a-service.sh
+bash scripts/tests/verify-notebook-as-a-service.sh
+bash scripts/tests/verify-naas-advanced.sh
 ```
 
 ### 4. Access JupyterHub
 
-- **From host**: https://localhost:18888/ (port 18888 → container 8080)
+- **From host**: https://localhost:18880/ (port 18880 → container 8080)
 - **From lab nodes**: https://hpc-jupyter.esi.internal:8080/
-- **Login**: Use pre-created user (student-01, researcher-01, admin) with empty
-  password
+- **Login**: Use pre-created users such as `student-01 / student-01`,
+  `researcher-01 / researcher-01`, or `admin / admin`
 
 ### 5. Submit Notebook Jobs
 
 - Create notebook cell
-- Select kernel (Python 3 CPU or GPU)
-- Jupyter kernel runs as SLURM job
+- Select notebook profile (CPU or GPU if the user is in `gpu-users`/`admins`)
+- Jupyter notebook server and kernels run inside a SLURM job
 - Notebooks saved to `/home/{username}` on NFS
 
 ## Verification Checklist
@@ -197,10 +209,14 @@ Run the verification script and check:
 - ✅ SLURM controller slurmctld running
 - ✅ SLURM workers registered (sinfo shows 2 nodes)
 - ✅ PAM users created (student-01, researcher-01, admin exist)
+- ✅ PAM users exist with matching UID/GID on Admin and SLURM workers
 - ✅ HPC workers can reach Admin pod (port 6817)
 - ✅ Storage pod NFS exports configured
-- ✅ HPC workers NFS mounts active (/home, /shared)
-- ✅ JupyterHub frontend accessible on port 8080
+- ✅ Admin and HPC workers have NFS mounts active (/home, /shared)
+- ✅ Normal users can read `/etc/slurm/slurm.conf` and run SLURM clients
+- ✅ JupyterHub frontend accessible on host port 18880
+- ✅ Advanced verifier proves notebook spawn creates an active SLURM job
+- ✅ Notebook files land on storage-backed `/home/student-01`
 - ✅ DNS resolves hpc-jupyter.esi.internal
 
 ## Existing Repository Conventions Preserved
@@ -263,7 +279,8 @@ Run the verification script and check:
    - Replicated MariaDB (primary-secondary)
 
 4. **Tune NFS Performance**
-   - Enable sync mount option (currently async for lab)
+   - Tune sync export and client mount options for the target reliability/latency
+     tradeoff
    - Tune read/write buffer sizes
    - Consider distributed storage (Ceph, GlusterFS)
 
