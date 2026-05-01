@@ -39,6 +39,7 @@ RUN set -eux; \
       sudo \
       ifenslave; \
     pip3 install --no-cache-dir --break-system-packages \
+      batchspawner \
       cryptography \
       ipykernel \
       jupyterhub \
