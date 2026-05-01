@@ -190,13 +190,6 @@ else
 	log_fail "JupyterHub frontend cannot reach Admin pod"
 fi
 
-# Check if JupyterHub frontend mounts NFS
-if docker exec "$HPC_JUPYTER" sh -c 'mountpoint -q /home && echo mounted'; then
-	log_pass "JupyterHub frontend /home NFS mount is active"
-else
-	log_fail "JupyterHub frontend /home NFS mount is not active"
-fi
-
 if curl -k -s -o /dev/null -w "%{http_code}" https://localhost:18880/hub/login | grep -q "200"; then
 	log_pass "Host login page works at https://localhost:18880/"
 else

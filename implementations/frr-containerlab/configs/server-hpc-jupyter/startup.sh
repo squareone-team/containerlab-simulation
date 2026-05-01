@@ -7,7 +7,6 @@
 # - Accepts HTTPS on port 8080 (mapped to host port 18880)
 # - Forwards to JupyterHub controller on Admin pod (192.168.50.10:8000)
 # - Uses configurable-http-proxy (already in image) for TLS + WebSocket support
-# - NFS-mounts /home and /shared for notebook persistence
 #
 # Idempotent: Safe to run multiple times
 # ==============================================================================
@@ -16,14 +15,6 @@ set -e
 
 log() { echo "[JUPYTER-FRONTEND-STARTUP] $*"; }
 die() { echo "[JUPYTER-FRONTEND-STARTUP] ERROR: $*" >&2; exit 1; }
-
-is_mounted() {
-	if command -v mountpoint >/dev/null 2>&1; then
-		mountpoint -q "$1"
-	else
-		grep -qs " $1 " /proc/mounts
-	fi
-}
 
 # ==============================================================================
 # 1. NETWORK SETUP
@@ -77,9 +68,6 @@ table inet filter {
 		# (Docker host NAT uses 0.0.0.0 DNAT for port 18880->8080)
 		tcp dport 8080 accept
 
-		# Storage pod to HPC frontend: NFS (2049), RPC (111)
-		ip saddr 192.168.80.0/24 tcp dport { 111, 2049 } accept
-		ip saddr 192.168.80.0/24 udp dport { 111, 2049 } accept
 	}
 
 	chain forward {
@@ -101,46 +89,7 @@ else
 fi
 
 # ==============================================================================
-# 3. NFS MOUNTS (for notebook persistence)
-# ==============================================================================
-
-log "Setting up NFS mounts..."
-mkdir -p /home /shared
-
-if command -v mount.nfs >/dev/null 2>&1; then
-	# Mount /home from storage (retry up to 5 times)
-	if ! is_mounted /home; then
-		for i in 1 2 3 4 5; do
-			log "Mounting /home from 192.168.80.10:/home (attempt $i/5)..."
-			if mount -t nfs -o rw,soft,timeo=30,retrans=3,nolock 192.168.80.10:/home /home 2>/dev/null; then
-				log "/home mounted successfully"
-				break
-			fi
-			[ $i -lt 5 ] && sleep 5
-		done
-		is_mounted /home || log "WARN: Failed to mount /home after 5 attempts"
-	fi
-
-	# Mount /shared from storage (retry up to 5 times)
-	if ! is_mounted /shared; then
-		for i in 1 2 3 4 5; do
-			log "Mounting /shared from 192.168.80.10:/shared (attempt $i/5)..."
-			if mount -t nfs -o rw,soft,timeo=30,retrans=3,nolock 192.168.80.10:/shared /shared 2>/dev/null; then
-				log "/shared mounted successfully"
-				break
-			fi
-			[ $i -lt 5 ] && sleep 5
-		done
-		is_mounted /shared || log "WARN: Failed to mount /shared after 5 attempts"
-	fi
-else
-	log "WARN: NFS client not installed - skipping NFS mounts"
-fi
-
-log "NFS mounts configured"
-
-# ==============================================================================
-# 4. TLS CERTIFICATE (self-signed for https on port 8080)
+# 3. TLS CERTIFICATE (self-signed for https on port 8080)
 # ==============================================================================
 
 log "Generating self-signed TLS certificate..."
@@ -159,7 +108,7 @@ else
 fi
 
 # ==============================================================================
-# 5. TLS REVERSE PROXY via configurable-http-proxy
+# 4. TLS REVERSE PROXY via configurable-http-proxy
 # ==============================================================================
 # configurable-http-proxy is installed with JupyterHub (npm package).
 # It supports TLS termination and full WebSocket proxying - perfect for JupyterHub.
@@ -198,7 +147,7 @@ else
 fi
 
 # ==============================================================================
-# 6. WAIT FOR JUPYTERHUB CONTROLLER (background health check)
+# 5. WAIT FOR JUPYTERHUB CONTROLLER (background health check)
 # ==============================================================================
 
 log "Starting background health check for JupyterHub controller (192.168.50.10:8000)..."
@@ -221,7 +170,7 @@ log "Starting background health check for JupyterHub controller (192.168.50.10:8
 ) &
 
 # ==============================================================================
-# 7. REMOTE SYSLOG FORWARDING
+# 6. REMOTE SYSLOG FORWARDING
 # ==============================================================================
 
 log "Configuring remote syslog..."
@@ -242,12 +191,11 @@ else
 fi
 
 # ==============================================================================
-# 8. FINAL STARTUP
+# 7. FINAL STARTUP
 # ==============================================================================
 
 log "JupyterHub frontend startup complete"
 log "Services ready:"
 log "  - configurable-http-proxy (HTTPS) on port 8080"
 log "  - Forwarding to JupyterHub at http://192.168.50.10:8000"
-log "  - NFS mounts (/home, /shared)"
 log "  - Host access: https://localhost:18880/"

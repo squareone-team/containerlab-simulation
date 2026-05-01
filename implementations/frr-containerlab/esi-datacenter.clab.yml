@@ -328,7 +328,6 @@ topology:
       binds:
         - configs/server-hpc-jupyter/startup.sh:/startup.sh
         - configs/ntp-server/server-client-ntp.sh:/ntp-client.sh
-        - configs/admin/munge.key:/shared-configs/munge.key:ro
       exec:
         - sh /startup.sh
         - sh /ntp-client.sh
