@@ -84,6 +84,12 @@ else
 	log_fail "PAM user 'student-01' not found"
 fi
 
+if docker exec "$ADMIN_POD" sh -c 'grep -q "batchspawner.SlurmSpawner" /etc/jupyterhub/jupyterhub_config.py && ! grep -q "LocalProcessSpawner" /etc/jupyterhub/jupyterhub_config.py'; then
+	log_pass "JupyterHub is configured for SLURM-backed BatchSpawner"
+else
+	log_fail "JupyterHub is not configured for SLURM-backed BatchSpawner"
+fi
+
 # ==============================================================================
 # 2. HPC Worker Verification
 # ==============================================================================
@@ -116,6 +122,20 @@ else
 	log_fail "HPC-01 cannot reach Admin pod SLURM controller"
 fi
 
+for worker in "$HPC_01" "$HPC_02"; do
+	if docker exec "$worker" sh -c 'id student-01 >/dev/null 2>&1 && id researcher-02 >/dev/null 2>&1'; then
+		log_pass "$worker has lab users for SLURM job launch"
+	else
+		log_fail "$worker is missing lab users required by slurmd"
+	fi
+done
+
+if docker exec "$ADMIN_POD" sh -c 'su - student-01 -c "test -r /etc/slurm/slurm.conf && squeue -h >/dev/null"'; then
+	log_pass "Normal users can read slurm.conf and run SLURM clients"
+else
+	log_fail "Normal users cannot read slurm.conf or run SLURM clients"
+fi
+
 # ==============================================================================
 # 3. NFS Verification
 # ==============================================================================
@@ -141,18 +161,15 @@ else
 	log_fail "NFS /shared export not found"
 fi
 
-# Check if HPC workers can mount NFS
-if docker exec "$HPC_01" sh -c 'mountpoint -q /home && echo mounted'; then
-	log_pass "HPC-01 /home NFS mount is active"
-else
-	log_fail "HPC-01 /home NFS mount is not active"
-fi
-
-if docker exec "$HPC_01" sh -c 'mountpoint -q /shared && echo mounted'; then
-	log_pass "HPC-01 /shared NFS mount is active"
-else
-	log_fail "HPC-01 /shared NFS mount is not active"
-fi
+for node in "$ADMIN_POD" "$HPC_01" "$HPC_02"; do
+	for mount_path in /home /shared; do
+		if docker exec "$node" sh -c "mountpoint -q '$mount_path'"; then
+			log_pass "$node $mount_path NFS mount is active"
+		else
+			log_fail "$node $mount_path NFS mount is not active"
+		fi
+	done
+done
 
 # ==============================================================================
 # 4. JupyterHub Frontend Verification
@@ -178,6 +195,12 @@ if docker exec "$HPC_JUPYTER" sh -c 'mountpoint -q /home && echo mounted'; then
 	log_pass "JupyterHub frontend /home NFS mount is active"
 else
 	log_fail "JupyterHub frontend /home NFS mount is not active"
+fi
+
+if curl -k -s -o /dev/null -w "%{http_code}" https://localhost:18880/hub/login | grep -q "200"; then
+	log_pass "Host login page works at https://localhost:18880/"
+else
+	log_fail "Host login page is not reachable at https://localhost:18880/"
 fi
 
 # ==============================================================================
