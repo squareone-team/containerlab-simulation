@@ -4,12 +4,12 @@
 # Provides persistent storage for JupyterHub user homes and shared projects
 
 # Export /home - user notebook homes
-/home                192.168.70.0/24(fsid=1,rw,no_subtree_check,no_root_squash,all_squash,anonuid=0,anongid=0,insecure)
-/home                192.168.50.0/24(fsid=1,rw,no_subtree_check,no_root_squash,all_squash,anonuid=0,anongid=0,insecure)
+/home                192.168.70.0/24(fsid=1,rw,sync,no_subtree_check,no_root_squash,insecure)
+/home                192.168.50.0/24(fsid=1,rw,sync,no_subtree_check,no_root_squash,insecure)
 
 # Export /shared - shared project directories (course teams, research groups)
-/shared              192.168.70.0/24(fsid=2,rw,no_subtree_check,no_root_squash,all_squash,anonuid=0,anongid=0,insecure)
-/shared              192.168.50.0/24(fsid=2,rw,no_subtree_check,no_root_squash,all_squash,anonuid=0,anongid=0,insecure)
+/shared              192.168.70.0/24(fsid=2,rw,sync,no_subtree_check,no_root_squash,insecure)
+/shared              192.168.50.0/24(fsid=2,rw,sync,no_subtree_check,no_root_squash,insecure)
 
 # Per-user homes if needed (alternative model)
 # /home/student-01   192.168.70.0/24(rw,no_subtree_check,no_root_squash)
@@ -19,14 +19,13 @@
 # Export Options Explanation:
 # ============================================================================
 # rw                 : Read-write access
+# sync               : Commit writes before replying to clients
 # no_subtree_check  : Disable security checks for performance (acceptable for lab)
-# no_root_squash    : Allow root to retain root privileges (necessary for Jupyter)
-# all_squash        : Map all users to anonymous UID/GID
-# anonuid=0,anongid=0 : Anonymous access as root (allows JupyterHub to create dirs)
+# no_root_squash    : Allow Admin pod root to provision home directories
+# insecure           : Permit containerized clients using high source ports
 #
-# WARNING: These are lab settings. Production NFS should use:
-#   - sync (not async)
-#   - secure ports
-#   - restrictive IP ranges
-#   - proper user mapping (not all_squash)
+# WARNING: These are lab settings. A stricter production export should use:
+#   - root_squash with a controlled provisioning path
+#   - secure ports if clients can use privileged source ports
+#   - tighter client IP ranges
 # ============================================================================

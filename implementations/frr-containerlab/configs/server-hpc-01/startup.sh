@@ -87,9 +87,10 @@ table inet filter {
 		# Bastion SSH
 		ip saddr 172.16.0.50 tcp dport 22 accept
 		
-		# Admin pod to HPC worker: SLURM daemon (6818)
+		# Admin pod to HPC worker: SLURM daemon, Munge, and notebook callback ports
 		ip saddr 192.168.50.0/24 tcp dport { 6818, 11002 } accept
 		ip saddr 192.168.50.0/24 udp dport 11002 accept
+		ip saddr 192.168.50.0/24 tcp dport 1024-65535 accept
 		
 		# Storage pod to HPC: NFS (2049), RPC (111)
 		ip saddr 192.168.80.0/24 tcp dport { 111, 2049 } accept
@@ -145,7 +146,7 @@ chown -R slurm:slurm /var/spool/slurm-llnl /var/log/slurm /run/slurm /var/spool/
 # Copy SLURM config (same as controller, but only used for node registration)
 cp /shared-configs/slurm.conf /etc/slurm/slurm.conf
 chown slurm:slurm /etc/slurm/slurm.conf
-chmod 640 /etc/slurm/slurm.conf
+chmod 644 /etc/slurm/slurm.conf
 
 log "SLURM worker configured"
 
@@ -202,7 +203,7 @@ if ! is_mounted /home; then
 		fi
 		[ $i -lt 5 ] && sleep 5
 	done
-	is_mounted /home || log "WARN: Failed to mount /home after 5 attempts"
+	is_mounted /home || die "Failed to mount /home after 5 attempts"
 fi
 
 # Mount /shared from storage (retry up to 5 times)
@@ -215,13 +216,24 @@ if ! is_mounted /shared; then
 		fi
 		[ $i -lt 5 ] && sleep 5
 	done
-	is_mounted /shared || log "WARN: Failed to mount /shared after 5 attempts"
+	is_mounted /shared || die "Failed to mount /shared after 5 attempts"
 fi
 
 log "NFS mounts configured"
 
 # ==============================================================================
-# 6. SLURM WORKER DAEMON
+# 6. PAM USERS INITIALIZATION
+# ==============================================================================
+
+log "Initializing PAM users and groups..."
+if [ -f /shared-configs/pam-users-init.sh ]; then
+	sh /shared-configs/pam-users-init.sh
+else
+	die "PAM user initialization script not mounted"
+fi
+
+# ==============================================================================
+# 7. SLURM WORKER DAEMON
 # ==============================================================================
 
 log "Starting SLURM worker daemon (slurmd)..."
@@ -235,7 +247,7 @@ sleep 2
 log "SLURM worker daemon started"
 
 # ==============================================================================
-# 7. REMOTE SYSLOG FORWARDING
+# 8. REMOTE SYSLOG FORWARDING
 # ==============================================================================
 
 log "Configuring remote syslog..."
@@ -252,7 +264,7 @@ else
 fi
 
 # ==============================================================================
-# 8. FINAL STARTUP
+# 9. FINAL STARTUP
 # ==============================================================================
 
 log "HPC-01 startup complete"
@@ -260,4 +272,3 @@ log "Services running:"
 log "  - SLURM worker (6818)"
 log "  - Munge auth (11002)"
 log "  - NFS mounts (/home, /shared)"
-

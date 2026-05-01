@@ -19,6 +19,14 @@ set -e
 log() { echo "[STORAGE-STARTUP] $*"; }
 die() { echo "[STORAGE-STARTUP] ERROR: $*" >&2; exit 1; }
 
+is_mounted() {
+	if command -v mountpoint >/dev/null 2>&1; then
+		mountpoint -q "$1"
+	else
+		grep -qs " $1 " /proc/mounts
+	fi
+}
+
 # ==============================================================================
 # 1. NETWORK SETUP
 # ==============================================================================
@@ -112,8 +120,8 @@ log "Creating NFS export directories..."
 mkdir -p /home /shared
 
 # Mount as tmpfs to bypass OverlayFS NFS export restrictions
-mount -t tmpfs tmpfs /home
-mount -t tmpfs tmpfs /shared
+is_mounted /home || mount -t tmpfs tmpfs /home
+is_mounted /shared || mount -t tmpfs tmpfs /shared
 
 # Set up ownership and permissions for /home
 # /home will contain per-user directories
@@ -136,6 +144,7 @@ chmod 755 /home/admin /home/administrator /home/researcher-01 /home/researcher-0
 mkdir -p /shared/course-001 /shared/course-002 /shared/team-research
 chown -R root:root /shared || true
 chmod 755 /shared /shared/course-001 /shared/course-002 || true
+chown -R 2001:5002 /shared/team-research || true
 chmod 770 /shared/team-research || true
 
 log "NFS directories initialized"
@@ -226,4 +235,3 @@ log "  - Mount daemon"
 log "Exports:"
 log "  - /home (HPC + Admin pods)"
 log "  - /shared (HPC + Admin pods)"
-

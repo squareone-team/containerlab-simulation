@@ -290,6 +290,7 @@ topology:
         - configs/ntp-server/server-client-ntp.sh:/ntp-client.sh
         - configs/admin/slurm.conf:/shared-configs/slurm.conf:ro
         - configs/admin/munge.key:/shared-configs/munge.key:ro
+        - configs/admin/pam-users-init.sh:/shared-configs/pam-users-init.sh:ro
       exec:
         - sh /startup.sh
         - sh /ntp-client.sh
@@ -309,6 +310,7 @@ topology:
         - configs/ntp-server/server-client-ntp.sh:/ntp-client.sh
         - configs/admin/slurm.conf:/shared-configs/slurm.conf:ro
         - configs/admin/munge.key:/shared-configs/munge.key:ro
+        - configs/admin/pam-users-init.sh:/shared-configs/pam-users-init.sh:ro
       exec:
         - sh /startup.sh
         - sh /ntp-client.sh

@@ -23,6 +23,36 @@ die() { echo "[ADMIN-STARTUP] ERROR: $*" >&2; exit 1; }
 
 NOLOGIN_SHELL="$(command -v nologin || echo /sbin/nologin)"
 
+is_mounted() {
+	if command -v mountpoint >/dev/null 2>&1; then
+		mountpoint -q "$1"
+	else
+		grep -qs " $1 " /proc/mounts
+	fi
+}
+
+mount_nfs_path() {
+	local remote_path="$1"
+	local mount_path="$2"
+
+	if is_mounted "$mount_path"; then
+		log "$mount_path already mounted"
+		return 0
+	fi
+
+	mkdir -p "$mount_path"
+	for i in 1 2 3 4 5 6 7 8 9 10 11 12; do
+		log "Mounting $mount_path from $remote_path (attempt $i/12)..."
+		if mount -t nfs -o rw,soft,timeo=30,retrans=3,nolock "$remote_path" "$mount_path" 2>/dev/null; then
+			log "$mount_path mounted successfully"
+			return 0
+		fi
+		[ "$i" -lt 12 ] && sleep 5
+	done
+
+	die "Failed to mount $mount_path from $remote_path"
+}
+
 # ==============================================================================
 # 1. NETWORK SETUP
 # ==============================================================================
@@ -81,8 +111,8 @@ table inet filter {
 		# Bastion SSH
 		ip saddr 172.16.0.50 tcp dport 22 accept
 		
-		# HPC pod to Admin pod: SLURM controller (6817), SLURM dbd (6819), MySQL (3306)
-		ip saddr 192.168.70.0/24 tcp dport { 6817, 6819, 3306, 8000, 8001 } accept
+		# HPC pod to Admin pod: SLURM, MySQL, JupyterHub public/API ports
+		ip saddr 192.168.70.0/24 tcp dport { 6817, 6819, 3306, 8000, 8001, 8081 } accept
 
 		# SLURM workers connect back to srun clients on this pinned I/O range
 		ip saddr 192.168.70.0/24 tcp dport 60001-60100 accept
@@ -190,7 +220,7 @@ fi
 cp /shared-configs/slurm.conf /etc/slurm/slurm.conf
 cp /shared-configs/slurmdbd.conf /etc/slurm/slurmdbd.conf
 chown slurm:slurm /etc/slurm/slurm.conf /etc/slurm/slurmdbd.conf
-chmod 640 /etc/slurm/slurm.conf
+chmod 644 /etc/slurm/slurm.conf
 chmod 600 /etc/slurm/slurmdbd.conf
 
 log "SLURM files configured"
@@ -252,14 +282,29 @@ sleep 3
 log "SLURM daemons started"
 
 # ==============================================================================
-# 7. PAM USERS INITIALIZATION
+# 7. NFS MOUNTS (from Storage pod)
+# ==============================================================================
+
+log "Setting up NFS mounts..."
+
+if ! command -v mount.nfs >/dev/null 2>&1; then
+	die "NFS client not installed (build esi/naas:bookworm)"
+fi
+
+mount_nfs_path 192.168.80.10:/home /home
+mount_nfs_path 192.168.80.10:/shared /shared
+
+log "NFS mounts configured"
+
+# ==============================================================================
+# 8. PAM USERS INITIALIZATION
 # ==============================================================================
 
 log "Initializing PAM users and groups..."
 sh /shared-configs/pam-users-init.sh
 
 # ==============================================================================
-# 8. JUPYTERHUB SETUP
+# 9. JUPYTERHUB SETUP
 # ==============================================================================
 
 log "Setting up JupyterHub..."
@@ -269,6 +314,9 @@ if ! command -v jupyterhub >/dev/null 2>&1; then
 fi
 if ! command -v configurable-http-proxy >/dev/null 2>&1; then
 	die "configurable-http-proxy not installed (build esi/naas:bookworm)"
+fi
+if ! command -v batchspawner-singleuser >/dev/null 2>&1; then
+	die "BatchSpawner not installed (build esi/naas:bookworm)"
 fi
 
 if ! id jupyterhub >/dev/null 2>&1; then
@@ -314,7 +362,7 @@ else
 fi
 
 # ==============================================================================
-# 9. REMOTE SYSLOG FORWARDING
+# 10. REMOTE SYSLOG FORWARDING
 # ==============================================================================
 
 log "Configuring remote syslog..."
@@ -336,7 +384,7 @@ else
 fi
 
 # ==============================================================================
-# 10. FINAL STARTUP
+# 11. FINAL STARTUP
 # ==============================================================================
 
 log "ADMIN-01 startup complete"
