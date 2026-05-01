@@ -3,7 +3,7 @@ JupyterHub Configuration for ESI Datacenter Lab
 ================================================
 
 Authentication: PAM (Linux local accounts)
-Spawner: SLURM via sudospawner
+Spawner: LocalProcessSpawner
 Notebook profiles:
   - CPU (cpu partition)
   - GPU (gpu partition, gpu-users group only)
@@ -13,6 +13,8 @@ Users:
   - researchers: cpu partition only
   - admins: all partitions
   - gpu-users: gpu partition + cpu partition
+
+JupyterHub version: 5.x
 """
 
 import os
@@ -22,73 +24,58 @@ import sys
 # 1. Basic JupyterHub Configuration
 # ============================================================================
 
-c.JupyterHub.hub_ip = '192.168.50.10'
-c.JupyterHub.hub_port = 8000
-c.JupyterHub.proxy_api_ip = '192.168.50.10'
+# Hub API is only consumed by the proxy running in this same container.
+# Pin the connect URL to IPv4 so Docker's IPv6 hostname entry cannot cause 503s.
+c.JupyterHub.hub_ip = '127.0.0.1'
+c.JupyterHub.hub_port = 8081
+c.JupyterHub.hub_connect_url = 'http://127.0.0.1:8081/hub/'
+
+# The public-facing port (what users connect to, what's proxied by nginx on hpc-jupyter)
+c.JupyterHub.bind_url = 'http://0.0.0.0:8000'
+
+# Proxy API (configurable-http-proxy control channel)
+c.JupyterHub.proxy_api_ip = '127.0.0.1'
 c.JupyterHub.proxy_api_port = 8001
-c.JupyterHub.ip = '0.0.0.0'
-c.JupyterHub.port = 8080
-c.JupyterHub.cookie_max_age = 604800  # 7 days
-c.JupyterHub.delete_stopped_servers = False
+
+# Session cookie lifetime (7 days in days, not seconds for JupyterHub 5.x)
+c.JupyterHub.cookie_max_age_days = 7
+
 c.JupyterHub.allow_named_servers = False
-c.JupyterHub.default_server_name = 'default'
+c.JupyterHub.shutdown_on_logout = True
+c.JupyterHub.delete_stopped_servers = True
 
 # ============================================================================
 # 2. Security & TLS
 # ============================================================================
 
-c.JupyterHub.ssl_key = '/etc/jupyterhub/jupyterhub.key'
-c.JupyterHub.ssl_cert = '/etc/jupyterhub/jupyterhub.crt'
-c.JupyterHub.ssl_version = 'TLSv1_2'
+# TLS is terminated at nginx on hpc-jupyter; admin runs plain HTTP internally
+# c.JupyterHub.ssl_key = '/etc/jupyterhub/jupyterhub.key'
+# c.JupyterHub.ssl_cert = '/etc/jupyterhub/jupyterhub.crt'
 
 # ============================================================================
 # 3. Authenticator: PAM (Local Linux Accounts)
 # ============================================================================
 
-c.JupyterHub.authenticator_class = 'pamela'
+# Use 'pam' (the JupyterHub built-in PAM authenticator, backed by pamela)
+c.JupyterHub.authenticator_class = 'pam'
 
-# pamela requires 'jupyterhub_pamela' extra
 from jupyterhub.auth import PAMAuthenticator
 c.PAMAuthenticator.encoding = 'utf8'
-c.PAMAuthenticator.service_name = 'login'
+c.PAMAuthenticator.service = 'login'
 c.PAMAuthenticator.open_sessions = False
 
 # ============================================================================
-# 4. Spawner: LocalProcessSpawner (SLURM jobs spawned as subprocesses)
+# 4. Spawner: LocalProcessSpawner
 # ============================================================================
 
 c.JupyterHub.spawner_class = 'jupyterhub.spawner.LocalProcessSpawner'
 
-# Spawner settings
+# Notebook directory per-user (on NFS /home)
 c.LocalProcessSpawner.notebook_dir = '/home/{username}'
-c.LocalProcessSpawner.default_url = '/lab'  # Use JupyterLab
-c.LocalProcessSpawner.args = [
-    '--SingleUserNotebookApp.ip=127.0.0.1',
-    '--SingleUserNotebookApp.port={port}',
-    '--NotebookApp.disable_check_xsrftoken=False',
-]
+c.LocalProcessSpawner.default_url = '/lab'
 
 # ============================================================================
-# 5. Kernel Specifications & Profiles
-# ============================================================================
-
-# Users may select CPU or GPU kernel profile
-# These trigger different SLURM submissions
-c.JupyterHub.kernel_specs = {
-    'python3-cpu': {
-        'display_name': 'Python 3 (CPU)',
-        'language': 'python',
-        'argv': ['python', '-m', 'ipykernel_launcher', '-f', '{connection_file}'],
-    },
-    'python3-gpu': {
-        'display_name': 'Python 3 (GPU)',
-        'language': 'python',
-        'argv': ['python', '-m', 'ipykernel_launcher', '-f', '{connection_file}'],
-    },
-}
-
-# ============================================================================
-# 6. User Whitelist & Authorization
+# 5. User Whitelist & Authorization
 # ============================================================================
 
 # Admins can manage JupyterHub
@@ -97,35 +84,28 @@ c.Authenticator.admin_users = {
     'root',
 }
 
-# Allow specific user groups (created via PAM/useradd)
-c.Authenticator.allowed_users = [
+# Allow specific users (created via PAM/useradd)
+c.Authenticator.allowed_users = {
     'admin',
     'student-01', 'student-02', 'student-03',
     'researcher-01', 'researcher-02',
-]
+}
 
 # ============================================================================
-# 7. Database Configuration (MariaDB)
+# 6. Database Configuration (MariaDB)
 # ============================================================================
 
-c.JupyterHub.db_url = 'mysql://jupyterhub:jupyterhub_pass@192.168.50.10/jupyterhub'
+c.JupyterHub.db_url = 'mysql+pymysql://jupyterhub:jupyterhub_pass@localhost/jupyterhub'
 
 # ============================================================================
-# 8. Logging
+# 7. Logging
 # ============================================================================
 
 c.JupyterHub.log_level = 'INFO'
-c.JupyterHub.log_format = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 
 # ============================================================================
-# 9. Activity Timeout
+# 8. Activity Timeout
 # ============================================================================
 
 c.JupyterHub.inactive_server_timeout = 3600  # 1 hour
 c.JupyterHub.services = []
-
-# ============================================================================
-# 10. Explicit Shutdown Behavior
-# ============================================================================
-
-c.JupyterHub.shutdown_on_logout = True

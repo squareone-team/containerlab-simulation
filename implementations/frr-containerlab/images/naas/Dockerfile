@@ -19,6 +19,7 @@ RUN set -eux; \
       nfs-common \
       nfs-kernel-server \
       nftables \
+      nginx \
       nodejs \
       npm \
       openssh-client \
@@ -35,7 +36,8 @@ RUN set -eux; \
       slurmdbd \
       slurmd \
       slurm-wlm-basic-plugins \
-      sudo; \
+      sudo \
+      ifenslave; \
     pip3 install --no-cache-dir --break-system-packages \
       cryptography \
       ipykernel \

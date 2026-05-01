@@ -47,6 +47,16 @@ search esi.internal
 nameserver 192.168.50.30
 EOF
 
+tmp_hosts="$(mktemp)"
+grep -vE '[[:space:]](server-admin-01|server-hpc-01|server-hpc-02)([[:space:]]|$)' /etc/hosts > "$tmp_hosts" || true
+{
+	echo "192.168.50.10 server-admin-01"
+	echo "192.168.70.10 server-hpc-01"
+	echo "192.168.70.20 server-hpc-02"
+	cat "$tmp_hosts"
+} > /etc/hosts
+rm -f "$tmp_hosts"
+
 log "Network configured"
 
 # ==============================================================================
@@ -73,6 +83,9 @@ table inet filter {
 		
 		# HPC pod to Admin pod: SLURM controller (6817), SLURM dbd (6819), MySQL (3306)
 		ip saddr 192.168.70.0/24 tcp dport { 6817, 6819, 3306, 8000, 8001 } accept
+
+		# SLURM workers connect back to srun clients on this pinned I/O range
+		ip saddr 192.168.70.0/24 tcp dport 60001-60100 accept
 		
 		# Munge port (for HPC workers)
 		ip saddr 192.168.70.0/24 tcp dport 11002 accept
@@ -122,7 +135,7 @@ fi
 
 # Start MariaDB
 log "Starting MariaDB..."
-mysqld_safe --user=mysql --datadir=/var/lib/mysql --skip-grant-tables >/dev/null 2>&1 &
+mysqld_safe --user=mysql --datadir=/var/lib/mysql >/dev/null 2>&1 &
 sleep 3
 
 # Initialize databases and users
@@ -191,15 +204,24 @@ mkdir -p /var/run/munge /etc/munge /var/log/munge
 if ! command -v munged >/dev/null 2>&1; then
 	die "Munge not installed (build esi/naas:bookworm)"
 fi
-if ! [ -f /etc/munge/munge.key ]; then
+# Use the shared munge key from bind-mount (consistent across all nodes)
+if [ -f /shared-configs/munge.key ]; then
+	log "Using shared munge.key from /shared-configs"
+	cp /shared-configs/munge.key /etc/munge/munge.key
+elif ! [ -f /etc/munge/munge.key ]; then
+	log "Generating new munge.key (no shared key found)"
 	dd if=/dev/urandom bs=1 count=1024 of=/etc/munge/munge.key 2>/dev/null
-	chmod 400 /etc/munge/munge.key
-	chown munge:munge /etc/munge/munge.key
 fi
 
+chmod 400 /etc/munge/munge.key
+chown munge:munge /etc/munge/munge.key
+chown -R munge:munge /var/run/munge /etc/munge /var/log/munge
+chmod 0755 /var/run/munge /etc/munge /var/log/munge
+chmod 0711 /var/lib/munge 2>/dev/null || true
+
 # Start munge daemon
-munged -L /var/log/munge/munged.log &
-sleep 1
+su munge -s /bin/sh -c "munged --log-file=/var/log/munge/munged.log" &
+sleep 2
 log "Munge started"
 
 # ==============================================================================
@@ -208,23 +230,24 @@ log "Munge started"
 
 log "Starting SLURM daemons..."
 
-# Start slurmdbd (accounting daemon)
+# Start slurmdbd (accounting daemon) - wait up to 15s for MariaDB to be ready
 log "Starting slurmdbd..."
 slurmdbd -Dv &
-sleep 2
+log "Waiting 8s for slurmdbd to initialize..."
+sleep 8
 
 # Create default accounting associations
 log "Creating SLURM associations..."
-sacctmgr -i add cluster esi-hpc || true
-sacctmgr -i add account admin,research,student Cluster=esi-hpc || true
-sacctmgr -i add user admin Account=admin Cluster=esi-hpc || true
-sacctmgr -i add user researcher-01,researcher-02 Account=research Cluster=esi-hpc || true
-sacctmgr -i add user student-01,student-02,student-03 Account=student Cluster=esi-hpc || true
+sacctmgr -i add cluster esi-hpc 2>/dev/null || true
+sacctmgr -i add account admin,research,student Cluster=esi-hpc 2>/dev/null || true
+sacctmgr -i add user admin Account=admin Cluster=esi-hpc 2>/dev/null || true
+sacctmgr -i add user researcher-01,researcher-02 Account=research Cluster=esi-hpc 2>/dev/null || true
+sacctmgr -i add user student-01,student-02,student-03 Account=student Cluster=esi-hpc 2>/dev/null || true
 
 # Start slurmctld (controller daemon)
 log "Starting slurmctld..."
 slurmctld -Dv &
-sleep 2
+sleep 3
 
 log "SLURM daemons started"
 
@@ -277,7 +300,18 @@ fi
 cp /shared-configs/jupyterhub_config.py /etc/jupyterhub/jupyterhub_config.py
 chown jupyterhub:jupyterhub /etc/jupyterhub/jupyterhub_config.py
 
-log "JupyterHub configured"
+# Start JupyterHub daemon - run as root so it can spawn as other users
+log "Starting JupyterHub..."
+jupyterhub -f /etc/jupyterhub/jupyterhub_config.py > /var/log/jupyterhub/jupyterhub.log 2>&1 &
+JH_PID=$!
+log "JupyterHub started (pid=$JH_PID), waiting 5s..."
+sleep 5
+if ! kill -0 $JH_PID 2>/dev/null; then
+	log "ERROR: JupyterHub failed to start. Last 20 log lines:"
+	tail -20 /var/log/jupyterhub/jupyterhub.log 2>/dev/null || true
+else
+	log "JupyterHub is running on 0.0.0.0:8000"
+fi
 
 # ==============================================================================
 # 9. REMOTE SYSLOG FORWARDING
@@ -312,5 +346,3 @@ log "  - SLURM Controller (6817)"
 log "  - SLURM DBD (6819)"
 log "  - Munge auth (11002)"
 log "  - JupyterHub (8080)"
-
-

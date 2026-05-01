@@ -77,6 +77,17 @@ create_user_if_missing() {
   fi
 }
 
+set_lab_password() {
+  local username=$1
+
+  if command -v chpasswd >/dev/null 2>&1; then
+    printf '%s:%s\n' "$username" "$username" | chpasswd
+    log "Password set for: $username"
+  else
+    log "WARN: chpasswd not found; password not set for $username"
+  fi
+}
+
 # Admin users: UID 1000+
 create_user_if_missing "admin"        1000 "admins gpu-users"
 create_user_if_missing "administrator" 1001 "admins"
@@ -89,6 +100,10 @@ create_user_if_missing "researcher-02" 2002 "researchers gpu-users"
 create_user_if_missing "student-01" 3001 "students"
 create_user_if_missing "student-02" 3002 "students"
 create_user_if_missing "student-03" 3003 "students"
+
+for user in admin administrator researcher-01 researcher-02 student-01 student-02 student-03; do
+  set_lab_password "$user"
+done
 
 log "Test users created/verified"
 

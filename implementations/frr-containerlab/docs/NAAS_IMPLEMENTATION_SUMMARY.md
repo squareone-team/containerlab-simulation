@@ -176,7 +176,7 @@ bash ../../scripts/tests/verify-notebook-as-a-service.sh
 
 ### 4. Access JupyterHub
 
-- **From host**: https://localhost:8888/ (port 8888 → container 8080)
+- **From host**: https://localhost:18888/ (port 18888 → container 8080)
 - **From lab nodes**: https://hpc-jupyter.esi.internal:8080/
 - **Login**: Use pre-created user (student-01, researcher-01, admin) with empty
   password

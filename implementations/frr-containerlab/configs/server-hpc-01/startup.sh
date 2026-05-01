@@ -53,6 +53,16 @@ search esi.internal
 nameserver 192.168.50.30
 EOF
 
+tmp_hosts="$(mktemp)"
+grep -vE '[[:space:]](server-admin-01|server-hpc-01|server-hpc-02)([[:space:]]|$)' /etc/hosts > "$tmp_hosts" || true
+{
+	echo "192.168.50.10 server-admin-01"
+	echo "192.168.70.10 server-hpc-01"
+	echo "192.168.70.20 server-hpc-02"
+	cat "$tmp_hosts"
+} > /etc/hosts
+rm -f "$tmp_hosts"
+
 log "Network configured"
 
 # ==============================================================================
@@ -129,8 +139,8 @@ if ! id slurm >/dev/null 2>&1; then
 fi
 
 # Create directories
-mkdir -p /var/spool/slurm-llnl /var/log/slurm /run/slurm
-chown -R slurm:slurm /var/spool/slurm-llnl /var/log/slurm /run/slurm
+mkdir -p /var/spool/slurm-llnl /var/log/slurm /run/slurm /var/spool/slurmd
+chown -R slurm:slurm /var/spool/slurm-llnl /var/log/slurm /run/slurm /var/spool/slurmd
 
 # Copy SLURM config (same as controller, but only used for node registration)
 cp /shared-configs/slurm.conf /etc/slurm/slurm.conf
@@ -146,22 +156,26 @@ log "SLURM worker configured"
 log "Initializing Munge (SLURM auth)..."
 mkdir -p /var/run/munge /etc/munge /var/log/munge
 
-# Wait for munge key from controller (will be provided via shared volume)
-# For lab purposes, generate one if not present
-if ! [ -f /etc/munge/munge.key ]; then
-	log "Waiting for munge.key from shared volume..."
-	sleep 5
-	if ! [ -f /etc/munge/munge.key ]; then
-		log "Generating local munge.key (expected from Admin pod)"
-		dd if=/dev/urandom bs=1 count=1024 of=/etc/munge/munge.key 2>/dev/null
-	fi
+# Fetch munge key from Admin pod's shared configs (bind-mounted read-only)
+# The admin startup.sh copies its key to /shared-configs/munge.key
+MUNGE_KEY_SRC="/shared-configs/munge.key"
+if [ -f "$MUNGE_KEY_SRC" ]; then
+	log "Copying munge.key from shared-configs"
+	cp "$MUNGE_KEY_SRC" /etc/munge/munge.key
+elif ! [ -f /etc/munge/munge.key ]; then
+	log "WARN: No shared munge.key found - generating local key (cluster auth will fail without matching keys)"
+	dd if=/dev/urandom bs=1 count=1024 of=/etc/munge/munge.key 2>/dev/null
 fi
 
 chmod 400 /etc/munge/munge.key 2>/dev/null || true
 chown munge:munge /etc/munge/munge.key 2>/dev/null || true
 
+chown -R munge:munge /var/run/munge /etc/munge /var/log/munge
+chmod 0755 /var/run/munge /etc/munge /var/log/munge
+chmod 0711 /var/lib/munge 2>/dev/null || true
+
 # Start munge daemon
-munged -L /var/log/munge/munged.log &
+su munge -s /bin/sh -c "munged --log-file=/var/log/munge/munged.log" &
 sleep 1
 log "Munge started"
 
@@ -178,18 +192,30 @@ fi
 # Create mount points
 mkdir -p /home /shared
 
-# Mount /home from storage
+# Mount /home from storage (retry up to 5 times)
 if ! is_mounted /home; then
-	log "Mounting /home from 192.168.80.10:/home..."
-	mount -t nfs -o rw,soft,timeo=5,retrans=1 192.168.80.10:/home /home || \
-		log "WARN: Failed to mount /home (storage may not be ready yet)"
+	for i in 1 2 3 4 5; do
+		log "Mounting /home from 192.168.80.10:/home (attempt $i/5)..."
+		if mount -t nfs -o rw,soft,timeo=30,retrans=3,nolock 192.168.80.10:/home /home 2>/dev/null; then
+			log "/home mounted successfully"
+			break
+		fi
+		[ $i -lt 5 ] && sleep 5
+	done
+	is_mounted /home || log "WARN: Failed to mount /home after 5 attempts"
 fi
 
-# Mount /shared from storage
+# Mount /shared from storage (retry up to 5 times)
 if ! is_mounted /shared; then
-	log "Mounting /shared from 192.168.80.10:/shared..."
-	mount -t nfs -o rw,soft,timeo=5,retrans=1 192.168.80.10:/shared /shared || \
-		log "WARN: Failed to mount /shared (storage may not be ready yet)"
+	for i in 1 2 3 4 5; do
+		log "Mounting /shared from 192.168.80.10:/shared (attempt $i/5)..."
+		if mount -t nfs -o rw,soft,timeo=30,retrans=3,nolock 192.168.80.10:/shared /shared 2>/dev/null; then
+			log "/shared mounted successfully"
+			break
+		fi
+		[ $i -lt 5 ] && sleep 5
+	done
+	is_mounted /shared || log "WARN: Failed to mount /shared after 5 attempts"
 fi
 
 log "NFS mounts configured"
@@ -199,6 +225,10 @@ log "NFS mounts configured"
 # ==============================================================================
 
 log "Starting SLURM worker daemon (slurmd)..."
+# Fix cgroup v2 dbus crash
+echo "IgnoreSystemd=yes" > /etc/slurm/cgroup.conf
+mkdir -p /sys/fs/cgroup/system.slice 2>/dev/null || true
+
 slurmd -Dv &
 sleep 2
 
@@ -230,5 +260,4 @@ log "Services running:"
 log "  - SLURM worker (6818)"
 log "  - Munge auth (11002)"
 log "  - NFS mounts (/home, /shared)"
-
 

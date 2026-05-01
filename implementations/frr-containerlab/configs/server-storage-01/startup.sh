@@ -68,12 +68,10 @@ table inet filter {
 		ip saddr 172.16.0.50 tcp dport 22 accept
 		
 		# HPC pod to Storage: NFS (2049), RPC (111), Portmapper (111)
-		ip saddr 192.168.70.0/24 tcp dport { 111, 2049 } accept
-		ip saddr 192.168.70.0/24 udp dport { 111, 2049 } accept
+		ip saddr 192.168.70.0/24 accept
 		
 		# Admin pod to Storage: NFS, RPC
-		ip saddr 192.168.50.0/24 tcp dport { 111, 2049 } accept
-		ip saddr 192.168.50.0/24 udp dport { 111, 2049 } accept
+		ip saddr 192.168.50.0/24 accept
 	}
 
 	chain forward {
@@ -113,10 +111,25 @@ fi
 log "Creating NFS export directories..."
 mkdir -p /home /shared
 
+# Mount as tmpfs to bypass OverlayFS NFS export restrictions
+mount -t tmpfs tmpfs /home
+mount -t tmpfs tmpfs /shared
+
 # Set up ownership and permissions for /home
 # /home will contain per-user directories
 chown -R root:root /home || true
 chmod 755 /home || true
+mkdir -p /home/admin /home/administrator /home/researcher-01 /home/researcher-02 \
+	/home/student-01 /home/student-02 /home/student-03
+chown 1000:1000 /home/admin || true
+chown 1001:1001 /home/administrator || true
+chown 2001:2001 /home/researcher-01 || true
+chown 2002:2002 /home/researcher-02 || true
+chown 3001:3001 /home/student-01 || true
+chown 3002:3002 /home/student-02 || true
+chown 3003:3003 /home/student-03 || true
+chmod 755 /home/admin /home/administrator /home/researcher-01 /home/researcher-02 \
+	/home/student-01 /home/student-02 /home/student-03 || true
 
 # Set up shared directories
 # /shared will contain course and team directories
@@ -213,5 +226,4 @@ log "  - Mount daemon"
 log "Exports:"
 log "  - /home (HPC + Admin pods)"
 log "  - /shared (HPC + Admin pods)"
-
 

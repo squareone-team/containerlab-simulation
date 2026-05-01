@@ -3,13 +3,11 @@
 # configs/server-hpc-jupyter/startup.sh
 # ==============================================================================
 # JupyterHub Frontend Node
-# Role: Proxy and frontend for JupyterHub users
-# - Exposes JupyterHub interface on 8080
-# - Connects to JupyterHub controller on Admin pod (192.168.50.10:8000)
-# - Routes to notebook servers running on HPC workers
-#
-# NOTE: This is now a PROXY FRONTEND, not a notebook server.
-# JupyterHub server runs on server-admin-01 (192.168.50.10:8000)
+# Role: TLS-terminating reverse proxy for JupyterHub users
+# - Accepts HTTPS on port 8080 (mapped to host port 18880)
+# - Forwards to JupyterHub controller on Admin pod (192.168.50.10:8000)
+# - Uses configurable-http-proxy (already in image) for TLS + WebSocket support
+# - NFS-mounts /home and /shared for notebook persistence
 #
 # Idempotent: Safe to run multiple times
 # ==============================================================================
@@ -68,20 +66,17 @@ table inet filter {
 		iif "lo" accept
 		ct state established,related accept
 		ip protocol icmp accept
-		
+
 		# HPC pod to HPC pod
 		ip saddr 192.168.70.0/24 accept
-		
+
 		# Bastion SSH
 		ip saddr 172.16.0.50 tcp dport 22 accept
-		
-		# Allow HTTP/HTTPS from all internal networks to JupyterHub (8080)
-		ip saddr 192.168.10.0/24 tcp dport 8080 accept
-		ip saddr 192.168.20.0/24 tcp dport 8080 accept
-		ip saddr 192.168.50.0/24 tcp dport 8080 accept
-		ip saddr 192.168.60.0/24 tcp dport 8080 accept
-		ip saddr 172.20.20.0/24 tcp dport 8080 accept
-		
+
+		# Allow JupyterHub frontend (port 8080) from any source
+		# (Docker host NAT uses 0.0.0.0 DNAT for port 18880->8080)
+		tcp dport 8080 accept
+
 		# Storage pod to HPC frontend: NFS (2049), RPC (111)
 		ip saddr 192.168.80.0/24 tcp dport { 111, 2049 } accept
 		ip saddr 192.168.80.0/24 udp dport { 111, 2049 } accept
@@ -110,34 +105,103 @@ fi
 # ==============================================================================
 
 log "Setting up NFS mounts..."
-if ! command -v mount.nfs >/dev/null 2>&1; then
-	die "NFS client not installed (build esi/alpine-jupyter:3.20)"
-fi
-
-# Create mount points
 mkdir -p /home /shared
 
-# Mount /home from storage (for persistent notebooks)
-if ! is_mounted /home; then
-	log "Mounting /home from 192.168.80.10:/home..."
-	mount -t nfs -o rw,soft,timeo=5,retrans=1 192.168.80.10:/home /home || \
-		log "WARN: Failed to mount /home (storage may not be ready yet)"
-fi
+if command -v mount.nfs >/dev/null 2>&1; then
+	# Mount /home from storage (retry up to 5 times)
+	if ! is_mounted /home; then
+		for i in 1 2 3 4 5; do
+			log "Mounting /home from 192.168.80.10:/home (attempt $i/5)..."
+			if mount -t nfs -o rw,soft,timeo=30,retrans=3,nolock 192.168.80.10:/home /home 2>/dev/null; then
+				log "/home mounted successfully"
+				break
+			fi
+			[ $i -lt 5 ] && sleep 5
+		done
+		is_mounted /home || log "WARN: Failed to mount /home after 5 attempts"
+	fi
 
-# Mount /shared from storage
-if ! is_mounted /shared; then
-	log "Mounting /shared from 192.168.80.10:/shared..."
-	mount -t nfs -o rw,soft,timeo=5,retrans=1 192.168.80.10:/shared /shared || \
-		log "WARN: Failed to mount /shared (storage may not be ready yet)"
+	# Mount /shared from storage (retry up to 5 times)
+	if ! is_mounted /shared; then
+		for i in 1 2 3 4 5; do
+			log "Mounting /shared from 192.168.80.10:/shared (attempt $i/5)..."
+			if mount -t nfs -o rw,soft,timeo=30,retrans=3,nolock 192.168.80.10:/shared /shared 2>/dev/null; then
+				log "/shared mounted successfully"
+				break
+			fi
+			[ $i -lt 5 ] && sleep 5
+		done
+		is_mounted /shared || log "WARN: Failed to mount /shared after 5 attempts"
+	fi
+else
+	log "WARN: NFS client not installed - skipping NFS mounts"
 fi
 
 log "NFS mounts configured"
 
 # ==============================================================================
-# 4. WAIT FOR JUPYTERHUB CONTROLLER
+# 4. TLS CERTIFICATE (self-signed for https on port 8080)
 # ==============================================================================
 
-log "Starting background check for JupyterHub controller (192.168.50.10:8000)..."
+log "Generating self-signed TLS certificate..."
+mkdir -p /etc/jupyterhub-proxy/ssl
+
+if ! [ -f /etc/jupyterhub-proxy/ssl/server.crt ]; then
+	openssl req -x509 -newkey rsa:2048 \
+		-keyout /etc/jupyterhub-proxy/ssl/server.key \
+		-out    /etc/jupyterhub-proxy/ssl/server.crt \
+		-days 365 -nodes \
+		-subj "/C=FR/ST=Lab/L=ESI/O=ESI/CN=hpc-jupyter.esi.internal" \
+		2>/dev/null
+	log "TLS certificate generated"
+else
+	log "TLS certificate already exists"
+fi
+
+# ==============================================================================
+# 5. TLS REVERSE PROXY via configurable-http-proxy
+# ==============================================================================
+# configurable-http-proxy is installed with JupyterHub (npm package).
+# It supports TLS termination and full WebSocket proxying - perfect for JupyterHub.
+# Port 8080 (HTTPS) --> http://192.168.50.10:8000 (JupyterHub on admin pod)
+# ==============================================================================
+
+log "Starting configurable-http-proxy (TLS on :8080 -> http://192.168.50.10:8000)..."
+
+if ! command -v configurable-http-proxy >/dev/null 2>&1; then
+	die "configurable-http-proxy not found (build esi/naas:bookworm)"
+fi
+
+# Kill any existing proxy
+pkill -f "configurable-http-proxy" 2>/dev/null || true
+sleep 1
+
+configurable-http-proxy \
+	--port 8080 \
+	--api-port 8090 \
+	--default-target http://192.168.50.10:8000 \
+	--ssl-key  /etc/jupyterhub-proxy/ssl/server.key \
+	--ssl-cert /etc/jupyterhub-proxy/ssl/server.crt \
+	--log-level info \
+	>> /var/log/jupyterhub-proxy.log 2>&1 &
+
+PROXY_PID=$!
+sleep 3
+
+if kill -0 $PROXY_PID 2>/dev/null; then
+	log "configurable-http-proxy started (pid=$PROXY_PID)"
+	log "HTTPS proxy listening on port 8080"
+else
+	log "ERROR: configurable-http-proxy failed to start"
+	log "Last log lines:"
+	tail -10 /var/log/jupyterhub-proxy.log 2>/dev/null || true
+fi
+
+# ==============================================================================
+# 6. WAIT FOR JUPYTERHUB CONTROLLER (background health check)
+# ==============================================================================
+
+log "Starting background health check for JupyterHub controller (192.168.50.10:8000)..."
 (
 	if ! command -v nc >/dev/null 2>&1; then
 		log "WARN: netcat not found, skipping controller readiness check"
@@ -151,23 +215,13 @@ log "Starting background check for JupyterHub controller (192.168.50.10:8000)...
 			log "WARNING: JupyterHub controller not responding after ${max_retries} retries"
 			exit 1
 		fi
-		sleep 2
+		sleep 5
 	done
 	log "JupyterHub controller reachable at 192.168.50.10:8000"
 ) &
 
-log "JupyterHub frontend startup continuing (controller check running in background)..."
-
 # ==============================================================================
-# 5. PROXY CONFIGURATION
-# ==============================================================================
-
-log "JupyterHub frontend proxy initialized"
-log "Users will access JupyterHub via: https://hpc-jupyter.esi.internal:8080"
-log "Proxy forwards to controller at: 192.168.50.10:8000"
-
-# ==============================================================================
-# 6. REMOTE SYSLOG FORWARDING
+# 7. REMOTE SYSLOG FORWARDING
 # ==============================================================================
 
 log "Configuring remote syslog..."
@@ -176,7 +230,6 @@ if command -v rsyslogd >/dev/null 2>&1; then
 module(load="imuxsock")
 *.* @@192.168.50.70:514
 RSYSLOG
-
 	/usr/sbin/rsyslogd &
 	log "rsyslogd started"
 elif command -v syslogd >/dev/null 2>&1; then
@@ -189,13 +242,12 @@ else
 fi
 
 # ==============================================================================
-# 7. FINAL STARTUP
+# 8. FINAL STARTUP
 # ==============================================================================
 
 log "JupyterHub frontend startup complete"
 log "Services ready:"
+log "  - configurable-http-proxy (HTTPS) on port 8080"
+log "  - Forwarding to JupyterHub at http://192.168.50.10:8000"
 log "  - NFS mounts (/home, /shared)"
-log "  - Frontend listening on port 8080"
-log "  - Connected to controller: 192.168.50.10:8000"
-
-
+log "  - Host access: https://localhost:18880/"

@@ -4,12 +4,12 @@
 # Provides persistent storage for JupyterHub user homes and shared projects
 
 # Export /home - user notebook homes
-/home                192.168.70.0/24(rw,no_subtree_check,no_root_squash,all_squash,anonuid=0,anongid=0)
-/home                192.168.50.0/24(rw,no_subtree_check,no_root_squash,all_squash,anonuid=0,anongid=0)
+/home                192.168.70.0/24(fsid=1,rw,no_subtree_check,no_root_squash,all_squash,anonuid=0,anongid=0,insecure)
+/home                192.168.50.0/24(fsid=1,rw,no_subtree_check,no_root_squash,all_squash,anonuid=0,anongid=0,insecure)
 
 # Export /shared - shared project directories (course teams, research groups)
-/shared              192.168.70.0/24(rw,no_subtree_check,no_root_squash,all_squash,anonuid=0,anongid=0)
-/shared              192.168.50.0/24(rw,no_subtree_check,no_root_squash,all_squash,anonuid=0,anongid=0)
+/shared              192.168.70.0/24(fsid=2,rw,no_subtree_check,no_root_squash,all_squash,anonuid=0,anongid=0,insecure)
+/shared              192.168.50.0/24(fsid=2,rw,no_subtree_check,no_root_squash,all_squash,anonuid=0,anongid=0,insecure)
 
 # Per-user homes if needed (alternative model)
 # /home/student-01   192.168.70.0/24(rw,no_subtree_check,no_root_squash)

@@ -256,6 +256,7 @@ topology:
         - configs/admin/jupyterhub_config.py:/shared-configs/jupyterhub_config.py:ro
         - configs/admin/mariadb-init.sql:/shared-configs/mariadb-init.sql:ro
         - configs/admin/pam-users-init.sh:/shared-configs/pam-users-init.sh:ro
+        - configs/admin/munge.key:/shared-configs/munge.key:ro
       exec:
         - sh /startup.sh
         - sh /ntp-client.sh
@@ -288,6 +289,7 @@ topology:
         - configs/server-hpc-01/startup.sh:/startup.sh
         - configs/ntp-server/server-client-ntp.sh:/ntp-client.sh
         - configs/admin/slurm.conf:/shared-configs/slurm.conf:ro
+        - configs/admin/munge.key:/shared-configs/munge.key:ro
       exec:
         - sh /startup.sh
         - sh /ntp-client.sh
@@ -306,6 +308,7 @@ topology:
         - configs/server-hpc-02/startup.sh:/startup.sh
         - configs/ntp-server/server-client-ntp.sh:/ntp-client.sh
         - configs/admin/slurm.conf:/shared-configs/slurm.conf:ro
+        - configs/admin/munge.key:/shared-configs/munge.key:ro
       exec:
         - sh /startup.sh
         - sh /ntp-client.sh
@@ -323,11 +326,12 @@ topology:
       binds:
         - configs/server-hpc-jupyter/startup.sh:/startup.sh
         - configs/ntp-server/server-client-ntp.sh:/ntp-client.sh
+        - configs/admin/munge.key:/shared-configs/munge.key:ro
       exec:
         - sh /startup.sh
         - sh /ntp-client.sh
       ports:
-        - 18888:8080
+        - 18880:8080
 
     server-storage-01:
       kind: linux
