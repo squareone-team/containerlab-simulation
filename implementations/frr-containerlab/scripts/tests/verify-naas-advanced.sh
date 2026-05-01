@@ -36,13 +36,14 @@ LOGIN_PAGE="$(mktemp)"
 NOTEBOOK_PAYLOAD="$(mktemp)"
 NOTEBOOK_RESPONSE="$(mktemp)"
 SPAWNED_SERVER=false
-JH_TOKEN=""
+JH_ADMIN_TOKEN=""
+JH_USER_TOKEN=""
 NOTEBOOK_NAME="naas-slurm-verification.ipynb"
 
 cleanup() {
-	if [ "$SPAWNED_SERVER" = true ] && [ -n "$JH_TOKEN" ]; then
-		curl -k -sS -o /dev/null -X DELETE \
-			-H "Authorization: token $JH_TOKEN" \
+	if [ "$SPAWNED_SERVER" = true ] && [ -n "$JH_ADMIN_TOKEN" ]; then
+		curl -4 -k -sS -o /dev/null -X DELETE \
+			-H "Authorization: token $JH_ADMIN_TOKEN" \
 			"https://localhost:18880/hub/api/users/student-01/server" || true
 	fi
 	rm -f "$COOKIE_JAR" "$LOGIN_PAGE" "$NOTEBOOK_PAYLOAD" "$NOTEBOOK_RESPONSE"
@@ -61,7 +62,7 @@ wait_for_jupyter_server_ready() {
 	local body
 
 	while [ "$retries" -gt 0 ]; do
-		body="$(curl -k -sS -H "Authorization: token $JH_TOKEN" \
+		body="$(curl -4 -k -sS -H "Authorization: token $JH_ADMIN_TOKEN" \
 			"https://localhost:18880/hub/api/users/student-01" || true)"
 		if printf '%s' "$body" | grep -Eq '"ready"[[:space:]]*:[[:space:]]*true'; then
 			return 0
@@ -76,8 +77,8 @@ wait_for_jupyter_server_ready() {
 stop_student_server_if_running() {
 	local code
 
-	code="$(curl -k -sS -o /dev/null -w "%{http_code}" -X DELETE \
-		-H "Authorization: token $JH_TOKEN" \
+	code="$(curl -4 -k -sS -o /dev/null -w "%{http_code}" -X DELETE \
+		-H "Authorization: token $JH_ADMIN_TOKEN" \
 		"https://localhost:18880/hub/api/users/student-01/server" || true)"
 
 	case "$code" in
@@ -89,7 +90,7 @@ stop_student_server_if_running() {
 	esac
 
 	for _ in $(seq 1 30); do
-		if curl -k -sS -H "Authorization: token $JH_TOKEN" \
+		if curl -4 -k -sS -H "Authorization: token $JH_ADMIN_TOKEN" \
 			"https://localhost:18880/hub/api/users/student-01" | grep -Eq '"server"[[:space:]]*:[[:space:]]*null'; then
 			return 0
 		fi
@@ -233,7 +234,7 @@ else
 	log_fail "JupyterHub frontend proxy failed to serve login page"
 fi
 
-if curl -k -sS -o "$LOGIN_PAGE" -w "%{http_code}" -c "$COOKIE_JAR" https://localhost:18880/hub/login | grep -q "200" \
+if curl -4 -k -sS -o "$LOGIN_PAGE" -w "%{http_code}" -c "$COOKIE_JAR" https://localhost:18880/hub/login | grep -q "200" \
 	&& grep -qi "jupyterhub" "$LOGIN_PAGE"; then
 	log_pass "Host access login page works at https://localhost:18880/"
 else
@@ -246,8 +247,17 @@ else
 	log_fail "JupyterHub config is not using the SLURM-backed spawner"
 fi
 
-JH_TOKEN="$(docker exec "$ADMIN_POD" sh -c 'jupyterhub token student-01 --config /etc/jupyterhub/jupyterhub_config.py 2>/dev/null' | tail -n 1 | tr -d '\r')"
-if [ -n "$JH_TOKEN" ]; then
+JH_ADMIN_TOKEN="${NAAS_VERIFIER_TOKEN:-naas-verifier-token}"
+if curl -4 -k -sS -o /dev/null -w "%{http_code}" \
+	-H "Authorization: token $JH_ADMIN_TOKEN" \
+	"https://localhost:18880/hub/api/users/student-01" | grep -q "200"; then
+	log_pass "Verifier service token can read student-01 Hub state"
+else
+	log_fail "Verifier service token cannot read student-01 Hub state"
+fi
+
+JH_USER_TOKEN="$(docker exec "$ADMIN_POD" sh -c 'jupyterhub token student-01 --config /etc/jupyterhub/jupyterhub_config.py 2>/dev/null' | tail -n 1 | tr -d '\r')"
+if [ -n "$JH_USER_TOKEN" ]; then
 	log_pass "Generated JupyterHub API token for student-01"
 else
 	log_fail "Could not generate JupyterHub API token for student-01"
@@ -259,8 +269,8 @@ else
 	log_fail "Could not stop pre-existing student-01 notebook server"
 fi
 
-SPAWN_CODE="$(curl -k -sS -o "$NOTEBOOK_RESPONSE" -w "%{http_code}" -X POST \
-	-H "Authorization: token $JH_TOKEN" \
+SPAWN_CODE="$(curl -4 -k -sS -o "$NOTEBOOK_RESPONSE" -w "%{http_code}" -X POST \
+	-H "Authorization: token $JH_ADMIN_TOKEN" \
 	-H "Content-Type: application/json" \
 	-d '{"profile":"cpu"}' \
 	"https://localhost:18880/hub/api/users/student-01/server")"
@@ -308,8 +318,8 @@ cat > "$NOTEBOOK_PAYLOAD" <<'JSON'
 }
 JSON
 
-NOTEBOOK_CODE="$(curl -k -sS -o "$NOTEBOOK_RESPONSE" -w "%{http_code}" -X PUT \
-	-H "Authorization: token $JH_TOKEN" \
+NOTEBOOK_CODE="$(curl -4 -k -sS -o "$NOTEBOOK_RESPONSE" -w "%{http_code}" -X PUT \
+	-H "Authorization: token $JH_USER_TOKEN" \
 	-H "Content-Type: application/json" \
 	--data-binary "@$NOTEBOOK_PAYLOAD" \
 	"https://localhost:18880/user/student-01/api/contents/$NOTEBOOK_NAME")"
@@ -329,8 +339,8 @@ else
 	log_fail "Notebook file was not found on storage-backed /home/student-01 with student UID/GID"
 fi
 
-curl -k -sS -o /dev/null -X DELETE \
-	-H "Authorization: token $JH_TOKEN" \
+curl -4 -k -sS -o /dev/null -X DELETE \
+	-H "Authorization: token $JH_USER_TOKEN" \
 	"https://localhost:18880/user/student-01/api/contents/$NOTEBOOK_NAME" || true
 
 # ==============================================================================

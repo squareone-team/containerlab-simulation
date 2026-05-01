@@ -190,7 +190,7 @@ else
 	log_fail "JupyterHub frontend cannot reach Admin pod"
 fi
 
-if curl -k -s -o /dev/null -w "%{http_code}" https://localhost:18880/hub/login | grep -q "200"; then
+if curl -4 -k -s -o /dev/null -w "%{http_code}" https://localhost:18880/hub/login | grep -q "200"; then
 	log_pass "Host login page works at https://localhost:18880/"
 else
 	log_fail "Host login page is not reachable at https://localhost:18880/"

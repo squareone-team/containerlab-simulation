@@ -218,8 +218,32 @@ c.JupyterHub.db_url = 'mysql+pymysql://jupyterhub:jupyterhub_pass@localhost/jupy
 c.JupyterHub.log_level = 'INFO'
 
 # ============================================================================
-# 8. Activity Timeout
+# 8. Verifier Service
+# ============================================================================
+
+NAAS_VERIFIER_TOKEN = os.environ.get('NAAS_VERIFIER_TOKEN', 'naas-verifier-token')
+
+c.JupyterHub.services = [
+    {
+        'name': 'naas-verifier',
+        'api_token': NAAS_VERIFIER_TOKEN,
+    },
+]
+
+c.JupyterHub.load_roles = [
+    {
+        'name': 'naas-verifier-role',
+        'services': ['naas-verifier'],
+        'scopes': [
+            'admin:servers',
+            'read:users',
+            'read:servers',
+        ],
+    },
+]
+
+# ============================================================================
+# 9. Activity Timeout
 # ============================================================================
 
 c.JupyterHub.inactive_server_timeout = 3600  # 1 hour
-c.JupyterHub.services = []
