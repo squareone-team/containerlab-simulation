@@ -4,9 +4,13 @@ set -euo pipefail
 LAB_NAME="${LAB_NAME:-esi-datacenter}"
 CLAB_PREFIX="clab-${LAB_NAME}-"
 SYSLOG="${CLAB_PREFIX}syslog-server"
-# Test from nodes that can reach 192.168.50.70 (admin subnet)
-# Other fabric nodes (leaf-01+, spine-*) are in different VRF; intentional isolation
-SOURCES=("${CLAB_PREFIX}server-admin-01")
+# Test same-VRF logging plus explicit Ring 1 log-export exceptions.
+SOURCES=(
+  "${CLAB_PREFIX}server-admin-01"
+  "${CLAB_PREFIX}server-student-01"
+  "${CLAB_PREFIX}server-hpc-01"
+  "${CLAB_PREFIX}server-dmz-01"
+)
 TOKEN="RING6_VERIFY_$(date +%s)"
 
 echo "=== Ring 6 (Reliable Logging) Deep Verification ==="

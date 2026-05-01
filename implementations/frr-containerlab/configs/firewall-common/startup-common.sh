@@ -21,6 +21,8 @@ ip link set eth1 up
 
 # Route datacenter subnets via local border-leaf transit IP.
 ip route replace 192.168.0.0/16 via "${FW_TRANSIT_GW}" dev eth1
+ip route replace 10.200.0.0/30 via "${FW_TRANSIT_GW}" dev eth1
+ip route replace 198.51.100.0/24 via "${FW_TRANSIT_GW}" dev eth1
 
 echo "[*] Bringing up additional interfaces..."
 for i in 2 3 4 5 6 7 8 9; do

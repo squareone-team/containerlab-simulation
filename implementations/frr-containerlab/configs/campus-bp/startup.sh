@@ -33,6 +33,7 @@ ip route replace 192.168.10.100/32 via 10.200.0.1 dev eth3
 ip route replace 192.168.50.20/32 via 10.200.0.1 dev eth3
 ip route replace 192.168.50.30/32 via 10.200.0.1 dev eth3
 ip route replace 192.168.50.40/32 via 10.200.0.1 dev eth3
+ip route replace 192.168.50.70/32 via 10.200.0.1 dev eth3
 
 wait_for_iface eth4
 ip link set eth4 up

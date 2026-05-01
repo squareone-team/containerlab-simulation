@@ -41,7 +41,7 @@ This page groups the practical checks for Ring 3, Ring 4, Ring 5, and Ring 6.
 
 ## Useful Notes
 
-- Not every node can reach `192.168.50.70`; that is expected because of VRF boundaries.
+- Central syslog is reachable only through same-VRF routing or the explicit Ring 1 TCP/514 log-export policy.
 - `server-admin-01` is the safest default source for Ring 6 manual log injection.
 - `oob-sw` is only a Layer 2 bridge, so bastion/OOB debugging is mostly about SSH and addressing, not routing.
 

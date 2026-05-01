@@ -216,9 +216,9 @@ mkdir -p /var/log/chrony
 chronyd -f /etc/chrony.conf &
 
 # === DHCP RELAY ===
-nohup python3 /usr/local/bin/esi-dhcp-relay.py \
+nohup ip vrf exec VRF-STAFF python3 /usr/local/bin/esi-dhcp-relay.py \
   --server 192.168.50.40 \
-  --relay-ip "$VTEP_IP" \
+  --relay-ip 192.168.70.1 \
   --interface vlan70=192.168.70.1 >/var/log/esi-dhcp-relay.log 2>&1 &
 
 

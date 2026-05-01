@@ -85,6 +85,17 @@ test_moodle_access_present() {
     rule_present "ip saddr @cluster_1_pedagogy ip daddr @cluster_lms_staff tcp dport { 80, 443 } ct state new"
 }
 
+test_syslog_access_present() {
+    rule_present "ip saddr @cluster_1_pedagogy ip daddr @core_infra_syslog tcp dport 514 ct state new" &&
+        rule_present "ip saddr @cluster_campus_access ip daddr @core_infra_syslog tcp dport 514 ct state new" &&
+        rule_present "ip saddr @cluster_public_dmz ip daddr @core_infra_syslog tcp dport 514 ct state new"
+}
+
+test_shared_dhcp_access_present() {
+    rule_present "ip saddr @cluster_1_pedagogy ip daddr @core_infra_dhcp udp dport { 67, 68 } ct state new" &&
+        rule_present "ip saddr @cluster_campus_access ip daddr @core_infra_dhcp udp dport { 67, 68 } ct state new"
+}
+
 test_dmz_isolation_present() {
     rule_present "ip saddr @cluster_public_dmz ip daddr @cluster_1_pedagogy" &&
         rule_present "ip saddr @cluster_public_dmz ip daddr @cluster_2_admin"
@@ -106,6 +117,8 @@ assert_ok "rule Admin->Storage present with counters" test_admin_to_storage_rule
 assert_ok "rule Pedagogy->Admin explicit drop present with counters" test_general_to_admin_drop_present
 assert_ok "rule Orientation explicit drops present with counters" test_orientation_drop_present
 assert_ok "rule Moodle access present with counters" test_moodle_access_present
+assert_ok "rule centralized syslog export present with counters" test_syslog_access_present
+assert_ok "rule shared DHCP access present with counters" test_shared_dhcp_access_present
 assert_ok "rule DMZ isolation explicit drops present with counters" test_dmz_isolation_present
 assert_ok "no HPC<->Storage firewall rule (hairpinning constraint)" test_no_hpc_to_storage_rule_present
 
