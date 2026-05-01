@@ -129,6 +129,8 @@ SLURM + NFS persistence have been completed and committed to the repository.
 11. fix: mount shared storage and users for SLURM notebooks
 12. test: verify SLURM-backed notebook spawning
 13. fix: keep Jupyter frontend as HTTPS proxy only
+14. test: add scoped verifier token for JupyterHub
+15. fix: use absolute BatchSpawner launch commands
 ```
 
 ## File Structure
