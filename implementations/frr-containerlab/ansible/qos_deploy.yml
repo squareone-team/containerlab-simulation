@@ -1,0 +1,28 @@
+---
+- name: Deploy Containerlab and validate QoS
+  hosts: localhost
+  connection: local
+  gather_facts: false
+
+  vars:
+    clab_dir: /home/pc/datacenter-containerlab-esi/implementations/frr-containerlab
+    topo_file: esi-datacenter.clab.yml
+
+  tasks:
+    - name: Destroy lab (cleanup)
+      ansible.builtin.shell: |
+        sudo containerlab destroy -t {{ topo_file }} --cleanup
+      args:
+        chdir: "{{ clab_dir }}"
+
+    - name: Deploy lab
+      ansible.builtin.shell: |
+        sudo containerlab deploy -t {{ topo_file }}
+      args:
+        chdir: "{{ clab_dir }}"
+
+    - name: Run QoS verification
+      ansible.builtin.shell: |
+        bash scripts/tests/qos_verify.sh
+      args:
+        chdir: "{{ clab_dir }}"

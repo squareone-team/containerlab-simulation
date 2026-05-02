@@ -8,6 +8,50 @@ for IFACE in eth1 eth2; do
 done
 sysctl -w net.ipv4.fib_multipath_hash_policy=1
 
+modprobe br_netfilter 2>/dev/null || true
+sysctl -w net.bridge.bridge-nf-call-iptables=1
+sysctl -w net.bridge.bridge-nf-call-ip6tables=1
+
+iptables -t mangle -N ESI_QOS 2>/dev/null || true
+iptables -t mangle -F ESI_QOS
+iptables -t mangle -D PREROUTING -j ESI_QOS 2>/dev/null || true
+iptables -t mangle -A PREROUTING -j ESI_QOS
+
+for PORT in 873 21 2049 445; do
+  iptables -t mangle -A ESI_QOS -p tcp -s 192.168.80.0/24 --dport "$PORT" -j DSCP --set-dscp-class CS1
+  iptables -t mangle -A ESI_QOS -p tcp -d 192.168.80.0/24 --sport "$PORT" -j DSCP --set-dscp-class CS1
+  iptables -t mangle -A ESI_QOS -p udp -s 192.168.80.0/24 --dport "$PORT" -j DSCP --set-dscp-class CS1
+  iptables -t mangle -A ESI_QOS -p udp -d 192.168.80.0/24 --sport "$PORT" -j DSCP --set-dscp-class CS1
+done
+
+for SUBNET in 192.168.70.0/24 192.168.80.0/24; do
+  iptables -t mangle -A ESI_QOS -m dscp --dscp 0x00 -s "$SUBNET" -j DSCP --set-dscp-class AF31
+  iptables -t mangle -A ESI_QOS -m dscp --dscp 0x00 -d "$SUBNET" -j DSCP --set-dscp-class AF31
+done
+
+iptables -t mangle -A ESI_QOS -m dscp --dscp 0x00 -s 192.168.90.0/24 -j DSCP --set-dscp-class AF41
+iptables -t mangle -A ESI_QOS -m dscp --dscp 0x00 -d 192.168.90.0/24 -j DSCP --set-dscp-class AF41
+
+for SUBNET in 192.168.30.0/24 192.168.40.0/24 192.168.50.0/24 192.168.10.0/24; do
+  iptables -t mangle -A ESI_QOS -m dscp --dscp 0x00 -s "$SUBNET" -j DSCP --set-dscp-class AF21
+  iptables -t mangle -A ESI_QOS -m dscp --dscp 0x00 -d "$SUBNET" -j DSCP --set-dscp-class AF21
+done
+
+iptables -t mangle -A ESI_QOS -m dscp --dscp 0x00 -s 192.168.20.0/24 -j DSCP --set-dscp-class AF11
+iptables -t mangle -A ESI_QOS -m dscp --dscp 0x00 -d 192.168.20.0/24 -j DSCP --set-dscp-class AF11
+
+iptables -t mangle -N ESI_QOS_OUT 2>/dev/null || true
+iptables -t mangle -F ESI_QOS_OUT
+iptables -t mangle -D OUTPUT -j ESI_QOS_OUT 2>/dev/null || true
+iptables -t mangle -A OUTPUT -j ESI_QOS_OUT
+
+iptables -t mangle -A ESI_QOS_OUT -p tcp --sport 179 -j DSCP --set-dscp-class CS6
+iptables -t mangle -A ESI_QOS_OUT -p tcp --dport 179 -j DSCP --set-dscp-class CS6
+for BFD_PORT in 3784 3785 4784; do
+  iptables -t mangle -A ESI_QOS_OUT -p udp --sport "$BFD_PORT" -j DSCP --set-dscp-class CS6
+  iptables -t mangle -A ESI_QOS_OUT -p udp --dport "$BFD_PORT" -j DSCP --set-dscp-class CS6
+done
+
 
 # RING 3: Allow BGP and BFD from known peer subnets, SSH from management subnet, and VTEP control traffic from all leafs. Drop all other attempts to connect to these services on the leaf itself.
 iptables -A INPUT -p tcp --dport 179 -s 10.0.0.0/16 -j ACCEPT
@@ -47,6 +91,38 @@ if ip link show eth3 >/dev/null 2>&1; then
   ip addr add 203.0.113.1/30 dev eth3 2>/dev/null || true
   ip link set eth3 up
 fi
+
+apply_border_qos() {
+  local IFACE=$1
+  local RATE=$2
+  tc qdisc del dev "$IFACE" root 2>/dev/null || true
+  tc qdisc del dev "$IFACE" ingress 2>/dev/null || true
+  tc qdisc add dev "$IFACE" root handle 1: tbf rate "${RATE}mbit" burst 64kbit latency 50ms
+  tc qdisc add dev "$IFACE" ingress
+  tc filter add dev "$IFACE" parent ffff: protocol ip u32 match u32 0 0 \
+    action skbedit dscp 0 \
+    action police rate "${RATE}mbit" burst 64kbit drop flowid :1
+}
+
+apply_border_qos_wait() {
+  local IFACE=$1
+  local RATE=$2
+  local RETRIES=30
+  while [ $RETRIES -gt 0 ]; do
+    if ip link show "$IFACE" >/dev/null 2>&1; then
+      apply_border_qos "$IFACE" "$RATE"
+      if tc qdisc show dev "$IFACE" | grep -q "tbf"; then
+        return 0
+      fi
+    fi
+    sleep 1
+    RETRIES=$((RETRIES - 1))
+  done
+  return 1
+}
+
+apply_border_qos_wait eth3 950 || true
+apply_border_qos_wait eth4 180 || true
 
 ip link set eth8 master VRF-WIFI-CTRL
 ip addr add 10.200.0.1/30 dev eth8
