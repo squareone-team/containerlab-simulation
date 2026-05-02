@@ -27,6 +27,30 @@ def fmt_oid(value):
 
 def bgp_summary():
     result = subprocess.run(
+        ["vtysh", "-c", "show bgp vrf all summary json"],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.DEVNULL,
+        text=True,
+        check=False,
+    )
+    if result.returncode != 0:
+        return {}
+    try:
+        data = json.loads(result.stdout)
+    except json.JSONDecodeError:
+        return {}
+
+    peers = {}
+    for vrf_data in data.values():
+        vrf_peers = vrf_data.get("ipv4Unicast", {}).get("peers", {})
+        for peer, entry in vrf_peers.items():
+            peers[peer] = entry
+
+    if peers:
+        return peers
+
+    # Fallback for older FRR builds that do not support VRF-all JSON.
+    result = subprocess.run(
         ["vtysh", "-c", "show bgp summary json"],
         stdout=subprocess.PIPE,
         stderr=subprocess.DEVNULL,

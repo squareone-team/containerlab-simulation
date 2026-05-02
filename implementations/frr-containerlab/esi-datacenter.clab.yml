@@ -430,7 +430,10 @@ topology:
       startup-delay: 60
       binds:
         - configs/zabbix-server/startup.sh:/startup.sh
+        - configs/zabbix-server/provision_topology.py:/opt/zabbix/provision_topology.py:ro
       cmd: sh /startup.sh
+      ports:
+        - 4000:8080
       cap-add:
         - NET_ADMIN
         - NET_RAW

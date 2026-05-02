@@ -6,6 +6,7 @@ Use this page for SNMP, Zabbix, Prometheus, Grafana, and the FRR exporter.
 
 | Component | How to reach it | What it does |
 | --- | --- | --- |
+| Zabbix | `http://localhost:4000` | official web UI, login `Admin / zabbix`, provisioned `ESI Fabric NOC` dashboard |
 | `zabbix-server` | `192.168.50.50` | polls switch loopbacks with SNMP and runs local MariaDB |
 | Prometheus | `http://localhost:9090` | scrapes exporter and Grafana metrics |
 | Grafana | `http://localhost:3000` | dashboards, login `admin / admin` |
@@ -22,6 +23,9 @@ Use this page for SNMP, Zabbix, Prometheus, Grafana, and the FRR exporter.
 | `docker exec clab-esi-datacenter-zabbix-server snmpwalk -v2c -c esi-read 10.1.0.1 1.3.6.1.2.1.15.3 | head` | checks BGP MIB via FRR AgentX on a spine | lines from `bgpPeerTable` |
 | `docker exec clab-esi-datacenter-zabbix-server mysql -u zabbix -pzabbix-lab-pass -h 127.0.0.1 -e 'SELECT 1;' zabbix` | confirms the local DB is healthy | query succeeds |
 | `docker exec clab-esi-datacenter-zabbix-server pgrep zabbix_server` | confirms the server process is alive | PID printed |
+| `curl -s http://localhost:4000/index.php` | confirms the Zabbix frontend is published to the host | Zabbix login HTML returned |
+
+After deploy, open `http://localhost:4000`, log in with `Admin / zabbix`, and open the `ESI Fabric NOC` dashboard. It is provisioned through the Zabbix API and includes the fabric host group, SNMP hosts for spine/leaf loopbacks, BGP peer-state checks, high-severity triggers, and an `ESI Datacenter Fabric` map.
 
 ## Prometheus, Grafana, And Exporter
 
@@ -55,5 +59,5 @@ bash implementations/frr-containerlab/scripts/tests/snmp_verify.sh
 bash implementations/frr-containerlab/scripts/tests/theme-t1-border-routing-verify.sh
 ```
 
-- `snmp_verify.sh` is the main observability validation script.
+- `snmp_verify.sh` is the main observability validation script. It checks Zabbix server, MariaDB, PHP-FPM/nginx, host port `4000`, Zabbix API provisioning, FRR AgentX/pass-persist wiring, and end-to-end SNMP/BGP MIB polling from `zabbix-server`.
 - The T1 script also checks that Prometheus, Grafana, and the exporter are wired together.
