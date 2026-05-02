@@ -56,6 +56,58 @@ log "=== PHASE 3: MariaDB ==="
 mkdir -p /var/lib/mysql /run/mysqld /var/log/mysql
 chown -R mysql:mysql /var/lib/mysql /run/mysqld /var/log/mysql 2>/dev/null || true
 
+find_schema_dir() {
+    for d in \
+        /usr/share/zabbix/database/mysql \
+        /usr/share/zabbix-server-mysql \
+        /usr/share/doc/zabbix-server-mysql \
+        /usr/share/zabbix/sql/mysql \
+        /usr/share/zabbix-server; do
+        if [ -f "$d/schema.sql" ] || [ -f "$d/schema.sql.gz" ]; then
+            echo "$d"
+            return 0
+        fi
+    done
+
+    find /usr/share -name "schema.sql*" 2>/dev/null \
+        | grep '/mysql/' \
+        | head -1 \
+        | xargs dirname 2>/dev/null
+}
+
+zabbix_table_count() {
+    mysql -u zabbix -pzabbix-lab-pass \
+          --socket=/run/mysqld/mysqld.sock \
+          -N -e "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='zabbix';" \
+          zabbix 2>/dev/null || echo 0
+}
+
+import_zabbix_schema() {
+    log "importing Zabbix schema..."
+    SCHEMA_DIR="$(find_schema_dir)"
+
+    if [ -n "$SCHEMA_DIR" ]; then
+        log "schema dir: $SCHEMA_DIR"
+        for f in schema images data; do
+            if [ -f "$SCHEMA_DIR/${f}.sql.gz" ]; then
+                zcat "$SCHEMA_DIR/${f}.sql.gz" \
+                    | mysql -u zabbix -pzabbix-lab-pass \
+                            --socket=/run/mysqld/mysqld.sock zabbix \
+                            2>/dev/null || true
+                log "loaded ${f}.sql.gz"
+            elif [ -f "$SCHEMA_DIR/${f}.sql" ]; then
+                mysql -u zabbix -pzabbix-lab-pass \
+                      --socket=/run/mysqld/mysqld.sock zabbix \
+                      < "$SCHEMA_DIR/${f}.sql" 2>/dev/null || true
+                log "loaded ${f}.sql"
+            fi
+        done
+        log "schema import done"
+    else
+        log "WARNING: cannot find Zabbix SQL schema files — DB will be empty"
+    fi
+}
+
 if [ ! -d /var/lib/mysql/zabbix ]; then
     log "initializing MariaDB data directory..."
     if [ -d /var/lib/mysql/mysql ] && [ ! -d /var/lib/mysql/zabbix ]; then
@@ -100,46 +152,7 @@ GRANT ALL PRIVILEGES ON zabbix.* TO 'zabbix'@'localhost';
 FLUSH PRIVILEGES;
 SQL
 
-    log "importing Zabbix schema..."
-    # Alpine's zabbix-server-mysql puts SQL files in one of these locations:
-    SCHEMA_DIR=""
-    for d in \
-        /usr/share/zabbix-server-mysql \
-        /usr/share/doc/zabbix-server-mysql \
-        /usr/share/zabbix/sql/mysql \
-        /usr/share/zabbix-server; do
-        if [ -f "$d/schema.sql" ] || [ -f "$d/schema.sql.gz" ]; then
-            SCHEMA_DIR="$d"
-            break
-        fi
-    done
-
-    if [ -z "$SCHEMA_DIR" ]; then
-        # Last resort: search everywhere
-        SCHEMA_DIR=$(find /usr/share -name "schema.sql*" 2>/dev/null \
-            | head -1 | xargs dirname 2>/dev/null)
-    fi
-
-    if [ -n "$SCHEMA_DIR" ]; then
-        log "schema dir: $SCHEMA_DIR"
-        for f in schema images data; do
-            if [ -f "$SCHEMA_DIR/${f}.sql.gz" ]; then
-                zcat "$SCHEMA_DIR/${f}.sql.gz" \
-                    | mysql -u zabbix -pzabbix-lab-pass \
-                            --socket=/run/mysqld/mysqld.sock zabbix \
-                            2>/dev/null || true
-                log "loaded ${f}.sql.gz"
-            elif [ -f "$SCHEMA_DIR/${f}.sql" ]; then
-                mysql -u zabbix -pzabbix-lab-pass \
-                      --socket=/run/mysqld/mysqld.sock zabbix \
-                      < "$SCHEMA_DIR/${f}.sql" 2>/dev/null || true
-                log "loaded ${f}.sql"
-            fi
-        done
-        log "schema import done"
-    else
-        log "WARNING: cannot find Zabbix SQL schema files — DB will be empty"
-    fi
+    import_zabbix_schema
 
     # Shut down bootstrap instance cleanly
     mysqladmin -u root --socket=/run/mysqld/mysqld.sock shutdown 2>/dev/null || true
@@ -151,6 +164,7 @@ log "starting MariaDB (production)..."
 mysqld_safe \
     --user=mysql \
     --socket=/run/mysqld/mysqld.sock \
+    --skip-networking=0 \
     --bind-address=127.0.0.1 \
     --port=3306 \
     > /var/log/mysql/mysqld.log 2>&1 &
@@ -172,6 +186,12 @@ while [ $RETRIES -gt 0 ]; do
     RETRIES=$((RETRIES - 1))
 done
 [ $RETRIES -eq 0 ] && log "WARNING: MariaDB TCP not responding" || log "MariaDB ready"
+
+TABLE_COUNT="$(zabbix_table_count)"
+if [ "$TABLE_COUNT" = "0" ]; then
+    log "Zabbix database has no tables; importing schema again"
+    import_zabbix_schema
+fi
 
 # ─────────────────────────────────────────────────────────────────────────────
 # PHASE 4 — ZABBIX SERVER CONFIG
@@ -214,8 +234,8 @@ mkdir -p /etc/snmp
 cat > /etc/snmp/snmp.conf << 'EOF'
 defCommunity esi-read
 defVersion   2c
-defTimeout   3
-defRetries   1
+timeout      3
+retries      1
 EOF
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -273,7 +293,7 @@ printf '%s\n' "$SWITCH_LOOPBACKS" | while IFS= read -r line; do
 done
 
 log "=== READY ==="
-log "  zabbix-server : 192.168.50.50 | VRF-STAFF | eth1 -> leaf-03:eth10"
+log "  zabbix-server : 192.168.50.50 | VRF-STAFF | eth1 -> leaf-03:eth11"
 log "  MariaDB       : 127.0.0.1:3306 / db=zabbix"
 log "  SNMP community: esi-read (v2c)"
 log "  Targets       : spine-01/02, leaf-01..10 via loopbacks 10.1.0.x/32"

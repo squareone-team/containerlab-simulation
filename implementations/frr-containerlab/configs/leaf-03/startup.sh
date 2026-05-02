@@ -299,6 +299,13 @@ ip rule add to 192.168.60.0/24 lookup 10 prio 101 2>/dev/null || true
 ip route add 192.168.50.0/24 nhid 0 2>/dev/null || \
 ip route add 192.168.50.0/24 dev vlan50 2>/dev/null || true
 
+# Zabbix is single-homed on leaf-03:eth11. Advertise a host route so
+# underlay return traffic from monitored loopbacks does not ECMP to leaf-04.
+ip route add 192.168.50.50/32 dev vlan50 2>/dev/null || true
+# Keep the same host route local inside VRF-STAFF; otherwise "import vrf
+# default" can re-import the advertised /32 and steal direct replies.
+ip route add 192.168.50.50/32 dev vlan50 table 20 2>/dev/null || true
+
 ip route add 192.168.60.0/24 nhid 0 2>/dev/null || \
 ip route add 192.168.60.0/24 dev vlan60 2>/dev/null || true
 
@@ -365,6 +372,7 @@ sysServices 72
 # AgentX — FRR subagent connects here to expose BGP/routing MIBs
 master agentx
 agentXSocket /var/agentx/master
+pass_persist .1.3.6.1.2.1.15.3 /usr/local/bin/frr-bgp-peer-mib.py
  
 # MIB views — expose standard MIBs that Zabbix polls
 view systemview included .1.3.6.1.2.1.1

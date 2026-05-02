@@ -9,6 +9,7 @@ topology:
         - configs/spine-01/daemons:/etc/frr/daemons
         - configs/spine-01/frr.conf:/etc/frr/frr.conf
         - configs/spine-01/startup.sh:/startup.sh
+        - images/frr-node/frr-bgp-peer-mib.py:/usr/local/bin/frr-bgp-peer-mib.py:ro
       exec:
         - sh /startup.sh
 
@@ -19,6 +20,7 @@ topology:
         - configs/spine-02/daemons:/etc/frr/daemons
         - configs/spine-02/frr.conf:/etc/frr/frr.conf
         - configs/spine-02/startup.sh:/startup.sh
+        - images/frr-node/frr-bgp-peer-mib.py:/usr/local/bin/frr-bgp-peer-mib.py:ro
       exec:
         - sh /startup.sh
 
@@ -29,6 +31,7 @@ topology:
         - configs/leaf-01/daemons:/etc/frr/daemons
         - configs/leaf-01/frr.conf:/etc/frr/frr.conf
         - configs/leaf-01/startup.sh:/startup.sh
+        - images/frr-node/frr-bgp-peer-mib.py:/usr/local/bin/frr-bgp-peer-mib.py:ro
       exec:
         - sh /startup.sh
 
@@ -39,6 +42,7 @@ topology:
         - configs/leaf-02/daemons:/etc/frr/daemons
         - configs/leaf-02/frr.conf:/etc/frr/frr.conf
         - configs/leaf-02/startup.sh:/startup.sh
+        - images/frr-node/frr-bgp-peer-mib.py:/usr/local/bin/frr-bgp-peer-mib.py:ro
       exec:
         - sh /startup.sh
 
@@ -49,6 +53,7 @@ topology:
         - configs/leaf-03/daemons:/etc/frr/daemons
         - configs/leaf-03/frr.conf:/etc/frr/frr.conf
         - configs/leaf-03/startup.sh:/startup.sh
+        - images/frr-node/frr-bgp-peer-mib.py:/usr/local/bin/frr-bgp-peer-mib.py:ro
         - configs/common/esi-dhcp-relay.py:/usr/local/bin/esi-dhcp-relay.py:ro
       exec:
         - sh /startup.sh
@@ -60,6 +65,7 @@ topology:
         - configs/leaf-04/daemons:/etc/frr/daemons
         - configs/leaf-04/frr.conf:/etc/frr/frr.conf
         - configs/leaf-04/startup.sh:/startup.sh
+        - images/frr-node/frr-bgp-peer-mib.py:/usr/local/bin/frr-bgp-peer-mib.py:ro
         - configs/common/esi-dhcp-relay.py:/usr/local/bin/esi-dhcp-relay.py:ro
       exec:
         - sh /startup.sh
@@ -71,6 +77,7 @@ topology:
         - configs/leaf-05/daemons:/etc/frr/daemons
         - configs/leaf-05/frr.conf:/etc/frr/frr.conf
         - configs/leaf-05/startup.sh:/startup.sh
+        - images/frr-node/frr-bgp-peer-mib.py:/usr/local/bin/frr-bgp-peer-mib.py:ro
         - configs/common/esi-dhcp-relay.py:/usr/local/bin/esi-dhcp-relay.py:ro
       exec:
         - sh /startup.sh
@@ -82,6 +89,7 @@ topology:
         - configs/leaf-06/daemons:/etc/frr/daemons
         - configs/leaf-06/frr.conf:/etc/frr/frr.conf
         - configs/leaf-06/startup.sh:/startup.sh
+        - images/frr-node/frr-bgp-peer-mib.py:/usr/local/bin/frr-bgp-peer-mib.py:ro
         - configs/common/esi-dhcp-relay.py:/usr/local/bin/esi-dhcp-relay.py:ro
       exec:
         - sh /startup.sh
@@ -93,6 +101,7 @@ topology:
         - configs/leaf-07/daemons:/etc/frr/daemons
         - configs/leaf-07/frr.conf:/etc/frr/frr.conf
         - configs/leaf-07/startup.sh:/startup.sh
+        - images/frr-node/frr-bgp-peer-mib.py:/usr/local/bin/frr-bgp-peer-mib.py:ro
         - configs/common/esi-dhcp-relay.py:/usr/local/bin/esi-dhcp-relay.py:ro
       exec:
         - sh /startup.sh
@@ -104,6 +113,7 @@ topology:
         - configs/leaf-08/daemons:/etc/frr/daemons
         - configs/leaf-08/frr.conf:/etc/frr/frr.conf
         - configs/leaf-08/startup.sh:/startup.sh
+        - images/frr-node/frr-bgp-peer-mib.py:/usr/local/bin/frr-bgp-peer-mib.py:ro
         - configs/common/esi-dhcp-relay.py:/usr/local/bin/esi-dhcp-relay.py:ro
       exec:
         - sh /startup.sh
@@ -115,6 +125,7 @@ topology:
         - configs/leaf-09/daemons:/etc/frr/daemons
         - configs/leaf-09/frr.conf:/etc/frr/frr.conf
         - configs/leaf-09/startup.sh:/startup.sh
+        - images/frr-node/frr-bgp-peer-mib.py:/usr/local/bin/frr-bgp-peer-mib.py:ro
         - configs/common/esi-dhcp-relay.py:/usr/local/bin/esi-dhcp-relay.py:ro
       exec:
         - sh /startup.sh
@@ -126,6 +137,7 @@ topology:
         - configs/leaf-10/daemons:/etc/frr/daemons
         - configs/leaf-10/frr.conf:/etc/frr/frr.conf
         - configs/leaf-10/startup.sh:/startup.sh
+        - images/frr-node/frr-bgp-peer-mib.py:/usr/local/bin/frr-bgp-peer-mib.py:ro
         - configs/common/esi-dhcp-relay.py:/usr/local/bin/esi-dhcp-relay.py:ro
       exec:
         - sh /startup.sh

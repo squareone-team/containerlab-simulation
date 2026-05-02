@@ -275,6 +275,7 @@ sysServices 72
 # AgentX — FRR subagent connects here to expose BGP/routing MIBs
 master agentx
 agentXSocket /var/agentx/master
+pass_persist .1.3.6.1.2.1.15.3 /usr/local/bin/frr-bgp-peer-mib.py
  
 # MIB views — expose standard MIBs that Zabbix polls
 view systemview included .1.3.6.1.2.1.1

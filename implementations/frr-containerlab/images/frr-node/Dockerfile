@@ -1,5 +1,7 @@
 FROM frrouting/frr:latest
 
+COPY frr-bgp-peer-mib.py /usr/local/bin/frr-bgp-peer-mib.py
+
 RUN set -eux; \
     apk add --no-cache \
       busybox-extras \
@@ -19,4 +21,5 @@ RUN set -eux; \
       /var/log \
       /var/log/chrony \
       /var/run/chrony \
-      /var/run/net-snmp
+      /var/run/net-snmp; \
+    chmod +x /usr/local/bin/frr-bgp-peer-mib.py
