@@ -44,7 +44,7 @@ cleanup() {
 	if [ "$SPAWNED_SERVER" = true ] && [ -n "$JH_ADMIN_TOKEN" ]; then
 		curl -4 -k -sS -o /dev/null -X DELETE \
 			-H "Authorization: token $JH_ADMIN_TOKEN" \
-			"https://localhost:18880/hub/api/users/student-01/server" || true
+			"https://localhost:9000/hub/api/users/student-01/server" || true
 	fi
 	rm -f "$COOKIE_JAR" "$LOGIN_PAGE" "$NOTEBOOK_PAYLOAD" "$NOTEBOOK_RESPONSE"
 }
@@ -63,7 +63,7 @@ wait_for_jupyter_server_ready() {
 
 	while [ "$retries" -gt 0 ]; do
 		body="$(curl -4 -k -sS -H "Authorization: token $JH_ADMIN_TOKEN" \
-			"https://localhost:18880/hub/api/users/student-01" || true)"
+			"https://localhost:9000/hub/api/users/student-01" || true)"
 		if printf '%s' "$body" | grep -Eq '"ready"[[:space:]]*:[[:space:]]*true'; then
 			return 0
 		fi
@@ -79,7 +79,7 @@ stop_student_server_if_running() {
 
 	code="$(curl -4 -k -sS -o /dev/null -w "%{http_code}" -X DELETE \
 		-H "Authorization: token $JH_ADMIN_TOKEN" \
-		"https://localhost:18880/hub/api/users/student-01/server" || true)"
+		"https://localhost:9000/hub/api/users/student-01/server" || true)"
 
 	case "$code" in
 		202|204|404)
@@ -91,7 +91,7 @@ stop_student_server_if_running() {
 
 	for _ in $(seq 1 30); do
 		if curl -4 -k -sS -H "Authorization: token $JH_ADMIN_TOKEN" \
-			"https://localhost:18880/hub/api/users/student-01" | grep -Eq '"server"[[:space:]]*:[[:space:]]*null'; then
+			"https://localhost:9000/hub/api/users/student-01" | grep -Eq '"server"[[:space:]]*:[[:space:]]*null'; then
 			return 0
 		fi
 		sleep 1
@@ -234,11 +234,11 @@ else
 	log_fail "JupyterHub frontend proxy failed to serve login page"
 fi
 
-if curl -4 -k -sS -o "$LOGIN_PAGE" -w "%{http_code}" -c "$COOKIE_JAR" https://localhost:18880/hub/login | grep -q "200" \
+if curl -4 -k -sS -o "$LOGIN_PAGE" -w "%{http_code}" -c "$COOKIE_JAR" https://localhost:9000/hub/login | grep -q "200" \
 	&& grep -qi "jupyterhub" "$LOGIN_PAGE"; then
-	log_pass "Host access login page works at https://localhost:18880/"
+	log_pass "Host access login page works at https://localhost:9000/"
 else
-	log_fail "Host access login page failed at https://localhost:18880/"
+	log_fail "Host access login page failed at https://localhost:9000/"
 fi
 
 if docker exec "$ADMIN_POD" sh -c "grep -q \"batchspawner.SlurmSpawner\" /etc/jupyterhub/jupyterhub_config.py && ! grep -q \"LocalProcessSpawner\" /etc/jupyterhub/jupyterhub_config.py"; then
@@ -250,7 +250,7 @@ fi
 JH_ADMIN_TOKEN="${NAAS_VERIFIER_TOKEN:-naas-verifier-token}"
 if curl -4 -k -sS -o /dev/null -w "%{http_code}" \
 	-H "Authorization: token $JH_ADMIN_TOKEN" \
-	"https://localhost:18880/hub/api/users/student-01" | grep -q "200"; then
+	"https://localhost:9000/hub/api/users/student-01" | grep -q "200"; then
 	log_pass "Verifier service token can read student-01 Hub state"
 else
 	log_fail "Verifier service token cannot read student-01 Hub state"
@@ -273,7 +273,7 @@ SPAWN_CODE="$(curl -4 -k -sS -o "$NOTEBOOK_RESPONSE" -w "%{http_code}" -X POST \
 	-H "Authorization: token $JH_ADMIN_TOKEN" \
 	-H "Content-Type: application/json" \
 	-d '{"profile":"cpu"}' \
-	"https://localhost:18880/hub/api/users/student-01/server")"
+	"https://localhost:9000/hub/api/users/student-01/server")"
 
 case "$SPAWN_CODE" in
 	201|202)
@@ -322,7 +322,7 @@ NOTEBOOK_CODE="$(curl -4 -k -sS -o "$NOTEBOOK_RESPONSE" -w "%{http_code}" -X PUT
 	-H "Authorization: token $JH_USER_TOKEN" \
 	-H "Content-Type: application/json" \
 	--data-binary "@$NOTEBOOK_PAYLOAD" \
-	"https://localhost:18880/user/student-01/api/contents/$NOTEBOOK_NAME")"
+	"https://localhost:9000/user/student-01/api/contents/$NOTEBOOK_NAME")"
 
 case "$NOTEBOOK_CODE" in
 	200|201)
@@ -341,7 +341,7 @@ fi
 
 curl -4 -k -sS -o /dev/null -X DELETE \
 	-H "Authorization: token $JH_USER_TOKEN" \
-	"https://localhost:18880/user/student-01/api/contents/$NOTEBOOK_NAME" || true
+	"https://localhost:9000/user/student-01/api/contents/$NOTEBOOK_NAME" || true
 
 # ==============================================================================
 # Summary
@@ -350,4 +350,4 @@ curl -4 -k -sS -o /dev/null -X DELETE \
 log_info "=== ADVANCED VERIFICATION COMPLETE ==="
 log_pass "All advanced functional tests passed!"
 log_info "To access JupyterHub from your host, navigate to:"
-log_info "  https://localhost:18880/"
+log_info "  https://localhost:9000/"

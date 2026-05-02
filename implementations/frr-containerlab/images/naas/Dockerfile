@@ -8,8 +8,10 @@ RUN set -eux; \
       ca-certificates \
       chrony \
       curl \
+      dnsutils \
       iproute2 \
       iptables \
+      iputils-ping \
       libpam0g \
       libpam-modules \
       mariadb-client \
@@ -37,8 +39,12 @@ RUN set -eux; \
       slurmd \
       slurm-wlm-basic-plugins \
       sudo \
+      udhcpc \
       ifenslave; \
-    pip3 install --no-cache-dir --break-system-packages \
+    rm -rf /var/lib/apt/lists/*
+
+RUN set -eux; \
+    pip3 install --no-cache-dir --break-system-packages --timeout 600 --retries 10 --progress-bar off \
       batchspawner \
       cryptography \
       ipykernel \
@@ -48,6 +54,8 @@ RUN set -eux; \
       notebook \
       pymysql \
       sqlalchemy; \
+    npm config set fetch-retries 5; \
+    npm config set fetch-retry-mintimeout 20000; \
+    npm config set fetch-retry-maxtimeout 120000; \
     npm install -g configurable-http-proxy; \
-    mkdir -p /run/sshd /var/log/chrony /var/run/chrony; \
-    rm -rf /var/lib/apt/lists/*
+    mkdir -p /run/sshd /var/log/chrony /var/run/chrony

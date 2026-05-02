@@ -332,7 +332,7 @@ topology:
         - sh /startup.sh
         - sh /ntp-client.sh
       ports:
-        - 18880:8080
+        - 9000:8080
 
     server-storage-01:
       kind: linux

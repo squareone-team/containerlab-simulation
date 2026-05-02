@@ -190,10 +190,10 @@ else
 	log_fail "JupyterHub frontend cannot reach Admin pod"
 fi
 
-if curl -4 -k -s -o /dev/null -w "%{http_code}" https://localhost:18880/hub/login | grep -q "200"; then
-	log_pass "Host login page works at https://localhost:18880/"
+if curl -4 -k -s -o /dev/null -w "%{http_code}" https://localhost:9000/hub/login | grep -q "200"; then
+	log_pass "Host login page works at https://localhost:9000/"
 else
-	log_fail "Host login page is not reachable at https://localhost:18880/"
+	log_fail "Host login page is not reachable at https://localhost:9000/"
 fi
 
 # ==============================================================================
@@ -216,7 +216,7 @@ fi
 log_info "=== VERIFICATION COMPLETE ==="
 log_pass "All tests passed!"
 log_info "Next steps:"
-log_info "  1. Access JupyterHub: https://localhost:18880 (with self-signed cert)"
+log_info "  1. Access JupyterHub: https://localhost:9000 (with self-signed cert)"
 log_info "  2. Login with: student-01 / student-01"
 log_info "  3. Create a notebook and submit jobs to SLURM"
 log_info "  4. Notebooks are persisted on Storage pod"

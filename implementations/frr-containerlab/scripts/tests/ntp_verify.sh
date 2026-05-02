@@ -119,9 +119,13 @@ done
 
 # 6b. server endpoint still tracks lab NTP source after DHCP cycle
 if $C-server-student-01 sh -lc 'command -v chronyc >/dev/null 2>&1'; then
-  $C-server-student-01 chronyc tracking 2>/dev/null | grep -qE "Reference ID\s*:.*192\\.168\\.50\\.20" \
-    && ok "server-student-01: chronyc tracking references 192.168.50.20" \
-    || fail "server-student-01: chronyc tracking does not reference 192.168.50.20"
+  STUDENT_SOURCES="$($C-server-student-01 chronyc -n sources 2>/dev/null)"
+  if echo "$STUDENT_SOURCES" | grep -qE '^\^\* +192\.168\.50\.20[[:space:]]'; then
+    ok "server-student-01: chronyc selected 192.168.50.20 as NTP source"
+  else
+    fail "server-student-01: chronyc did not select 192.168.50.20 as NTP source"
+    echo "$STUDENT_SOURCES" | sed 's/^/    /'
+  fi
 else
   info "server-student-01: chronyc not found, skipping NTP source check"
 fi
@@ -138,3 +142,4 @@ done
 echo ""
 echo "Results: $PASS passed / $FAIL failed"
 [ $FAIL -eq 0 ] && echo "NTP + No-PIM checks PASSED" || echo "Issues found — see [FAIL] lines above"
+exit "$FAIL"

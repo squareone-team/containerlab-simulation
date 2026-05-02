@@ -48,7 +48,7 @@ SLURM + NFS persistence have been completed and committed to the repository.
 
 ```
 ┌──────────────────────────────────────────────────────────┐
-│ User Browser → https://localhost:18880/                 │
+│ User Browser → https://localhost:9000/                 │
 └──────────────────────────────────────────────────────────┘
                             ↓
 ┌──────────────────────────────────────────────────────────┐
@@ -107,7 +107,7 @@ SLURM + NFS persistence have been completed and committed to the repository.
 
 - **TLS**: Self-signed certificates on JupyterHub frontend
 - **Firewall**: nftables rules on all pods (restrictive inbound)
-- **Port Mapping**: Host `18880` maps to frontend `8080`
+- **Port Mapping**: Host `9000` maps to frontend `8080`
 - **Internal Ports**:
   - 6817 (SLURM controller), 6819 (SLURM dbd)
   - 3306 (MariaDB), 11002 (Munge), 8081 (Hub API callbacks)
@@ -190,7 +190,7 @@ bash scripts/tests/verify-naas-advanced.sh
 
 ### 4. Access JupyterHub
 
-- **From host**: https://localhost:18880/ (port 18880 → container 8080)
+- **From host**: https://localhost:9000/ (port 9000 → container 8080)
 - **From lab nodes**: https://hpc-jupyter.esi.internal:8080/
 - **Login**: Use pre-created users such as `student-01 / student-01`,
   `researcher-01 / researcher-01`, or `admin / admin`
@@ -216,7 +216,7 @@ Run the verification script and check:
 - ✅ Storage pod NFS exports configured
 - ✅ Admin and HPC workers have NFS mounts active (/home, /shared)
 - ✅ Normal users can read `/etc/slurm/slurm.conf` and run SLURM clients
-- ✅ JupyterHub frontend accessible on host port 18880
+- ✅ JupyterHub frontend accessible on host port 9000
 - ✅ Advanced verifier proves notebook spawn creates an active SLURM job
 - ✅ Notebook files land on storage-backed `/home/student-01`
 - ✅ DNS resolves hpc-jupyter.esi.internal

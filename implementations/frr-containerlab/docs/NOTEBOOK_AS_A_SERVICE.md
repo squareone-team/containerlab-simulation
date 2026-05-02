@@ -34,7 +34,7 @@ production-like system using:
 ├─────────────────────────────────────────────────────┤
 │  server-hpc-jupyter (192.168.70.30):                │
 │    - JupyterHub Frontend Proxy (8080)               │
-│    - Exposed on host: localhost:18880               │
+│    - Exposed on host: localhost:9000               │
 │                                                     │
 │  server-hpc-01 (192.168.70.10):                    │
 │  server-hpc-02 (192.168.70.20):                    │
@@ -61,7 +61,7 @@ production-like system using:
 ```
 User Browser
     ↓
-https://localhost:18880/ or https://hpc-jupyter.esi.internal:8080
+https://localhost:9000/ or https://hpc-jupyter.esi.internal:8080
     ↓
 server-hpc-jupyter (frontend proxy)
     ↓
@@ -224,7 +224,7 @@ Firewall rules are configured in nftables:
 | Database              | MariaDB             | Persistent session tracking                      |
 | Hub Port (internal)   | 8000                | On Admin pod                                     |
 | Hub API Port          | 8081                | Reachable by notebook jobs on workers            |
-| Proxy Port (frontend) | 8080                | On JupyterHub frontend (exposed as 18880 on host) |
+| Proxy Port (frontend) | 8080                | On JupyterHub frontend (exposed as 9000 on host) |
 | Cookie Age            | 7 days              | User session timeout                             |
 | Idle Timeout          | 1 hour              | Notebook server idle timeout                     |
 
@@ -326,8 +326,8 @@ curl -k https://hpc-jupyter.esi.internal:8080/
 ### From Host Machine
 
 ```bash
-# Via Docker port mapping (localhost:18880)
-https://localhost:18880/
+# Via Docker port mapping (localhost:9000)
+https://localhost:9000/
 
 # Or via container network (if configured)
 https://192.168.70.30:8080/

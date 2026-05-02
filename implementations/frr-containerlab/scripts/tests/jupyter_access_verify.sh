@@ -11,7 +11,7 @@ CLAB_PREFIX="clab-${LAB_NAME}"
 JUPYTER_NODE="${CLAB_PREFIX}-server-hpc-jupyter"
 ADMIN_NODE="${CLAB_PREFIX}-server-admin-01"
 STUDENT_NODE="${CLAB_PREFIX}-server-student-01"
-JUPYTER_URL="http://${JUPYTER_HOST}:8080/tree?token=${JUPYTER_TOKEN}"
+JUPYTER_URL="https://${JUPYTER_HOST}:8080/hub/login"
 
 PASS=0
 FAIL=0
@@ -33,6 +33,38 @@ require_container() {
   else
     ko "container $node is not running"
   fi
+}
+
+fetch_jupyter_login() {
+  local node="$1"
+  local output=""
+  local attempt=1
+
+  while [ "$attempt" -le 5 ]; do
+    if output="$(
+      docker exec "$node" sh -lc "
+        set -eu
+        if command -v curl >/dev/null 2>&1; then
+          curl -kfsS --max-time 8 '${JUPYTER_URL}'
+        elif command -v wget >/dev/null 2>&1; then
+          wget -qO- --timeout=8 --no-check-certificate '${JUPYTER_URL}'
+        else
+          echo 'missing curl/wget' >&2
+          exit 127
+        fi
+      " 2>&1
+    )"; then
+      if [[ "$output" == *"<html"* || "$output" == *"JupyterHub"* || "$output" == *"jupyterhub"* ]]; then
+        return 0
+      fi
+    fi
+
+    attempt=$((attempt + 1))
+    sleep 2
+  done
+
+  printf '%s\n' "$output" | sed -n '1,12p' >&2
+  return 1
 }
 
 echo "=== Jupyter Access and Execution Verification ==="
@@ -59,16 +91,16 @@ else
   ko "Student node cannot resolve ${JUPYTER_HOST} via default resolver"
 fi
 
-if docker exec "$ADMIN_NODE" sh -lc "wget -qO- --timeout=8 '${JUPYTER_URL}' | grep -qi '<html'"; then
-  ok "Admin node can load Jupyter over HTTP via DNS name"
+if fetch_jupyter_login "$ADMIN_NODE"; then
+  ok "Admin node can load JupyterHub over HTTPS via DNS name"
 else
-  ko "Admin node cannot load Jupyter over HTTP via DNS name"
+  ko "Admin node cannot load JupyterHub over HTTPS via DNS name"
 fi
 
-if docker exec "$STUDENT_NODE" sh -lc "wget -qO- --timeout=8 '${JUPYTER_URL}' | grep -qi '<html'"; then
-  ok "Student node can load Jupyter over HTTP via DNS name"
+if fetch_jupyter_login "$STUDENT_NODE"; then
+  ok "Student node can load JupyterHub over HTTPS via DNS name"
 else
-  ko "Student node cannot load Jupyter over HTTP via DNS name"
+  ko "Student node cannot load JupyterHub over HTTPS via DNS name"
 fi
 
 TMP_NOTEBOOK="$(mktemp /tmp/jupyter-proof.XXXXXX.ipynb)"

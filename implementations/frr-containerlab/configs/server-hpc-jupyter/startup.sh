@@ -4,7 +4,7 @@
 # ==============================================================================
 # JupyterHub Frontend Node
 # Role: TLS-terminating reverse proxy for JupyterHub users
-# - Accepts HTTPS on port 8080 (mapped to host port 18880)
+# - Accepts HTTPS on port 8080 (mapped to host port 9000)
 # - Forwards to JupyterHub controller on Admin pod (192.168.50.10:8000)
 # - Uses configurable-http-proxy (already in image) for TLS + WebSocket support
 #
@@ -65,7 +65,7 @@ table inet filter {
 		ip saddr 172.16.0.50 tcp dport 22 accept
 
 		# Allow JupyterHub frontend (port 8080) from any source
-		# (Docker host NAT uses 0.0.0.0 DNAT for port 18880->8080)
+		# (Docker host NAT uses 0.0.0.0 DNAT for port 9000->8080)
 		tcp dport 8080 accept
 
 	}
@@ -198,4 +198,4 @@ log "JupyterHub frontend startup complete"
 log "Services ready:"
 log "  - configurable-http-proxy (HTTPS) on port 8080"
 log "  - Forwarding to JupyterHub at http://192.168.50.10:8000"
-log "  - Host access: https://localhost:18880/"
+log "  - Host access: https://localhost:9000/"
