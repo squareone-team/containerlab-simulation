@@ -240,14 +240,23 @@ topology:
 
     server-admin-01:
       kind: linux
-      image: esi/alpine-host:3.20
+      image: esi/naas:bookworm
+      cmd: sleep infinity
       cap-add:
         - NET_ADMIN
         - SYS_MODULE
         - NET_RAW
+        - SYS_ADMIN
+        - SYS_PTRACE
       binds:
         - configs/server-admin-01/startup.sh:/startup.sh
         - configs/ntp-server/server-client-ntp.sh:/ntp-client.sh
+        - configs/admin/slurm.conf:/shared-configs/slurm.conf:ro
+        - configs/admin/slurmdbd.conf:/shared-configs/slurmdbd.conf:ro
+        - configs/admin/jupyterhub_config.py:/shared-configs/jupyterhub_config.py:ro
+        - configs/admin/mariadb-init.sql:/shared-configs/mariadb-init.sql:ro
+        - configs/admin/pam-users-init.sh:/shared-configs/pam-users-init.sh:ro
+        - configs/admin/munge.key:/shared-configs/munge.key:ro
       exec:
         - sh /startup.sh
         - sh /ntp-client.sh
@@ -268,59 +277,77 @@ topology:
 
     server-hpc-01:
       kind: linux
-      image: esi/alpine-host:3.20
+      image: esi/naas:bookworm
+      cmd: sleep infinity
       cap-add:
         - NET_ADMIN
         - SYS_MODULE
         - NET_RAW
+        - SYS_ADMIN
+        - SYS_PTRACE
       binds:
         - configs/server-hpc-01/startup.sh:/startup.sh
         - configs/ntp-server/server-client-ntp.sh:/ntp-client.sh
+        - configs/admin/slurm.conf:/shared-configs/slurm.conf:ro
+        - configs/admin/munge.key:/shared-configs/munge.key:ro
+        - configs/admin/pam-users-init.sh:/shared-configs/pam-users-init.sh:ro
       exec:
-        - sh /startup.sh # <--- Utilise "exec" pour que le serveur reste UP
+        - sh /startup.sh
         - sh /ntp-client.sh
 
     server-hpc-02:
       kind: linux
-      image: esi/alpine-host:3.20
+      image: esi/naas:bookworm
+      cmd: sleep infinity
       cap-add:
         - NET_ADMIN
         - SYS_MODULE
         - NET_RAW
+        - SYS_ADMIN
+        - SYS_PTRACE
       binds:
         - configs/server-hpc-02/startup.sh:/startup.sh
         - configs/ntp-server/server-client-ntp.sh:/ntp-client.sh
+        - configs/admin/slurm.conf:/shared-configs/slurm.conf:ro
+        - configs/admin/munge.key:/shared-configs/munge.key:ro
+        - configs/admin/pam-users-init.sh:/shared-configs/pam-users-init.sh:ro
       exec:
         - sh /startup.sh
         - sh /ntp-client.sh
 
     server-hpc-jupyter:
       kind: linux
-      image: esi/alpine-jupyter:3.20
+      image: esi/naas:bookworm
+      cmd: sleep infinity
       cap-add:
         - NET_ADMIN
         - SYS_MODULE
         - NET_RAW
+        - SYS_ADMIN
+        - SYS_PTRACE
       binds:
         - configs/server-hpc-jupyter/startup.sh:/startup.sh
         - configs/ntp-server/server-client-ntp.sh:/ntp-client.sh
-        - configs/server-hpc-jupyter/notebooks:/srv/notebooks
       exec:
         - sh /startup.sh
         - sh /ntp-client.sh
       ports:
-        - 8888:8080
+        - 18880:8080
 
     server-storage-01:
       kind: linux
-      image: esi/alpine-host:3.20
+      image: esi/naas:bookworm
+      cmd: sleep infinity
       cap-add:
         - NET_ADMIN
         - SYS_MODULE
         - NET_RAW
+        - SYS_ADMIN
+        - SYS_PTRACE
       binds:
         - configs/server-storage-01/startup.sh:/startup.sh
         - configs/ntp-server/server-client-ntp.sh:/ntp-client.sh
+        - configs/storage-01/exports:/etc/exports:ro
       exec:
         - sh /startup.sh
         - sh /ntp-client.sh

@@ -1,0 +1,31 @@
+# NFS Server Exports Configuration
+# ==================================
+# Deployed on server-storage-01 (192.168.80.10)
+# Provides persistent storage for JupyterHub user homes and shared projects
+
+# Export /home - user notebook homes
+/home                192.168.70.0/24(fsid=1,rw,sync,no_subtree_check,no_root_squash,insecure)
+/home                192.168.50.0/24(fsid=1,rw,sync,no_subtree_check,no_root_squash,insecure)
+
+# Export /shared - shared project directories (course teams, research groups)
+/shared              192.168.70.0/24(fsid=2,rw,sync,no_subtree_check,no_root_squash,insecure)
+/shared              192.168.50.0/24(fsid=2,rw,sync,no_subtree_check,no_root_squash,insecure)
+
+# Per-user homes if needed (alternative model)
+# /home/student-01   192.168.70.0/24(rw,no_subtree_check,no_root_squash)
+# /home/researcher-01 192.168.70.0/24(rw,no_subtree_check,no_root_squash)
+
+# ============================================================================
+# Export Options Explanation:
+# ============================================================================
+# rw                 : Read-write access
+# sync               : Commit writes before replying to clients
+# no_subtree_check  : Disable security checks for performance (acceptable for lab)
+# no_root_squash    : Allow Admin pod root to provision home directories
+# insecure           : Permit containerized clients using high source ports
+#
+# WARNING: These are lab settings. A stricter production export should use:
+#   - root_squash with a controlled provisioning path
+#   - secure ports if clients can use privileged source ports
+#   - tighter client IP ranges
+# ============================================================================

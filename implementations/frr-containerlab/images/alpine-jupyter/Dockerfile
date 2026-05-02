@@ -2,6 +2,8 @@ FROM esi/alpine-host:3.20
 
 RUN set -eux; \
     apk add --no-cache \
+    netcat-openbsd \
+    nfs-utils \
     python3 \
     py3-pip \
     py3-ipykernel \
