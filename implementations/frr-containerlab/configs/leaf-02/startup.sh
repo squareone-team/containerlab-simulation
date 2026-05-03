@@ -80,7 +80,9 @@ ip link set VRF-PUBLIC up
 ip link add VRF-ORIENTATION type vrf table 50
 ip link set VRF-ORIENTATION up
 for IFACE in eth3 eth4 eth5 eth6 eth9; do
-  ip link set dev $IFACE mtu 9000 || true
+  if ip link show "$IFACE" >/dev/null 2>&1; then
+    ip link set dev "$IFACE" mtu 9000 || true
+  fi
 done
 
 ip link add br-fw-ha type bridge vlan_filtering 1 vlan_default_pvid 1
@@ -101,8 +103,13 @@ apply_border_qos() {
   tc qdisc del dev "$IFACE" ingress 2>/dev/null || true
   tc qdisc add dev "$IFACE" root handle 1: tbf rate "${RATE}mbit" burst 64kbit latency 50ms
   tc qdisc add dev "$IFACE" ingress
-  tc filter add dev "$IFACE" parent ffff: protocol ip u32 match u32 0 0 \
+  # Fallback if the tc build lacks skbedit dscp support.
+  if tc filter add dev "$IFACE" parent ffff: protocol ip u32 match u32 0 0 \
     action skbedit dscp 0 \
+    action police rate "${RATE}mbit" burst 64kbit drop flowid :1 2>/dev/null; then
+    return 0
+  fi
+  tc filter add dev "$IFACE" parent ffff: protocol ip u32 match u32 0 0 \
     action police rate "${RATE}mbit" burst 64kbit drop flowid :1
 }
 

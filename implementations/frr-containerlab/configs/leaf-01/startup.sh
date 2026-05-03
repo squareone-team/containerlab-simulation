@@ -99,8 +99,13 @@ apply_border_qos() {
   tc qdisc del dev "$IFACE" ingress 2>/dev/null || true
   tc qdisc add dev "$IFACE" root handle 1: tbf rate "${RATE}mbit" burst 64kbit latency 50ms
   tc qdisc add dev "$IFACE" ingress
-  tc filter add dev "$IFACE" parent ffff: protocol ip u32 match u32 0 0 \
+  # Fallback if the tc build lacks skbedit dscp support.
+  if tc filter add dev "$IFACE" parent ffff: protocol ip u32 match u32 0 0 \
     action skbedit dscp 0 \
+    action police rate "${RATE}mbit" burst 64kbit drop flowid :1 2>/dev/null; then
+    return 0
+  fi
+  tc filter add dev "$IFACE" parent ffff: protocol ip u32 match u32 0 0 \
     action police rate "${RATE}mbit" burst 64kbit drop flowid :1
 }
 
