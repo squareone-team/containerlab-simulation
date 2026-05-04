@@ -492,6 +492,35 @@ topology:
         - configs/oob-sw/startup.sh:/startup.sh
       exec:
         - sh /startup.sh
+    tacacs-server:
+      kind: linux
+      image: dchidell/docker-tacacs
+      mgmt-ipv4: 172.20.20.50
+      binds:
+        - configs/tacacs-server/tac_plus.conf:/etc/tac_plus/tac_user.cfg  # ← changer le chemin destination
+        - configs/tacacs-server/startup.sh:/startup.sh
+      exec:
+        - sh /startup.sh
+    openldap-server:
+      kind: linux
+      image: osixia/openldap:1.5.0
+      env:
+        LDAP_ORGANISATION: "ESI Datacenter"
+        LDAP_DOMAIN: "esi.dz"
+        LDAP_ADMIN_PASSWORD: "ESI@Admin2024"
+        LDAP_CONFIG_PASSWORD: "ESI@Config2024"
+      binds:
+        - configs/openldap-server/startup.sh:/startup.sh
+      exec:
+        - sh /startup.sh
+
+    phpldapadmin:
+      kind: linux
+      image: osixia/phpldapadmin:latest
+      ports:
+        - 8080:80
+      env:
+        PHPLDAPADMIN_LDAP_HOSTS: openldap-server
 
   links:
     - endpoints: [ "spine-01:eth1", "leaf-01:eth1" ]
@@ -580,3 +609,7 @@ topology:
     - endpoints: [ "leaf-03:eth8", "dhcp-server:eth1" ]
     - endpoints: [ "leaf-04:eth8", "dhcp-server:eth2" ] # ring1 multihoming for dhcp-server data-plane
     - endpoints: [ "leaf-03:eth11", "zabbix-server:eth1" ] # changing eth10 to eth11 to avoid conflict with oob-sw
+    - endpoints: [ "oob-sw:eth16", "tacacs-server:eth1"]
+    - endpoints: ["leaf-03:eth12", "openldap-server:eth1"] 
+    - endpoints: ["leaf-04:eth11", "openldap-server:eth2"]
+    - endpoints: ["leaf-03:eth13", "phpldapadmin:eth1"]

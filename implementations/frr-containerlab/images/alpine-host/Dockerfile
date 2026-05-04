@@ -9,7 +9,10 @@ RUN set -eux; \
       nftables \
       openssh-client \
       openssh-server \
-      rsyslog; \
+      rsyslog \
+      python3 \
+      py3-pip; \
+    pip3 install tacacs_plus --break-system-packages; \
     mkdir -p \
       /run/sshd \
       /root/.ssh \
