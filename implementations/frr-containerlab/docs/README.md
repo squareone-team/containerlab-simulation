@@ -17,6 +17,7 @@ This folder is organized by intent so it is easier to jump between design notes 
 | Check ISP peering, route filtering, DMZ reachability, and orientation mode | [Border routing and internet](./practical/routing/border-routing-and-internet.md) |
 | Check campus client access, WiFi management path, and DMZ web access | [Campus edge and DMZ](./practical/routing/campus-edge-and-dmz.md) |
 | Check Ring 1 firewall HA and policy behavior | [Firewall HA and policy](./practical/security/firewall-ha-and-policy.md) |
+| Check inline IDS/IPS DDoS prevention for the DMZ | [IDS/IPS DDoS prevention](./practical/security/ids-ips-ddos-prevention.md) |
 | Check DNS, DHCP, and NTP | [Core services](./practical/services/core-services.md) |
 | Check SNMP, Zabbix, Prometheus, Grafana, and exporter metrics | [Observability and monitoring](./practical/services/observability-and-monitoring.md) |
 | Check bastion SSH, control-plane filtering, host micro-segmentation, and central syslog | [Management access and logging](./practical/security/management-access-and-logging.md) |
@@ -30,6 +31,7 @@ This folder is organized by intent so it is easier to jump between design notes 
 | Border routing and internet | `leaf-01`, `leaf-02`, `isp-router-*`, `internet-*` | `bash implementations/frr-containerlab/scripts/tests/theme-t1-border-routing-verify.sh` | [Border routing and internet](./practical/routing/border-routing-and-internet.md) |
 | Campus edge and DMZ | `campus-bp`, `student-bp-01`, `server-dmz-01`, `wifi-controller` | `bash implementations/frr-containerlab/scripts/tests/theme-t1-border-routing-verify.sh` | [Campus edge and DMZ](./practical/routing/campus-edge-and-dmz.md) |
 | Firewall HA and policy | `firewall-01`, `firewall-02`, `leaf-01`, `leaf-02` | `bash implementations/frr-containerlab/scripts/tests/theme-t3-ring1_all_validation.sh` | [Firewall HA and policy](./practical/security/firewall-ha-and-policy.md) |
+| IDS/IPS DDoS prevention | `ids-01`, `leaf-01`, `isp-router-01`, `internet-client-*`, `server-dmz-01` | `bash implementations/frr-containerlab/scripts/tests/ids_ips_ddos_validation.sh` | [IDS/IPS DDoS prevention](./practical/security/ids-ips-ddos-prevention.md) |
 | DNS | `dns-server` | `bash implementations/frr-containerlab/scripts/tests/dns_verify.sh` | [Core services](./practical/services/core-services.md) |
 | DHCP | `dhcp-server`, dual-homed servers | `bash implementations/frr-containerlab/scripts/tests/dhcp_verify.sh` | [Core services](./practical/services/core-services.md) |
 | NTP and no-PIM guard | `ntp-server`, all FRR nodes | `bash implementations/frr-containerlab/scripts/tests/ntp_verify.sh` | [Core services](./practical/services/core-services.md) |

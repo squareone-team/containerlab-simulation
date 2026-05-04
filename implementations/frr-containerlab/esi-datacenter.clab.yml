@@ -390,7 +390,14 @@ topology:
         - sh /startup.sh
     ids-01:
       kind: linux
-      image: alpine:3.20
+      image: esi/alpine-firewall:3.20
+      binds:
+        - configs/ids-01/startup.sh:/startup.sh
+      exec:
+        - sh /startup.sh
+      cap-add:
+        - NET_ADMIN
+        - NET_RAW
     ntp-server:
       kind: linux
       image: esi/alpine-host:3.20
@@ -535,7 +542,8 @@ topology:
     - endpoints: [ "spine-02:eth9", "leaf-09:eth2" ]
     - endpoints: [ "spine-02:eth10", "leaf-10:eth2" ]
 
-    - endpoints: [ "leaf-01:eth3", "isp-router-01:eth1" ]
+    - endpoints: [ "leaf-01:eth3", "ids-01:eth1" ]
+    - endpoints: [ "ids-01:eth2", "isp-router-01:eth1" ]
     - endpoints: [ "leaf-02:eth3", "isp-router-02:eth1" ]
     - endpoints: [ "leaf-01:eth4", "isp-router-03:eth1" ]
     - endpoints: [ "isp-router-01:eth2", "isp-router-04:eth3" ]
@@ -550,7 +558,6 @@ topology:
     - endpoints: [ "leaf-01:eth5", "firewall-01:eth1" ]
     - endpoints: [ "leaf-02:eth5", "firewall-02:eth1" ]
     - endpoints: [ "leaf-01:eth9", "leaf-02:eth9" ]
-    - endpoints: [ "leaf-01:eth6", "ids-01:eth1" ]
 
     - endpoints: [ "leaf-09:eth3", "server-student-01:eth1" ]
     - endpoints: [ "leaf-09:eth4", "server-student-02:eth1" ]
@@ -590,6 +597,7 @@ topology:
     - endpoints: [ "oob-sw:eth12", "leaf-09:eth10" ]
     - endpoints: [ "oob-sw:eth13", "leaf-10:eth10" ]
     - endpoints: [ "oob-sw:eth14", "ftp-server:eth2" ]
+    - endpoints: [ "oob-sw:eth16", "ids-01:eth3" ]
 
     - endpoints: [ "leaf-03:eth9", "ntp-server:eth1" ] # changing eth6 to eth9 to avoid conflict with server-admin-02
     - endpoints: [ "oob-sw:eth15", "ntp-server:eth2" ] # changing eth2 to eth15 to avoid conflict with spine-01
