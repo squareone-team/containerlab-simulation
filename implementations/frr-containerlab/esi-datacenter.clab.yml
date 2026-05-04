@@ -213,6 +213,7 @@ topology:
     server-student-01:
       kind: linux
       image: esi/alpine-host:3.20
+      mgmt-ipv4: 172.20.20.25
       cap-add:
         - NET_ADMIN
         - SYS_MODULE
@@ -504,6 +505,7 @@ topology:
     openldap-server:
       kind: linux
       image: osixia/openldap:1.5.0
+      mgmt-ipv4: 172.20.20.51
       env:
         LDAP_ORGANISATION: "ESI Datacenter"
         LDAP_DOMAIN: "esi.dz"

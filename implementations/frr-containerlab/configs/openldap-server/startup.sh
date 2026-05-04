@@ -74,7 +74,7 @@ uidNumber: 1003
 gidNumber: 1003
 homeDirectory: /home/etudiant1
 loginShell: /bin/sh
-userPassword: Etu@2024
+userPassword: 123456
 
 EOF
 
