@@ -1,0 +1,50 @@
+name: esi-lightweight
+
+mgmt:
+  network: mgmt-net
+  ipv4-subnet: 172.100.100.0/24
+
+topology:
+  defaults:
+    kind: ceos
+    image: ceos:4.35.1F
+
+  nodes:
+    # ─── Spine ───────────────────────────────────────────────────────────────
+    spine-01:
+      mgmt-ipv4: 172.100.100.11
+      startup-config: configs/spine-01/startup.cfg
+
+    # ─── Leafs ───────────────────────────────────────────────────────────────
+    leaf-01:
+      mgmt-ipv4: 172.100.100.21
+      startup-config: configs/leaf-01/startup.cfg
+ 
+
+    # ─── Hosts (lightweight Alpine) ─────────────────────────────────────────
+    host-01:
+      kind: linux
+      image: alpine:3.20
+      mgmt-ipv4: 172.100.100.31
+      exec:
+        - ip addr add 10.10.10.10/24 dev eth1
+        - ip route add default via 10.10.10.1 dev eth1
+
+
+    # ─── Ansible controller ──────────────────────────────────────────────────
+    # Uses the lightweight willhallonline/ansible image (~90 MB compressed)
+    ansible:
+      kind: linux
+      image: willhallonline/ansible:2.16-alpine-3.19
+      mgmt-ipv4: 172.100.100.100
+      binds:
+        - ansible:/ansible                         # playbooks, inventory, roles
+        - ansible/ansible.cfg:/etc/ansible/ansible.cfg
+      cmd: sleep infinity
+
+  links:
+    # ─── Fabric uplinks (data-plane) ─────────────────────────────────────────
+    - endpoints: ["spine-01:eth1", "leaf-01:eth1"]
+
+    # ─── Hosts attached to leafs ─────────────────────────────────────────────
+    - endpoints: ["leaf-01:eth3", "host-01:eth1"]
