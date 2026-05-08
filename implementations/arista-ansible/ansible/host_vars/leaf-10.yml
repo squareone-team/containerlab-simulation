@@ -1,0 +1,212 @@
+# =============================================================================
+# ESI Data Center — Leaf-10 Host Variables
+# Pod: Ultra Compute (pod_id=5) | ESI pair: leaf-10 ↔ leaf-09
+# Special: RoCEv2/RDMA enabled, DCQCN, PFC, student LACP bond secondary
+# Management IP: 172.20.20.30
+# =============================================================================
+
+ansible_host: 172.20.20.30
+router_id:    10.0.5.2
+loopback0:    10.0.5.2/32
+bgp_as:       65110
+
+# -----------------------------------------------------------------------------
+# Spine uplink P2P addresses (leaf side = .1)
+# -----------------------------------------------------------------------------
+spine01_p2p:     10.1.10.0/31
+spine02_p2p:     10.2.10.0/31
+spine01_leaf_ip: 10.1.10.1
+spine02_leaf_ip: 10.2.10.1
+spine01_ip:      10.1.10.0
+spine02_ip:      10.2.10.0
+
+# -----------------------------------------------------------------------------
+# ESI Multi-homing — leaf-10 ↔ leaf-09
+# -----------------------------------------------------------------------------
+esi_peer:           leaf-09
+esi_id:             "0000:0000:0510:0000:0001"
+esi_portchannel_id: 60
+esi_lacp_id:        "0000.0510.0001"
+
+# -----------------------------------------------------------------------------
+# Uplink interface names
+# -----------------------------------------------------------------------------
+spine01_interface: Ethernet1    # → spine-01 : Ethernet10
+spine02_interface: Ethernet2    # → spine-02 : Ethernet10
+peer_interface:    Ethernet10   # → leaf-09 ESI heartbeat
+
+# -----------------------------------------------------------------------------
+# Physical interface map
+# -----------------------------------------------------------------------------
+interfaces:
+  Ethernet1:
+    description: "P2P → spine-01 eth10 [10.1.10.0/31]"
+    ip: 10.1.10.1/31
+    mtu: "{{ mtu_fabric }}"
+    type: routed
+
+  Ethernet2:
+    description: "P2P → spine-02 eth10 [10.2.10.0/31]"
+    ip: 10.2.10.1/31
+    mtu: "{{ mtu_fabric }}"
+    type: routed
+
+  Ethernet3:
+    description: "server-student-01 eth2 [VLAN 500 STUDENT — ESI bond secondary]"
+    type: trunk
+    access_vlan: 500
+    mtu: 9000
+    channel_group: 60
+    lacp_mode: active
+    lacp_rate: fast
+
+  Ethernet4:
+    description: "server-student-02 eth2 [VLAN 500 STUDENT — ESI bond secondary]"
+    type: trunk
+    access_vlan: 500
+    mtu: 9000
+    channel_group: 61
+    lacp_mode: active
+    lacp_rate: fast
+
+  Ethernet10:
+    description: "OOB switch uplink"
+    type: access
+    access_vlan: 1
+
+# -----------------------------------------------------------------------------
+# Loopback
+# -----------------------------------------------------------------------------
+loopbacks:
+  Loopback0:
+    ip: 10.0.5.2/32
+    description: "Router-ID / VTEP"
+
+# -----------------------------------------------------------------------------
+# VXLAN VTEP
+# -----------------------------------------------------------------------------
+vtep_source_interface: Loopback0
+vtep_ip: 10.0.5.2
+
+# -----------------------------------------------------------------------------
+# VRFs active on leaf-10
+# Mirrors leaf-09 — both leaves form the Ultra Compute Pod
+# -----------------------------------------------------------------------------
+active_vrfs:
+  - name: HPC
+    vrf_id: 400
+    l3vni: 10400
+    rd: "10.0.5.2:10400"
+    rt_import: "65000:10400"
+    rt_export: "65000:10400"
+    # HPC nodes also need STORAGE routes for Ceph I/O
+    extra_rt_import:
+      - "65000:10300"    # STORAGE VRF
+
+  - name: STUDENT
+    vrf_id: 500
+    l3vni: 10500
+    rd: "10.0.5.2:10500"
+    rt_import: "65000:10500"
+    rt_export: "65000:10500"
+
+# -----------------------------------------------------------------------------
+# VLANs / VNIs active on leaf-10
+# Anycast MAC must be IDENTICAL to leaf-09 (symmetric IRB requirement)
+# -----------------------------------------------------------------------------
+active_vlans:
+  - id: 400
+    vni: 10400
+    vrf: HPC
+    anycast_gw_ip: 192.168.60.1/24
+    anycast_gw_mac: 00:1c:73:00:04:00   # same as leaf-09
+    arp_suppression: true
+    description: "HPC-DATA (RoCEv2)"
+    pfc_enabled: true
+    pfc_priority: 3
+
+  - id: 500
+    vni: 10500
+    vrf: STUDENT
+    anycast_gw_ip: 192.168.50.1/24
+    anycast_gw_mac: 00:1c:73:00:05:00   # same as leaf-09
+    arp_suppression: true
+    description: "STUDENT-WORKLOAD"
+
+# -----------------------------------------------------------------------------
+# Port-Channels — student LACP bonds (secondary legs to leaf-10)
+# leaf-09 hosts Po20/Po21 primary; leaf-10 hosts Po60/Po61 secondary
+# Both share the same ESI and LACP system-id for EVPN ESI multi-homing
+# -----------------------------------------------------------------------------
+portchannels:
+  - id: 60
+    description: "Po60 | server-student-01 LACP bond (leaf-10 leg)"
+    mode: active
+    members:
+      - Ethernet3
+    vlan: 500
+    vrf: STUDENT
+    mtu: 9000
+    esi: "0000:0000:0509:0000:0001"   # same ESI as leaf-09 Po20
+    lacp_system_id: "0000.0509.0001"  # same LACP system-id
+
+  - id: 61
+    description: "Po61 | server-student-02 LACP bond (leaf-10 leg)"
+    mode: active
+    members:
+      - Ethernet4
+    vlan: 500
+    vrf: STUDENT
+    mtu: 9000
+    esi: "0000:0000:0509:0001:0001"
+    lacp_system_id: "0000.0509.0011"
+
+# -----------------------------------------------------------------------------
+# Host-facing ports
+# -----------------------------------------------------------------------------
+host_ports:
+  - interface: Ethernet3
+    description: "server-student-01 | LACP bond member (leaf-10 leg)"
+    mode: trunk
+    vlan: 500
+    portchannel: Port-Channel60
+    lacp_mode: active
+    lacp_rate: fast
+    mtu: 9000
+
+  - interface: Ethernet4
+    description: "server-student-02 | LACP bond member (leaf-10 leg)"
+    mode: trunk
+    vlan: 500
+    portchannel: Port-Channel61
+    lacp_mode: active
+    lacp_rate: fast
+    mtu: 9000
+
+# -----------------------------------------------------------------------------
+# QoS — RoCEv2 / DCQCN (same policy as leaf-09)
+# -----------------------------------------------------------------------------
+qos_policy_name: ULTRA-ROCE-QOS
+ecn_min_threshold_kb: 150
+ecn_max_threshold_kb: 1500
+dcqcn_cnp_dscp: 48
+
+traffic_class_map:
+  - cos: 3
+    tc: 3
+    pfc: true
+
+ets_bw_map:
+  - tc: 3
+    bw_pct: 50
+  - tc: 0
+    bw_pct: 50
+
+# VLAN→VNI map
+vlan_vni_map:
+  - vlan: 400
+    vni: 10400
+    name: HPC-DATA
+  - vlan: 500
+    vni: 10500
+    name: STUDENT-WORKLOAD
