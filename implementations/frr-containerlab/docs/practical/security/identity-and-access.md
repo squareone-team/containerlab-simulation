@@ -2,6 +2,8 @@
 
 This runbook validates TACACS+/LDAP server access, campus NAC behavior, and the VPN entry path.
 
+For a step-by-step lab where you manually act as the student, admin, unauthenticated campus client, and VPN student, use [Identity access manual lab](./identity-access-manual-lab.md). For packet captures and Wireshark filters, use [Packet capture and Wireshark](./packet-capture-and-wireshark.md).
+
 ## Quick Automation
 
 ```bash
@@ -75,9 +77,7 @@ Good sign: `Access-Accept` with `Filter-Id = "campus-student"`.
 # From the VPN client, request enrollment
 docker exec clab-esi-datacenter-vpn-client-01 sh -lc 'umask 077; wg genkey | tee /tmp/vpn.key | wg pubkey > /tmp/vpn.pub'
 
-docker exec clab-esi-datacenter-vpn-client-01 sh -lc 'PUB=$(cat /tmp/vpn.pub); curl -s -X POST -H "Content-Type: application/json" \
-  -d "{\"username\":\"student1\",\"password\":\"Student@2026\",\"public_key\":\"'"$PUB"'\"}" \
-  http://198.51.100.20:8088/enroll'
+docker exec clab-esi-datacenter-vpn-client-01 sh -lc 'PUB=$(cat /tmp/vpn.pub); printf "{\"username\":\"student1\",\"password\":\"Student@2026\",\"public_key\":\"%s\"}" "$PUB" | curl -s -X POST -H "Content-Type: application/json" -d @- http://198.51.100.20:8088/enroll'
 ```
 
 Use the response payload (`address`, `server_pubkey`) to configure the tunnel:

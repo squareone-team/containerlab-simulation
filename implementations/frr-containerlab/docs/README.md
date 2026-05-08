@@ -23,6 +23,8 @@ This folder is organized by intent so it is easier to jump between design notes 
 | Check SNMP, Zabbix, Prometheus, Grafana, and exporter metrics | [Observability and monitoring](./practical/services/observability-and-monitoring.md) |
 | Check bastion SSH, control-plane filtering, host micro-segmentation, and central syslog | [Management access and logging](./practical/security/management-access-and-logging.md) |
 | Check TACACS+/LDAP, campus NAC roles, and VPN access | [Identity and access](./practical/security/identity-and-access.md) |
+| Manually try student/admin/VPN identity flows end to end | [Identity access manual lab](./practical/security/identity-access-manual-lab.md) |
+| Capture identity, VPN, SSH, RADIUS, TACACS+, and VXLAN traffic in Wireshark | [Packet capture and Wireshark](./practical/security/packet-capture-and-wireshark.md) |
 | Simulate node failures and verify recovery | [Resilience and recovery](./practical/operations/resilience-and-recovery.md) |
 
 ## Quick Feature Map
@@ -41,7 +43,7 @@ This folder is organized by intent so it is easier to jump between design notes 
 | Bastion and OOB | `bastion-01`, `oob-sw`, spines, leaves, `ftp-server` | `bash implementations/frr-containerlab/scripts/tests/theme-t3-ring4_test.sh` | [Management access and logging](./practical/security/management-access-and-logging.md) |
 | Host micro-segmentation | `ftp-server`, `dns-server`, workload hosts | `bash implementations/frr-containerlab/scripts/tests/theme-t3-ring5_verify.sh` | [Management access and logging](./practical/security/management-access-and-logging.md) |
 | Centralized logging | `syslog-server`, reachable workload nodes | `bash implementations/frr-containerlab/scripts/tests/theme-t3-ring6_verify.sh` | [Management access and logging](./practical/security/management-access-and-logging.md) |
-| Identity and access | `auth-server`, `campus-bp`, `vpn-gateway`, `server-*` | `bash implementations/frr-containerlab/scripts/tests/auth_fabric_validation.sh` + `bash implementations/frr-containerlab/scripts/tests/vpn_access_validation.sh` | [Identity and access](./practical/security/identity-and-access.md) |
+| Identity and access | `auth-server`, `campus-bp`, `vpn-gateway`, `server-*` | `bash implementations/frr-containerlab/scripts/tests/auth_fabric_validation.sh` + `bash implementations/frr-containerlab/scripts/tests/vpn_access_validation.sh` | [Identity and access](./practical/security/identity-and-access.md), [manual lab](./practical/security/identity-access-manual-lab.md), [Wireshark](./practical/security/packet-capture-and-wireshark.md) |
 | Failure simulation | Any node | `bash implementations/frr-containerlab/scripts/resiliancy/simulate_node_down.sh --node leaf-01` and `bash implementations/frr-containerlab/scripts/tests/resilience_postcheck.sh` | [Resilience and recovery](./practical/operations/resilience-and-recovery.md) |
 
 ## Notes

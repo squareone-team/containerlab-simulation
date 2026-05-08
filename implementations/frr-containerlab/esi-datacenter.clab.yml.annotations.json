@@ -729,7 +729,7 @@
       "shapeType": "rectangle",
       "position": {
         "x": -360,
-        "y": -760
+        "y": -742.5664117649121
       },
       "width": 644,
       "height": 564,
@@ -1530,6 +1530,23 @@
         "x": -420,
         "y": 60
       }
+    },
+    {
+      "id": "vpn-client-01",
+      "position": {
+        "x": -100,
+        "y": -640
+      }
+    },
+    {
+      "id": "vpn-gateway",
+      "position": {
+        "x": 360,
+        "y": -180
+      },
+      "icon": "pon",
+      "iconColor": "#ff9500",
+      "iconCornerRadius": 0
     }
   ],
   "edgeAnnotations": [],
