@@ -117,3 +117,5 @@ spine_max_prefixes_from_leaf: 5
 underlay_bfd_interval: 100
 underlay_bfd_min_rx: 100
 underlay_bfd_multiplier: 3
+
+underlay_asn: 65000
