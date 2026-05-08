@@ -48,13 +48,22 @@
 # -------------------------------------------------------------------
 # BFD per-neighbor activation 
 # -------------------------------------------------------------------
-- name: "UNDERLAY | Configure BFD global default timers"
+- name: "UNDERLAY | Configure P2P underlay interfaces"
   arista.eos.eos_config:
     lines:
-      - "bfd default-interval {{ underlay_bfd_interval | default(100) }} min-rx {{ underlay_bfd_min_rx | default(100) }} multiplier {{ underlay_bfd_multiplier | default(3) }}"
+      - "description {{ item.description | default('P2P underlay') }}"
+      - "no switchport"
+      - "mtu {{ item.mtu | default(underlay_mtu | default(9000)) }}"
+      - "ip address {{ item.ip }}"
+      - "bfd interval {{ underlay_bfd_interval | default(100) }} min-rx {{ underlay_bfd_min_rx | default(100) }} multiplier {{ underlay_bfd_multiplier | default(3) }}"
+      - "no shutdown"
+    parents: "interface {{ item.interface }}"
     match: line
-  when: bfd_enabled | default(true) | bool
-  tags: [underlay, bfd]
+  loop: "{{ p2p_links | default([]) }}"
+  loop_control:
+    label: "{{ item.interface }}"
+  when: p2p_links is defined and p2p_links | length > 0
+  tags: [underlay, interfaces]
 
 # -----------------------------------------------------------------------------
 # 5. Prefix-list
