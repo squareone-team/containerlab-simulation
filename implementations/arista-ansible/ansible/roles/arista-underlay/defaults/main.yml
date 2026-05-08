@@ -11,7 +11,7 @@
 # underlay_asn: 65000   # example — must be set per node
 
 # BGP router-ID is derived from loopback0 address by default
-bgp_router_id: "{{ loopback0 | ipaddr('address') }}"
+# bgp_router_id: "{{ loopback0 | ipaddr('address') }}"
 
 # BGP timers (keepalive / hold)
 bgp_keepalive:  3
@@ -118,4 +118,4 @@ underlay_bfd_interval: 100
 underlay_bfd_min_rx: 100
 underlay_bfd_multiplier: 3
 
-underlay_asn: 65000
+# underlay_asn: 65000

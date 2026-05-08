@@ -119,7 +119,7 @@
 - name: "UNDERLAY | Configure BGP process"
   arista.eos.eos_config:
     lines:
-      - "router-id {{ bgp_router_id | default(router_id) }}"
+      - "router-id {{ bgp_router_id | default(router_id) | default(loopback0 | ipaddr('address')) }}"
       - "no bgp default ipv4-unicast"
       - "distance bgp 20 200 200"
       - "graceful-restart"
@@ -127,7 +127,7 @@
       - "bgp log-neighbor-changes"
       - "timers bgp {{ bgp_keepalive | default(3) }} {{ bgp_hold_time | default(9) }}"
     parents: "router bgp {{ underlay_asn }}"
-    match: none   
+    match: none
   tags: [underlay, bgp]
 
 # =============================================================================
