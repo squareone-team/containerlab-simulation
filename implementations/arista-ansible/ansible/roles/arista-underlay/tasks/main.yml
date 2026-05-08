@@ -45,14 +45,27 @@
   when: p2p_links is defined and p2p_links | length > 0
   tags: [underlay, interfaces]
 
-# -----------------------------------------------------------------------------
-# 4. BFD GLOBAL (FIXED)
-# -----------------------------------------------------------------------------
-- name: "UNDERLAY | Configure BFD global default timers"
+# -------------------------------------------------------------------
+# BFD per-neighbor activation 
+# -------------------------------------------------------------------
+- name: "UNDERLAY | Enable BFD on BGP peer-group (SPINE)"
   arista.eos.eos_config:
     lines:
-      - "bfd interval {{ underlay_bfd_interval | default(100) }} min-rx {{ underlay_bfd_min_rx | default(100) }} multiplier {{ underlay_bfd_multiplier | default(3) }}"
-  when: bfd_enabled | default(true) | bool
+      - "bfd"
+    parents:
+      - "router bgp {{ underlay_asn }}"
+      - "neighbor {{ spine_bgp_peer_group }} peer group"
+  when: "'spines' in group_names"
+  tags: [underlay, bfd]
+
+- name: "UNDERLAY | Enable BFD on BGP peer-group (LEAF)"
+  arista.eos.eos_config:
+    lines:
+      - "bfd"
+    parents:
+      - "router bgp {{ underlay_asn }}"
+      - "neighbor {{ leaf_bgp_peer_group }} peer group"
+  when: "'leaves' in group_names"
   tags: [underlay, bfd]
 
 # -----------------------------------------------------------------------------
