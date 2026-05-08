@@ -113,3 +113,7 @@ leaf_max_prefixes_from_spine: 30
 
 # Maximum prefixes a spine will accept from each leaf (1 loopback + headroom)
 spine_max_prefixes_from_leaf: 5
+
+underlay_bfd_interval: 100
+underlay_bfd_min_rx: 100
+underlay_bfd_multiplier: 3
