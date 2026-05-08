@@ -129,13 +129,13 @@
 - name: "SPINE | peer-group"
   arista.eos.eos_config:
     lines:
-      - "description Underlay to Leaves"
-      - "send-community"
-      - "bfd"
-      - "route-map {{ underlay_route_map_out_name }} out"
-    parents:
-      - "router bgp {{ underlay_asn }}"
       - "neighbor {{ spine_bgp_peer_group }} peer group"
+      - "neighbor {{ spine_bgp_peer_group }} description Underlay to Leaves"
+      - "neighbor {{ spine_bgp_peer_group }} send-community"
+      - "neighbor {{ spine_bgp_peer_group }} bfd"
+      - "neighbor {{ spine_bgp_peer_group }} route-map {{ underlay_route_map_out_name }} out"
+    parents: "router bgp {{ underlay_asn }}"
+    match: line
   when: "'spines' in group_names"
   tags: [underlay, spine]
 
@@ -154,14 +154,14 @@
 - name: "LEAF | peer-group"
   arista.eos.eos_config:
     lines:
-      - "description To Spines"
-      - "remote-as {{ spine_asn }}"
-      - "bfd"
-      - "route-map {{ underlay_route_map_in_name }} in"
-      - "route-map {{ underlay_route_map_out_name }} out"
-    parents:
-      - "router bgp {{ underlay_asn }}"
       - "neighbor {{ leaf_bgp_peer_group }} peer group"
+      - "neighbor {{ leaf_bgp_peer_group }} description To Spines"
+      - "neighbor {{ leaf_bgp_peer_group }} remote-as {{ spine_asn }}"
+      - "neighbor {{ leaf_bgp_peer_group }} bfd"
+      - "neighbor {{ leaf_bgp_peer_group }} route-map {{ underlay_route_map_in_name }} in"
+      - "neighbor {{ leaf_bgp_peer_group }} route-map {{ underlay_route_map_out_name }} out"
+    parents: "router bgp {{ underlay_asn }}"
+    match: line
   when: "'leaves' in group_names"
   tags: [underlay, leaf]
 
