@@ -10,6 +10,7 @@
 # received EVPN NLRIs to all other eBGP EVPN peers (next-hop unchanged).
 # -----------------------------------------------------------------------------
 bgp_as: 65000       # Spine AS (same for both; leaves each have unique AS)
+underlay_asn: 65000  
 
 # Peer-group names used in spine BGP config templates
 bgp_spine_peer_group_underlay: LEAF-UNDERLAY
