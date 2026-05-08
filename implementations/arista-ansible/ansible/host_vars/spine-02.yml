@@ -9,6 +9,7 @@ ansible_host: 172.20.20.12
 router_id:    10.0.0.2
 loopback0:    10.0.0.2/32
 bgp_as:       65000
+underlay_asn: 65000
 
 # -----------------------------------------------------------------------------
 # Underlay P2P interfaces — Ethernet1..10 connect to leaf-01..leaf-10
