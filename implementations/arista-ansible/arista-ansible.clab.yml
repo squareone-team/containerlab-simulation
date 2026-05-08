@@ -9,63 +9,63 @@ topology:
     # ───────── SPINES ─────────
     spine-01:
       kind: ceos
-      image: arista/ceos:4.35.1F
+      image: ceos:4.35.1F
       mgmt-ipv4: 172.20.20.11
 
     spine-02:
       kind: ceos
-      image: arista/ceos:4.35.1F
+      image: ceos:4.35.1F
       mgmt-ipv4: 172.20.20.12
 
     # ───────── LEAVES ─────────
     leaf-01:
       kind: ceos
-      image: arista/ceos:4.35.1F
+      image: ceos:4.35.1F
       mgmt-ipv4: 172.20.20.21
 
     leaf-02:
       kind: ceos
-      image: arista/ceos:4.35.1F
+      image: ceos:4.35.1F
       mgmt-ipv4: 172.20.20.22
 
     leaf-03:
       kind: ceos
-      image: arista/ceos:4.35.1F
+      image: ceos:4.35.1F
       mgmt-ipv4: 172.20.20.23
 
     leaf-04:
       kind: ceos
-      image: arista/ceos:4.35.1F
+      image: ceos:4.35.1F
       mgmt-ipv4: 172.20.20.24
 
     leaf-05:
       kind: ceos
-      image: arista/ceos:4.35.1F
+      image: ceos:4.35.1F
       mgmt-ipv4: 172.20.20.25
 
     leaf-06:
       kind: ceos
-      image: arista/ceos:4.35.1F
+      image: ceos:4.35.1F
       mgmt-ipv4: 172.20.20.26
 
     leaf-07:
       kind: ceos
-      image: arista/ceos:4.35.1F
+      image: ceos:4.35.1F
       mgmt-ipv4: 172.20.20.27
 
     leaf-08:
       kind: ceos
-      image: arista/ceos:4.35.1F
+      image: ceos:4.35.1F
       mgmt-ipv4: 172.20.20.28
 
     leaf-09:
       kind: ceos
-      image: arista/ceos:4.35.1F
+      image: ceos:4.35.1F
       mgmt-ipv4: 172.20.20.29
 
     leaf-10:
       kind: ceos
-      image: arista/ceos:4.35.1F
+      image: ceos:4.35.1F
       mgmt-ipv4: 172.20.20.30
 
     # ───────── ISP / INTERNET ─────────
