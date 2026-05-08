@@ -1,0 +1,16 @@
+# Edge Pod — leaf-01, leaf-02
+# All 5 VRFs active (firewall + hairpin point)
+pod_name: edge
+pod_id: 1
+oversubscription: "2:1"
+
+pod_vnis:
+  - 10   # PEDAGOGY-STUDENT
+  - 11   # PEDAGOGY-LAB
+  - 20   # STAFF-WIRED
+  - 21   # STAFF-WIFI
+  - 30   # ADMIN-SERVERS
+  - 31   # INFRA-MGMT
+  - 40   # ORIENTATION-USERS
+  - 50   # DMZ-WEB
+  - 51   # DMZ-SERVICES

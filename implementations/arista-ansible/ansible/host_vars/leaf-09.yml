@@ -1,0 +1,148 @@
+
+# =============================================================================
+# ESI Data Center — Leaf-09 Host Variables
+# Pod: Ultra Compute (pod_id=5) | ESI pair: leaf-09 ↔ leaf-10
+# Special: RoCEv2/RDMA enabled, DCQCN, PFC, student LACP bond
+# Management IP: 172.20.20.29
+# =============================================================================
+
+ansible_host: 172.20.20.29
+router_id:    10.0.5.1
+loopback0:    10.0.5.1/32
+bgp_as:       65109
+
+spine01_p2p:      10.1.9.0/31
+spine02_p2p:      10.2.9.0/31
+spine01_leaf_ip:  10.1.9.1
+spine02_leaf_ip:  10.2.9.1
+spine01_ip:       10.1.9.0
+spine02_ip:       10.2.9.0
+
+# -----------------------------------------------------------------------------
+# ESI Multi-homing — leaf-09 ↔ leaf-10
+# -----------------------------------------------------------------------------
+esi_peer:             leaf-10
+esi_id:               "0000:0000:0509:0000:0001"
+esi_portchannel_id:   59
+esi_lacp_id:          "0000.0509.0001"
+
+spine01_interface: Ethernet1
+spine02_interface: Ethernet2
+peer_interface:    Ethernet10
+
+# -----------------------------------------------------------------------------
+# VRFs active on leaf-09
+# -----------------------------------------------------------------------------
+active_vrfs:
+  - name: HPC
+    vrf_id: 400
+    l3vni: 10400
+    rd: "10.0.5.1:400"
+    rt_import: "65000:10400"
+    rt_export: "65000:10400"
+    # HPC nodes also need STORAGE routes for Ceph I/O
+    extra_rt_import:
+      - "65000:10300"    # STORAGE VRF
+
+  - name: STUDENT
+    vrf_id: 500
+    l3vni: 10500
+    rd: "10.0.5.1:500"
+    rt_import: "65000:10500"
+    rt_export: "65000:10500"
+
+# -----------------------------------------------------------------------------
+# VLANs / VNIs
+# -----------------------------------------------------------------------------
+active_vlans:
+  - id: 400
+    vni: 10400
+    vrf: HPC
+    anycast_gw_ip: 192.168.60.1/24
+    anycast_gw_mac: 00:1c:73:00:04:00
+    arp_suppression: true
+    description: "HPC-DATA (RoCEv2)"
+    # RoCEv2 specifics — no ARP suppression disruption for RDMA
+    pfc_enabled: true
+    pfc_priority: 3
+
+  - id: 500
+    vni: 10500
+    vrf: STUDENT
+    anycast_gw_ip: 192.168.50.1/24
+    anycast_gw_mac: 00:1c:73:00:05:00
+    arp_suppression: true
+    description: "STUDENT-WORKLOAD"
+
+# -----------------------------------------------------------------------------
+# Host-facing ports
+# -----------------------------------------------------------------------------
+host_ports:
+  # Student server — LACP bond (2 member links → Port-Channel 20)
+  - interface: Ethernet3
+    description: "server-student-01 | LACP bond member 0"
+    mode: trunk
+    vlan: 500
+    portchannel: Port-Channel20
+    lacp_mode: active
+    lacp_rate: fast
+    mtu: 9000
+
+  - interface: Ethernet4
+    description: "server-student-01 | LACP bond member 1"
+    mode: trunk
+    vlan: 500
+    portchannel: Port-Channel20
+    lacp_mode: active
+    lacp_rate: fast
+    mtu: 9000
+
+  # HPC / GPU bare-metal node — single 10G in lab (100G in production)
+  - interface: Ethernet5
+    description: "GPU node HPC-01 | RoCEv2 lossless"
+    mode: access
+    vlan: 400
+    mtu: 9000
+    spanning_tree_portfast: true
+    bpduguard: true
+    pfc_enabled: true      # Priority Flow Control for lossless RoCEv2
+    pfc_priority: 3
+    ets_policy: ROCE-ETS   # ETS policy defined in QoS template
+
+# -----------------------------------------------------------------------------
+# Port-Channel 20 — student LACP bond (ESI multi-home toward server-student-01)
+# -----------------------------------------------------------------------------
+portchannels:
+  - id: 20
+    description: "Po20 | server-student-01 LACP bond"
+    mode: active
+    members:
+      - Ethernet3
+      - Ethernet4
+    vlan: 500
+    vrf: STUDENT
+    mtu: 9000
+
+# -----------------------------------------------------------------------------
+# QoS — RoCEv2 / DCQCN full config
+# All knobs referencing group_vars/pod_ultra.yml values
+# -----------------------------------------------------------------------------
+qos_policy_name: ULTRA-ROCE-QOS
+
+# DCQCN / ECN thresholds (in KB) — applied on HPC-facing ports
+ecn_min_threshold_kb: 150
+ecn_max_threshold_kb: 1500
+dcqcn_cnp_dscp: 48
+
+# Traffic class map: CoS 3 → TC3 (lossless / RoCEv2)
+traffic_class_map:
+  - cos: 3
+    tc: 3
+    pfc: true
+
+# ETS bandwidth allocation per traffic class
+ets_bw_map:
+  - tc: 3
+    bw_pct: 50        # RoCEv2 lossless class
+  - tc: 0
+    bw_pct: 50        # Best-effort (all other)

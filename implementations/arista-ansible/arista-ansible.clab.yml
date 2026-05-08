@@ -1,50 +1,726 @@
-name: esi-lightweight
+name: esi-datacenter
 
 mgmt:
-  network: mgmt-net
-  ipv4-subnet: 172.100.100.0/24
+  network: esi-mgmt
+  ipv4-subnet: 172.20.20.0/24
 
 topology:
-  defaults:
-    kind: ceos
-    image: ceos:4.35.1F
 
+  # ---------------------------------------------------------------------------
+  # SPINE LAYER — AS 65000 — shared transit, EVPN RR-less (full-mesh eBGP)
+  # ---------------------------------------------------------------------------
   nodes:
-    # ─── Spine ───────────────────────────────────────────────────────────────
+
     spine-01:
-      mgmt-ipv4: 172.100.100.11
-      startup-config: configs/spine-01/startup.cfg
+      kind: ceos
+      image: arista/ceos:4.35.1F
+      mgmt-ipv4: 172.20.20.11
+      env:
+        CEOS: 1
+        EOS_PLATFORM: ceoslab
+        container_name: spine-01
 
-    # ─── Leafs ───────────────────────────────────────────────────────────────
+    spine-02:
+      kind: ceos
+      image: arista/ceos:4.35.1F
+      mgmt-ipv4: 172.20.20.12
+      env:
+        CEOS: 1
+        EOS_PLATFORM: ceoslab
+        container_name: spine-02
+
+  # ---------------------------------------------------------------------------
+  # EDGE POD — leaf-01 (AS 65101) / leaf-02 (AS 65102)
+  # North-south, ISP peering, firewalls, DMZ, BAC Orientation
+  # ---------------------------------------------------------------------------
+
     leaf-01:
-      mgmt-ipv4: 172.100.100.21
-      startup-config: configs/leaf-01/startup.cfg
- 
+      kind: ceos
+      image: arista/ceos:4.35.1F
+      mgmt-ipv4: 172.20.20.21
+      env:
+        CEOS: 1
+        EOS_PLATFORM: ceoslab
+        container_name: leaf-01
 
-    # ─── Hosts (lightweight Alpine) ─────────────────────────────────────────
-    host-01:
+    leaf-02:
+      kind: ceos
+      image: arista/ceos:4.35.1F
+      mgmt-ipv4: 172.20.20.22
+      env:
+        CEOS: 1
+        EOS_PLATFORM: ceoslab
+        container_name: leaf-02
+
+  # ---------------------------------------------------------------------------
+  # CORE POD — leaf-03 (AS 65103) / leaf-04 (AS 65104)
+  # Shared infra: DNS/DHCP/NTP, Zabbix, FTP, LMS, Services, admin servers
+  # ---------------------------------------------------------------------------
+
+    leaf-03:
+      kind: ceos
+      image: arista/ceos:4.35.1F
+      mgmt-ipv4: 172.20.20.23
+      env:
+        CEOS: 1
+        EOS_PLATFORM: ceoslab
+        container_name: leaf-03
+
+    leaf-04:
+      kind: ceos
+      image: arista/ceos:4.35.1F
+      mgmt-ipv4: 172.20.20.24
+      env:
+        CEOS: 1
+        EOS_PLATFORM: ceoslab
+        container_name: leaf-04
+
+  # ---------------------------------------------------------------------------
+  # STORAGE POD — leaf-05 (AS 65105) / leaf-06 (AS 65106)
+  # Ceph-backed storage cluster, 1:1 oversubscription
+  # ---------------------------------------------------------------------------
+
+    leaf-05:
+      kind: ceos
+      image: arista/ceos:4.35.1F
+      mgmt-ipv4: 172.20.20.25
+      env:
+        CEOS: 1
+        EOS_PLATFORM: ceoslab
+        container_name: leaf-05
+
+    leaf-06:
+      kind: ceos
+      image: arista/ceos:4.35.1F
+      mgmt-ipv4: 172.20.20.26
+      env:
+        CEOS: 1
+        EOS_PLATFORM: ceoslab
+        container_name: leaf-06
+
+  # ---------------------------------------------------------------------------
+  # COMPUTE POD — leaf-07 (AS 65107) / leaf-08 (AS 65108)
+  # General-purpose virtualized multi-tenant workloads, 4:1 oversubscription
+  # ---------------------------------------------------------------------------
+
+    leaf-07:
+      kind: ceos
+      image: arista/ceos:4.35.1F
+      mgmt-ipv4: 172.20.20.27
+      env:
+        CEOS: 1
+        EOS_PLATFORM: ceoslab
+        container_name: leaf-07
+
+    leaf-08:
+      kind: ceos
+      image: arista/ceos:4.35.1F
+      mgmt-ipv4: 172.20.20.28
+      env:
+        CEOS: 1
+        EOS_PLATFORM: ceoslab
+        container_name: leaf-08
+
+  # ---------------------------------------------------------------------------
+  # ULTRA COMPUTE POD — leaf-09 (AS 65109) / leaf-10 (AS 65110)
+  # GPU/HPC bare-metal, 1:1, 100 Gb/s, RoCEv2/RDMA, ECN+DCQCN
+  # ---------------------------------------------------------------------------
+
+    leaf-09:
+      kind: ceos
+      image: arista/ceos:4.35.1F
+      mgmt-ipv4: 172.20.20.29
+      env:
+        CEOS: 1
+        EOS_PLATFORM: ceoslab
+        container_name: leaf-09
+
+    leaf-10:
+      kind: ceos
+      image: arista/ceos:4.35.1F
+      mgmt-ipv4: 172.20.20.30
+      env:
+        CEOS: 1
+        EOS_PLATFORM: ceoslab
+        container_name: leaf-10
+
+  # ---------------------------------------------------------------------------
+  # ISP / INTERNET ROUTERS — FRR (unchanged from original topology)
+  # ---------------------------------------------------------------------------
+
+    isp-router-01:
+      kind: linux
+      image: frrouting/frr:latest
+      mgmt-ipv4: 172.20.20.41
+      binds:
+        - configs/isp-router-01/daemons:/etc/frr/daemons
+        - configs/isp-router-01/frr.conf:/etc/frr/frr.conf
+        - configs/isp-router-01/startup.sh:/startup.sh
+      exec:
+        - sh /startup.sh
+
+    isp-router-02:
+      kind: linux
+      image: frrouting/frr:latest
+      mgmt-ipv4: 172.20.20.42
+      binds:
+        - configs/isp-router-02/daemons:/etc/frr/daemons
+        - configs/isp-router-02/frr.conf:/etc/frr/frr.conf
+        - configs/isp-router-02/startup.sh:/startup.sh
+      exec:
+        - sh /startup.sh
+
+    isp-router-03:
+      kind: linux
+      image: frrouting/frr:latest
+      mgmt-ipv4: 172.20.20.43
+      binds:
+        - configs/isp-router-03/daemons:/etc/frr/daemons
+        - configs/isp-router-03/frr.conf:/etc/frr/frr.conf
+        - configs/isp-router-03/startup.sh:/startup.sh
+      exec:
+        - sh /startup.sh
+
+    isp-router-04:
+      kind: linux
+      image: frrouting/frr:latest
+      mgmt-ipv4: 172.20.20.44
+      binds:
+        - configs/isp-router-04/daemons:/etc/frr/daemons
+        - configs/isp-router-04/frr.conf:/etc/frr/frr.conf
+
+    internet-router-01:
+      kind: linux
+      image: frrouting/frr:latest
+      binds:
+        - configs/internet-router-01/daemons:/etc/frr/daemons
+        - configs/internet-router-01/frr.conf:/etc/frr/frr.conf
+
+    internet-router-02:
+      kind: linux
+      image: frrouting/frr:latest
+      binds:
+        - configs/internet-router-02/daemons:/etc/frr/daemons
+        - configs/internet-router-02/frr.conf:/etc/frr/frr.conf
+
+    internet-client-01:
       kind: linux
       image: alpine:3.20
-      mgmt-ipv4: 172.100.100.31
       exec:
-        - ip addr add 10.10.10.10/24 dev eth1
-        - ip route add default via 10.10.10.1 dev eth1
+        - ip addr add 198.18.1.10/24 dev eth1
+        - ip route del default
+        - ip route add default via 198.18.1.1 dev eth1
 
+    internet-client-02:
+      kind: linux
+      image: alpine:3.20
+      exec:
+        - ip addr add 198.18.2.10/24 dev eth1
+        - ip route del default
+        - ip route add default via 198.18.2.1 dev eth1
 
-    # ─── Ansible controller ──────────────────────────────────────────────────
-    # Uses the lightweight willhallonline/ansible image (~90 MB compressed)
+    internet-web-01:
+      kind: linux
+      image: python:3.11-alpine
+      cmd: sleep infinity
+      binds:
+        - ./configs/internet-web-01/www:/www:ro
+      exec:
+        - sh -c "ip addr add 198.18.3.10/24 dev eth1 && ip link set eth1 up &&
+          nohup python3 -m http.server 80 --bind 198.18.3.10 --directory /www
+          >/tmp/http-server.log 2>&1 &"
+        - ip route del default
+        - ip route add default via 198.18.3.1 dev eth1
+
+  # ---------------------------------------------------------------------------
+  # FIREWALLS — Alpine + nftables + keepalived (HA pair)
+  # Edge Pod: all inter-domain + north-south hairpin
+  # ---------------------------------------------------------------------------
+
+    firewall-01:
+      kind: linux
+      image: esi/alpine-firewall:3.20
+      mgmt-ipv4: 172.20.20.101
+      binds:
+        - configs/firewall-common/startup-common.sh:/opt/firewall-common/startup-common.sh
+        - configs/firewall-01/keepalived.conf:/etc/keepalived/keepalived.conf
+        - configs/firewall-01/nftables.conf:/etc/nftables.conf
+        - configs/firewall-01/startup.sh:/startup.sh
+      exec:
+        - sh /startup.sh
+
+    firewall-02:
+      kind: linux
+      image: esi/alpine-firewall:3.20
+      mgmt-ipv4: 172.20.20.102
+      binds:
+        - configs/firewall-common/startup-common.sh:/opt/firewall-common/startup-common.sh
+        - configs/firewall-02/keepalived.conf:/etc/keepalived/keepalived.conf
+        - configs/firewall-02/nftables.conf:/etc/nftables.conf
+        - configs/firewall-02/startup.sh:/startup.sh
+      exec:
+        - sh /startup.sh
+
+  # ---------------------------------------------------------------------------
+  # SERVERS — Alpine hosts with dual-homing (LACP bond)
+  # ---------------------------------------------------------------------------
+
+    server-student-01:
+      kind: linux
+      image: esi/alpine-host:3.20
+      mgmt-ipv4: 172.20.20.151
+      cap-add: [NET_ADMIN, SYS_MODULE, NET_RAW]
+      binds:
+        - configs/server-student-01/startup.sh:/startup.sh
+        - configs/ntp-server/server-client-ntp.sh:/ntp-client.sh
+      exec:
+        - sh /startup.sh
+        - sh /ntp-client.sh
+
+    server-student-02:
+      kind: linux
+      image: esi/alpine-host:3.20
+      mgmt-ipv4: 172.20.20.152
+      cap-add: [NET_ADMIN, SYS_MODULE, NET_RAW]
+      binds:
+        - configs/server-student-02/startup.sh:/startup.sh
+        - configs/ntp-server/server-client-ntp.sh:/ntp-client.sh
+      exec:
+        - sh /startup.sh
+        - sh /ntp-client.sh
+
+    server-admin-01:
+      kind: linux
+      image: esi/alpine-host:3.20
+      mgmt-ipv4: 172.20.20.153
+      cap-add: [NET_ADMIN, SYS_MODULE, NET_RAW]
+      binds:
+        - configs/server-admin-01/startup.sh:/startup.sh
+        - configs/ntp-server/server-client-ntp.sh:/ntp-client.sh
+      exec:
+        - sh /startup.sh
+        - sh /ntp-client.sh
+
+    server-admin-02:
+      kind: linux
+      image: esi/alpine-host:3.20
+      mgmt-ipv4: 172.20.20.154
+      cap-add: [NET_ADMIN, SYS_MODULE, NET_RAW]
+      binds:
+        - configs/server-admin-02/startup.sh:/startup.sh
+        - configs/ntp-server/server-client-ntp.sh:/ntp-client.sh
+      exec:
+        - sh /startup.sh
+        - sh /ntp-client.sh
+
+    server-hpc-01:
+      kind: linux
+      image: esi/alpine-host:3.20
+      mgmt-ipv4: 172.20.20.155
+      cap-add: [NET_ADMIN, SYS_MODULE, NET_RAW]
+      binds:
+        - configs/server-hpc-01/startup.sh:/startup.sh
+        - configs/ntp-server/server-client-ntp.sh:/ntp-client.sh
+      exec:
+        - sh /startup.sh
+        - sh /ntp-client.sh
+
+    server-hpc-02:
+      kind: linux
+      image: esi/alpine-host:3.20
+      mgmt-ipv4: 172.20.20.156
+      cap-add: [NET_ADMIN, SYS_MODULE, NET_RAW]
+      binds:
+        - configs/server-hpc-02/startup.sh:/startup.sh
+        - configs/ntp-server/server-client-ntp.sh:/ntp-client.sh
+      exec:
+        - sh /startup.sh
+        - sh /ntp-client.sh
+
+    server-storage-01:
+      kind: linux
+      image: esi/alpine-host:3.20
+      mgmt-ipv4: 172.20.20.157
+      cap-add: [NET_ADMIN, SYS_MODULE, NET_RAW]
+      binds:
+        - configs/server-storage-01/startup.sh:/startup.sh
+        - configs/ntp-server/server-client-ntp.sh:/ntp-client.sh
+      exec:
+        - sh /startup.sh
+        - sh /ntp-client.sh
+
+    server-dmz-01:
+      kind: linux
+      image: esi/alpine-host:3.20
+      mgmt-ipv4: 172.20.20.158
+      binds:
+        - configs/server-dmz-01/startup.sh:/startup.sh
+        - configs/server-dmz-01/www:/www:ro
+        - configs/ntp-server/server-client-ntp.sh:/ntp-client.sh
+      exec:
+        - sh /startup.sh
+        - sh /ntp-client.sh
+
+  # ---------------------------------------------------------------------------
+  # SERVICES / VIRTUAL HOSTS
+  # ---------------------------------------------------------------------------
+
+    lms-staff:
+      kind: linux
+      image: esi/alpine-host:3.20
+      mgmt-ipv4: 172.20.20.161
+      binds:
+        - configs/ntp-server/server-client-ntp.sh:/ntp-client.sh
+      exec:
+        - ip addr add 192.168.30.10/24 dev eth1
+        - ip route del default
+        - ip route add default via 192.168.30.1 dev eth1
+        - sh /ntp-client.sh
+
+    services-web:
+      kind: linux
+      image: esi/alpine-host:3.20
+      mgmt-ipv4: 172.20.20.162
+      binds:
+        - configs/ntp-server/server-client-ntp.sh:/ntp-client.sh
+      exec:
+        - ip addr add 192.168.40.10/24 dev eth1
+        - ip route del default
+        - ip route add default via 192.168.40.1 dev eth1
+        - sh /ntp-client.sh
+
+  # ---------------------------------------------------------------------------
+  # INFRASTRUCTURE SERVICES
+  # ---------------------------------------------------------------------------
+
+    ntp-server:
+      kind: linux
+      image: esi/alpine-host:3.20
+      mgmt-ipv4: 172.20.20.163
+      binds:
+        - configs/ntp-server/startup.sh:/startup.sh
+      cmd: sh /startup.sh
+
+    dns-server:
+      kind: linux
+      image: esi/alpine-services:3.20
+      mgmt-ipv4: 172.20.20.164
+      binds:
+        - configs/dns-server/startup.sh:/setup.sh:ro
+        - configs/dns-server/unbound.conf:/etc/unbound/unbound.conf.seed:ro
+      cmd: /bin/sh /setup.sh
+
+    dhcp-server:
+      kind: linux
+      image: esi/alpine-services:3.20
+      mgmt-ipv4: 172.20.20.165
+      cap-add: [NET_ADMIN, NET_RAW]
+      binds:
+        - configs/dhcp-server/startup.sh:/startup.sh
+      cmd: sh /startup.sh
+
+    ftp-server:
+      kind: linux
+      image: esi/alpine-host:3.20
+      mgmt-ipv4: 172.20.20.166
+      binds:
+        - configs/ftp-server/startup.sh:/startup.sh
+        - configs/shared:/shared:ro
+      exec:
+        - sh /startup.sh
+
+    zabbix-server:
+      kind: linux
+      image: esi/alpine-zabbix:3.20
+      mgmt-ipv4: 172.20.20.167
+      startup-delay: 60
+      binds:
+        - configs/zabbix-server/startup.sh:/startup.sh
+      cmd: sh /startup.sh
+      cap-add: [NET_ADMIN, NET_RAW]
+
+  # ---------------------------------------------------------------------------
+  # OBSERVABILITY STACK
+  # ---------------------------------------------------------------------------
+
+    prometheus:
+      kind: linux
+      image: prom/prometheus:latest
+      mgmt-ipv4: 172.20.20.171
+      ports:
+        - 9090:9090
+      binds:
+        - configs/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+        - configs/prometheus/alerts.yml:/etc/prometheus/alerts.yml
+
+    grafana:
+      kind: linux
+      image: grafana/grafana:latest
+      mgmt-ipv4: 172.20.20.172
+      ports:
+        - 3000:3000
+      env:
+        GF_SECURITY_ADMIN_USER: admin
+        GF_SECURITY_ADMIN_PASSWORD: admin
+        GF_USERS_ALLOW_SIGN_UP: "false"
+        GF_METRICS_ENABLED: "true"
+        GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /etc/grafana/provisioning/dashboards/json/esi-fabric-observability.json
+      binds:
+        - configs/grafana/provisioning:/etc/grafana/provisioning
+
+    frr-exporter:
+      kind: linux
+      image: esi/alpine-exporter:3.20
+      mgmt-ipv4: 172.20.20.173
+      env:
+        LAB_NAME: esi-datacenter
+      binds:
+        - configs/frr-exporter/metrics:/srv/www/metrics
+        - configs/frr-exporter/generate-metrics.sh:/opt/frr-exporter/generate-metrics.sh
+        - /var/run/docker.sock:/var/run/docker.sock
+      exec:
+        - sh -lc "chmod +x /opt/frr-exporter/generate-metrics.sh; nohup
+          /opt/frr-exporter/generate-metrics.sh >/tmp/frr-exporter-loop.log 2>&1
+          & nohup httpd -f -p 9342 -h /srv/www >/tmp/frr-exporter-httpd.log 2>&1
+          &"
+
+    syslog-server:
+      kind: linux
+      image: esi/alpine-host:3.20
+      mgmt-ipv4: 172.20.20.174
+      binds:
+        - configs/syslog-server/startup.sh:/startup.sh
+        - configs/shared:/shared:ro
+      exec:
+        - sh /startup.sh
+
+  # ---------------------------------------------------------------------------
+  # SECURITY
+  # ---------------------------------------------------------------------------
+
+    ids-01:
+      kind: linux
+      image: alpine:3.20
+      mgmt-ipv4: 172.20.20.175
+      # Suricata IDS — mirrors Edge Pod traffic via span port on leaf-01
+
+    bastion-01:
+      kind: linux
+      image: esi/alpine-host:3.20
+      mgmt-ipv4: 172.20.20.50
+      binds:
+        - configs/bastion-01/startup.sh:/startup.sh
+        - configs/shared:/shared
+      exec:
+        - sh /startup.sh
+
+  # ---------------------------------------------------------------------------
+  # CAMPUS / WIRELESS
+  # ---------------------------------------------------------------------------
+
+    wifi-controller:
+      kind: linux
+      image: alpine:3.20
+      mgmt-ipv4: 172.20.20.176
+      exec:
+        - ip addr add 192.168.10.100/24 dev eth1
+        - ip route del default
+        - ip route add default via 192.168.10.1 dev eth1
+
+    campus-bp:
+      kind: linux
+      image: esi/alpine-host:3.20
+      mgmt-ipv4: 172.20.20.177
+      binds:
+        - configs/campus-bp/startup.sh:/startup.sh
+      exec:
+        - sh /startup.sh
+
+    student-bp-01:
+      kind: linux
+      image: nicolaka/netshoot
+      mgmt-ipv4: 172.20.20.178
+      binds:
+        - configs/student-bp-01/startup.sh:/startup.sh
+      cmd: sleep infinity
+      exec:
+        - sh /startup.sh
+
+  # ---------------------------------------------------------------------------
+  # OUT-OF-BAND MANAGEMENT SWITCH
+  # ---------------------------------------------------------------------------
+
+    oob-sw:
+      kind: linux
+      image: alpine:3.20
+      mgmt-ipv4: 172.20.20.200
+      binds:
+        - configs/oob-sw/startup.sh:/startup.sh
+      exec:
+        - sh /startup.sh
+
+  # ---------------------------------------------------------------------------
+  # ANSIBLE AUTOMATION CONTROLLER
+  # ---------------------------------------------------------------------------
     ansible:
       kind: linux
       image: willhallonline/ansible:2.16-alpine-3.19
-      mgmt-ipv4: 172.100.100.100
+      mgmt-ipv4: 172.20.20.100
       binds:
-        - ansible:/ansible                         # playbooks, inventory, roles
-        - ansible/ansible.cfg:/etc/ansible/ansible.cfg
+        - ./ansible:/ansible
+        - configs/shared:/shared:ro
       cmd: sleep infinity
+      env:
+        ANSIBLE_CONFIG: /ansible/ansible.cfg
 
+  # ===========================================================================
+  # LINKS
+  # ===========================================================================
   links:
-    # ─── Fabric uplinks (data-plane) ─────────────────────────────────────────
-    - endpoints: ["spine-01:eth1", "leaf-01:eth1"]
 
-    # ─── Hosts attached to leafs ─────────────────────────────────────────────
-    - endpoints: ["leaf-01:eth3", "host-01:eth1"]
+    # -------------------------------------------------------------------------
+    # Spine-01 → All Leaves (underlay eBGP /31 P2P)
+    # S01:eth1-10 → Leaf-01..10:eth1
+    # -------------------------------------------------------------------------
+    - endpoints: ["spine-01:eth1", "leaf-01:eth1"]   # 10.1.1.0/31  S01=.0 L01=.1
+    - endpoints: ["spine-01:eth2", "leaf-02:eth1"]   # 10.1.2.0/31  S01=.0 L02=.1
+    - endpoints: ["spine-01:eth3", "leaf-03:eth1"]   # 10.1.3.0/31  S01=.0 L03=.1
+    - endpoints: ["spine-01:eth4", "leaf-04:eth1"]   # 10.1.4.0/31  S01=.0 L04=.1
+    - endpoints: ["spine-01:eth5", "leaf-05:eth1"]   # 10.1.5.0/31  S01=.0 L05=.1
+    - endpoints: ["spine-01:eth6", "leaf-06:eth1"]   # 10.1.6.0/31  S01=.0 L06=.1
+    - endpoints: ["spine-01:eth7", "leaf-07:eth1"]   # 10.1.7.0/31  S01=.0 L07=.1
+    - endpoints: ["spine-01:eth8", "leaf-08:eth1"]   # 10.1.8.0/31  S01=.0 L08=.1
+    - endpoints: ["spine-01:eth9", "leaf-09:eth1"]   # 10.1.9.0/31  S01=.0 L09=.1
+    - endpoints: ["spine-01:eth10", "leaf-10:eth1"]  # 10.1.10.0/31 S01=.0 L10=.1
+
+    # -------------------------------------------------------------------------
+    # Spine-02 → All Leaves (underlay eBGP /31 P2P)
+    # S02:eth1-10 → Leaf-01..10:eth2
+    # -------------------------------------------------------------------------
+    - endpoints: ["spine-02:eth1", "leaf-01:eth2"]   # 10.2.1.0/31  S02=.0 L01=.1
+    - endpoints: ["spine-02:eth2", "leaf-02:eth2"]   # 10.2.2.0/31  S02=.0 L02=.1
+    - endpoints: ["spine-02:eth3", "leaf-03:eth2"]   # 10.2.3.0/31  S02=.0 L03=.1
+    - endpoints: ["spine-02:eth4", "leaf-04:eth2"]   # 10.2.4.0/31  S02=.0 L04=.1
+    - endpoints: ["spine-02:eth5", "leaf-05:eth2"]   # 10.2.5.0/31  S02=.0 L05=.1
+    - endpoints: ["spine-02:eth6", "leaf-06:eth2"]   # 10.2.6.0/31  S02=.0 L06=.1
+    - endpoints: ["spine-02:eth7", "leaf-07:eth2"]   # 10.2.7.0/31  S02=.0 L07=.1
+    - endpoints: ["spine-02:eth8", "leaf-08:eth2"]   # 10.2.8.0/31  S02=.0 L08=.1
+    - endpoints: ["spine-02:eth9", "leaf-09:eth2"]   # 10.2.9.0/31  S02=.0 L09=.1
+    - endpoints: ["spine-02:eth10", "leaf-10:eth2"]  # 10.2.10.0/31 S02=.0 L10=.1
+
+    # -------------------------------------------------------------------------
+    # ISP / Internet links (Edge Pod)
+    # -------------------------------------------------------------------------
+    - endpoints: ["leaf-01:eth3", "isp-router-01:eth1"]   # ISP-1 primary uplink
+    - endpoints: ["leaf-02:eth3", "isp-router-02:eth1"]   # ISP-2 primary uplink
+    - endpoints: ["leaf-01:eth4", "isp-router-03:eth1"]   # ISP-3 / BAC third fibre
+    - endpoints: ["isp-router-01:eth2", "isp-router-04:eth3"]
+    - endpoints: ["internet-router-01:eth2", "isp-router-04:eth1"]
+    - endpoints: ["internet-router-02:eth2", "isp-router-04:eth2"]
+    - endpoints: ["internet-client-01:eth1", "internet-router-01:eth1"]
+    - endpoints: ["internet-client-02:eth1", "internet-router-02:eth1"]
+    - endpoints: ["internet-router-01:eth3", "internet-web-01:eth1"]
+    - endpoints: ["isp-router-01:eth3", "campus-bp:eth1"]  # Campus internet path
+
+    # -------------------------------------------------------------------------
+    # Firewall HA pair — Edge Pod
+    # L01:eth5 / L02:eth5 = firewall uplinks (VLAN trunk)
+    # eth9 = inter-Leaf LACP ESI heartbeat channel
+    # eth3 = firewall-01 ↔ firewall-02 state sync
+    # -------------------------------------------------------------------------
+    - endpoints: ["leaf-01:eth5", "firewall-01:eth1"]
+    - endpoints: ["leaf-02:eth5", "firewall-02:eth1"]
+    - endpoints: ["leaf-01:eth9", "leaf-02:eth9"]          # ESI peer-link channel
+    - endpoints: ["firewall-01:eth3", "firewall-02:eth3"]  # VRRP state sync
+
+    # -------------------------------------------------------------------------
+    # IDS — span target on leaf-01 (mirrors Edge Pod traffic)
+    # -------------------------------------------------------------------------
+    - endpoints: ["leaf-01:eth6", "ids-01:eth1"]
+
+    # -------------------------------------------------------------------------
+    # DMZ server — Edge Pod (Public comm. domain, VNI 10100)
+    # -------------------------------------------------------------------------
+    - endpoints: ["leaf-01:eth7", "server-dmz-01:eth1"]
+
+    # -------------------------------------------------------------------------
+    # Campus / WiFi — Edge Pod
+    # -------------------------------------------------------------------------
+    - endpoints: ["campus-bp:eth3", "leaf-01:eth8"]
+    - endpoints: ["wifi-controller:eth1", "leaf-01:eth14"]   # WIFI-CTRL-MGMT local VRF
+    - endpoints: ["campus-bp:eth4", "student-bp-01:eth1"]
+
+    # -------------------------------------------------------------------------
+    # Ultra Compute Pod — server dual-homing (LACP / ESI)
+    # Student servers → L09/L10
+    # -------------------------------------------------------------------------
+    - endpoints: ["leaf-09:eth3", "server-student-01:eth1"]
+    - endpoints: ["leaf-09:eth4", "server-student-02:eth1"]
+    - endpoints: ["leaf-10:eth3", "server-student-01:eth2"]
+    - endpoints: ["leaf-10:eth4", "server-student-02:eth2"]
+
+    # -------------------------------------------------------------------------
+    # Core Pod — admin servers dual-homed on L03/L04
+    # -------------------------------------------------------------------------
+    - endpoints: ["leaf-03:eth4", "server-admin-01:eth1"]
+    - endpoints: ["leaf-03:eth6", "server-admin-02:eth1"]
+    - endpoints: ["leaf-04:eth3", "server-admin-01:eth2"]
+    - endpoints: ["leaf-04:eth5", "server-admin-02:eth2"]
+
+    # -------------------------------------------------------------------------
+    # Storage Pod — HPC servers dual-homed on L05/L06
+    # -------------------------------------------------------------------------
+    - endpoints: ["leaf-05:eth3", "server-hpc-01:eth1"]
+    - endpoints: ["leaf-05:eth4", "server-hpc-02:eth1"]
+    - endpoints: ["leaf-06:eth3", "server-hpc-01:eth2"]
+    - endpoints: ["leaf-06:eth4", "server-hpc-02:eth2"]
+
+    # -------------------------------------------------------------------------
+    # Storage Pod — Ceph storage server dual-homed on L07/L08
+    # -------------------------------------------------------------------------
+    - endpoints: ["leaf-07:eth3", "server-storage-01:eth1"]
+    - endpoints: ["leaf-08:eth3", "server-storage-01:eth2"]
+
+    # -------------------------------------------------------------------------
+    # Core Pod — Single-homed service nodes
+    # -------------------------------------------------------------------------
+    - endpoints: ["leaf-03:eth5", "lms-staff:eth1"]            # LMS-STAFF VNI 10030
+    - endpoints: ["leaf-04:eth4", "services-web:eth1"]         # SERVICES-WEB VNI 10040
+    - endpoints: ["leaf-04:eth6", "syslog-server:eth1"]        # CORE-INFRA
+    - endpoints: ["leaf-03:eth3", "ftp-server:eth1"]           # CORE-INFRA
+
+    # -------------------------------------------------------------------------
+    # Core Pod — Infrastructure services (dual-homed for HA)
+    # -------------------------------------------------------------------------
+    - endpoints: ["leaf-03:eth9",  "ntp-server:eth1"]
+    - endpoints: ["leaf-04:eth9",  "ntp-server:eth3"]          # dual-home NTP data plane
+    - endpoints: ["leaf-03:eth7",  "dns-server:eth1"]
+    - endpoints: ["leaf-04:eth7",  "dns-server:eth2"]          # dual-home DNS
+    - endpoints: ["leaf-03:eth8",  "dhcp-server:eth1"]
+    - endpoints: ["leaf-04:eth8",  "dhcp-server:eth2"]         # dual-home DHCP
+    - endpoints: ["leaf-03:eth11", "zabbix-server:eth1"]
+
+    # -------------------------------------------------------------------------
+    # Observability — Prometheus ↔ FRR-exporter
+    # -------------------------------------------------------------------------
+    - endpoints: ["prometheus:eth1", "frr-exporter:eth1"]
+
+    # -------------------------------------------------------------------------
+    # OOB Management Network — dedicated switch
+    # All switch mgmt0/eth10 interfaces land here
+    # -------------------------------------------------------------------------
+    - endpoints: ["bastion-01:eth1",   "oob-sw:eth1"]     # Bastion 172.16.0.50
+    - endpoints: ["oob-sw:eth2",  "spine-01:eth11"]
+    - endpoints: ["oob-sw:eth3",  "spine-02:eth11"]
+    - endpoints: ["oob-sw:eth4",  "leaf-01:eth10"]
+    - endpoints: ["oob-sw:eth5",  "leaf-02:eth10"]
+    - endpoints: ["oob-sw:eth6",  "leaf-03:eth10"]
+    - endpoints: ["oob-sw:eth7",  "leaf-04:eth10"]
+    - endpoints: ["oob-sw:eth8",  "leaf-05:eth10"]
+    - endpoints: ["oob-sw:eth9",  "leaf-06:eth10"]
+    - endpoints: ["oob-sw:eth10", "leaf-07:eth10"]
+    - endpoints: ["oob-sw:eth11", "leaf-08:eth10"]
+    - endpoints: ["oob-sw:eth12", "leaf-09:eth10"]
+    - endpoints: ["oob-sw:eth13", "leaf-10:eth10"]
+    - endpoints: ["oob-sw:eth14", "ftp-server:eth2"]
+    - endpoints: ["oob-sw:eth15", "ntp-server:eth2"]       # OOB NTP access

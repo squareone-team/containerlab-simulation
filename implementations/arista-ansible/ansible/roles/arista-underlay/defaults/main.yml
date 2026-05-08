@@ -1,0 +1,115 @@
+# =============================================================================
+# Role: arista-underlay — Defaults
+# eBGP underlay with BFD, /31 P2P links, loopbacks, MTU
+# Override in group_vars/fabric.yml, group_vars/spines.yml, host_vars/<node>.yml
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# BGP — Global
+# -----------------------------------------------------------------------------
+# underlay_asn is REQUIRED per-host; set in host_vars or group_vars per pod
+# underlay_asn: 65000   # example — must be set per node
+
+# BGP router-ID is derived from loopback0 address by default
+bgp_router_id: "{{ loopback0 | ipaddr('address') }}"
+
+# BGP timers (keepalive / hold)
+bgp_keepalive:  3
+bgp_hold_time:  9
+
+# Maximum paths for ECMP (2 spines = 2 paths minimum)
+bgp_maximum_paths: 2
+bgp_ecmp_paths:    2
+
+# Graceful restart
+bgp_graceful_restart: true
+bgp_graceful_restart_timer: 300
+
+# BGP log-neighbor-changes
+bgp_log_neighbor_changes: true
+
+# BGP password for underlay sessions (TCP MD5 — set to "" to disable)
+# Per architecture: TCP MD5 on all sessions; TCP-AO preferred when supported
+bgp_underlay_password: ""    # override in group_vars/fabric.yml with vault
+
+# -----------------------------------------------------------------------------
+# BFD — Sub-second failure detection
+# Architecture target: 300 ms detection window (3 × 100 ms)
+# -----------------------------------------------------------------------------
+bfd_enabled: true
+bfd_min_rx:        100   # ms
+bfd_min_tx:        100   # ms
+bfd_multiplier:    3     # detection = multiplier × max(min_rx, min_tx)
+
+# -----------------------------------------------------------------------------
+# Loopback interfaces
+# -----------------------------------------------------------------------------
+# loopback0 REQUIRED per-host — set in host_vars/<node>.yml
+# loopback0: "10.0.1.1/32"
+
+loopback0_description: "Router-ID / VTEP source"
+
+# -----------------------------------------------------------------------------
+# Point-to-Point underlay links
+# p2p_links is a list of dicts — defined per host in host_vars/<node>.yml
+# Example entry (Leaf perspective):
+#   p2p_links:
+#     - interface: Ethernet1
+#       description: "P2P to spine-01 eth1"
+#       ip: "10.1.1.1/31"
+#       remote_asn: 65000
+#       remote_ip: "10.1.1.0"
+#       bfd: true
+#     - interface: Ethernet2
+#       description: "P2P to spine-02 eth2"
+#       ip: "10.2.1.1/31"
+#       remote_asn: 65000
+#       remote_ip: "10.2.1.0"
+#       bfd: true
+p2p_links: []
+
+# MTU on all underlay P2P links
+# 9000 bytes on fabric links per architecture (VXLAN + Ceph headers)
+underlay_mtu: 9000
+
+# -----------------------------------------------------------------------------
+# Underlay interface defaults
+# -----------------------------------------------------------------------------
+underlay_interface_defaults:
+  mtu:          "{{ underlay_mtu }}"
+  no_switchport: true
+  shutdown:     false
+
+# -----------------------------------------------------------------------------
+# Spine-specific: peer groups toward leaves
+# Only used when inventory_hostname in group 'spines'
+# -----------------------------------------------------------------------------
+spine_bgp_peer_group:  LEAF-UNDERLAY
+spine_bgp_peer_filter: LEAF-ASN-RANGE
+
+# Leaf ASN range accepted by spines (65101–65110 per architecture)
+leaf_asn_min: 65101
+leaf_asn_max: 65110
+
+# -----------------------------------------------------------------------------
+# Leaf-specific: peer groups toward spines
+# Only used when inventory_hostname in group 'leaves'
+# -----------------------------------------------------------------------------
+leaf_bgp_peer_group: SPINE-UNDERLAY
+
+# Spine ASN accepted by all leaves
+spine_asn: 65000
+
+# -----------------------------------------------------------------------------
+# Prefix lists & route maps
+# -----------------------------------------------------------------------------
+# Spines advertise only loopbacks into underlay
+underlay_prefix_list_name:   PL-LOOPBACKS
+underlay_route_map_out_name: RM-LOOPBACKS-OUT
+underlay_route_map_in_name:  RM-ACCEPT-ALL
+
+# Maximum prefixes a leaf will accept from each spine (safety guard)
+leaf_max_prefixes_from_spine: 30
+
+# Maximum prefixes a spine will accept from each leaf (1 loopback + headroom)
+spine_max_prefixes_from_leaf: 5

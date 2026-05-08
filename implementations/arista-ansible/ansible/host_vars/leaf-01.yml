@@ -1,0 +1,193 @@
+
+# =============================================================================
+# host_vars/leaf-01.yml — Edge Pod, Primary Leaf
+# Role: ISP uplinks (eth3/eth4), Firewall trunk (eth5),
+#       IDS span (eth6), DMZ server (eth7), Campus (eth8/eth14)
+#       ESI peer-link to leaf-02: eth9
+# BGP AS: 65101
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# Physical interface map
+# -----------------------------------------------------------------------------
+interfaces:
+  # Underlay P2P links (eBGP to spines)
+  Ethernet1:
+    description: "P2P → spine-01 eth1 [10.1.1.0/31]"
+    ip: 10.1.1.1/31
+    mtu: "{{ mtu_fabric }}"
+    type: routed
+
+  Ethernet2:
+    description: "P2P → spine-02 eth1 [10.2.1.0/31]"
+    ip: 10.2.1.1/31
+    mtu: "{{ mtu_fabric }}"
+    type: routed
+
+  # ISP uplinks (routed, public ASN peering)
+  Ethernet3:
+    description: "ISP-1 primary uplink → isp-router-01"
+    ip: 203.0.113.1/30
+    mtu: 1500
+    type: routed
+
+  Ethernet4:
+    description: "ISP-3 / BAC third fibre → isp-router-03"
+    ip: 203.0.114.1/30
+    mtu: 1500
+    type: routed
+
+  # Firewall uplink — VLAN trunk
+  Ethernet5:
+    description: "Firewall-01 uplink (VLAN trunk)"
+    type: trunk
+    trunk_vlans: "100,110,200,210,220,230,500"
+    mtu: "{{ mtu_fabric }}"
+
+  # IDS span port (port-mirror destination)
+  Ethernet6:
+    description: "IDS-01 span port (monitor destination)"
+    type: access
+    access_vlan: 999
+
+  # DMZ server
+  Ethernet7:
+    description: "server-dmz-01 [VLAN 100 PUBLIC]"
+    type: access
+    access_vlan: 100
+    mtu: "{{ mtu_host }}"
+    spanning_tree_portfast: true
+
+  # Campus breakout point
+  Ethernet8:
+    description: "campus-bp uplink [VLAN 110 CAMPUS]"
+    type: trunk
+    trunk_vlans: "110"
+    mtu: "{{ mtu_host }}"
+
+  # ESI peer-link to leaf-02 (LACP / EVPN multihoming heartbeat)
+  Ethernet9:
+    description: "ESI peer-link → leaf-02 eth9"
+    type: routed
+    ip: 10.255.1.0/31     # /31 point-to-point ESI heartbeat
+
+  # OOB management (OOB switch eth4)
+  Ethernet10:
+    description: "OOB switch uplink"
+    type: access
+    access_vlan: 1         # native VLAN on OOB switch
+
+  # WiFi controller
+  Ethernet14:
+    description: "wifi-controller [WIFI-CTRL-MGMT]"
+    type: access
+    access_vlan: 110
+    mtu: "{{ mtu_host }}"
+    spanning_tree_portfast: true
+
+# -----------------------------------------------------------------------------
+# Loopback
+# -----------------------------------------------------------------------------
+loopbacks:
+  Loopback0:
+    ip: 10.0.1.1/32
+    description: "Router-ID / VTEP"
+
+# -----------------------------------------------------------------------------
+# VXLAN VTEP
+# -----------------------------------------------------------------------------
+vtep_source_interface: Loopback0
+vtep_ip: 10.0.1.1
+
+# -----------------------------------------------------------------------------
+# BGP — underlay + EVPN overlay
+# -----------------------------------------------------------------------------
+bgp_as: 65101
+router_id: 10.0.1.1
+
+bgp_neighbors:
+  # Spine peers (underlay IPv4 unicast)
+  - peer_ip: 10.1.1.0          # spine-01 eth1
+    remote_as: 65000
+    description: "spine-01 underlay"
+    address_family: [ipv4_unicast]
+
+  - peer_ip: 10.2.1.0          # spine-02 eth1
+    remote_as: 65000
+    description: "spine-02 underlay"
+    address_family: [ipv4_unicast]
+
+  # EVPN overlay peers (to spines' loopbacks)
+  - peer_ip: 10.0.0.1          # spine-01 loopback
+    remote_as: 65000
+    description: "spine-01 EVPN"
+    update_source: Loopback0
+    ebgp_multihop: 3
+    address_family: [evpn]
+
+  - peer_ip: 10.0.0.2          # spine-02 loopback
+    remote_as: 65000
+    description: "spine-02 EVPN"
+    update_source: Loopback0
+    ebgp_multihop: 3
+    address_family: [evpn]
+
+  # ISP peers (public BGP — simplified for lab)
+  - peer_ip: 203.0.113.2
+    remote_as: 64500
+    description: "ISP-1 eBGP"
+    address_family: [ipv4_unicast]
+    route_map_in: ISP1-IN
+    route_map_out: LEAF01-OUT
+
+  - peer_ip: 203.0.114.2
+    remote_as: 64502
+    description: "ISP-3/BAC eBGP"
+    address_family: [ipv4_unicast]
+    route_map_in: ISP3-IN
+    route_map_out: LEAF01-OUT
+
+# BGP networks advertised to ISP (public-facing)
+bgp_networks:
+  - "203.0.113.0/24"   # public address block (lab placeholder)
+
+# -----------------------------------------------------------------------------
+# VRFs hosted on this leaf (Edge Pod)
+# -----------------------------------------------------------------------------
+vrfs:
+  - name: PUBLIC
+    rd: "10.0.1.1:10100"
+    rt_import: "65000:10100"
+    rt_export: "65000:10100"
+    l3vni: 10100
+
+  - name: CAMPUS
+    rd: "10.0.1.1:10110"
+    rt_import: "65000:10110"
+    rt_export: "65000:10110"
+    l3vni: 10110
+
+# VLANs to VXLAN VNI map (L2VNIs)
+vlan_vni_map:
+  - vlan: 100
+    vni: 10100
+    name: DMZ
+  - vlan: 110
+    vni: 10110
+    name: CAMPUS-WIFI
+
+# -----------------------------------------------------------------------------
+# Port mirroring (IDS span)
+# -----------------------------------------------------------------------------
+monitor_sessions:
+  - name: IDS-SPAN
+    source_interfaces: [Ethernet5, Ethernet7, Ethernet8]
+    source_direction: both
+    destination: Ethernet6
+
+# -----------------------------------------------------------------------------
+# ESI multihoming parameters
+# (leaf-01 + leaf-02 form one ESI redundancy group per attached host)
+# -----------------------------------------------------------------------------
+esi_id: "0000:0000:0001:0001:0001"
+lacp_system_id: "0001.0001.0001"

@@ -1,0 +1,315 @@
+# =============================================================================
+# Role: arista-underlay — Tasks
+# Configures the eBGP underlay fabric on Arista cEOS nodes.
+#
+# Execution order:
+#   1.  Service routing model (multi-agent — required for EVPN)
+#   2.  Loopback0 (router-ID / VTEP source)
+#   3.  P2P underlay interfaces
+#   4.  BFD global parameters
+#   5.  Prefix-list + route-map (loopback advertisement control)
+#   6.  BGP process: router-ID, timers, ECMP
+#   7.  BGP peer-groups (spine→leaf  /  leaf→spine)
+#   8.  BGP neighbors
+#   9.  Spine: peer-filter for leaf ASN range
+#  10.  Save
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# 1. Routing model — multi-agent is mandatory for EVPN on EOS
+# -----------------------------------------------------------------------------
+- name: "UNDERLAY | Enable multi-agent routing model"
+  arista.eos.eos_config:
+    lines:
+      - "service routing protocols model multi-agent"
+    match: line
+  tags: [underlay, routing_model]
+
+# -----------------------------------------------------------------------------
+# 2. Loopback0 — router-ID and VTEP source
+# -----------------------------------------------------------------------------
+- name: "UNDERLAY | Configure Loopback0"
+  arista.eos.eos_config:
+    lines:
+      - "description {{ loopback0_description }}"
+      - "ip address {{ loopback0 }}"
+      - "no shutdown"
+    parents: "interface Loopback0"
+    match: line
+  when: loopback0 is defined
+  tags: [underlay, loopback]
+
+# -----------------------------------------------------------------------------
+# 3. P2P underlay interfaces — /31 links, no switchport, MTU 9000
+# -----------------------------------------------------------------------------
+- name: "UNDERLAY | Configure P2P underlay interfaces"
+  arista.eos.eos_config:
+    lines:
+      - "description {{ item.description | default('P2P underlay') }}"
+      - "no switchport"
+      - "mtu {{ item.mtu | default(underlay_mtu) }}"
+      - "ip address {{ item.ip }}"
+      - "no shutdown"
+    parents: "interface {{ item.interface }}"
+    match: line
+  loop: "{{ p2p_links }}"
+  loop_control:
+    label: "{{ item.interface }} — {{ item.ip }}"
+  when: p2p_links | length > 0
+  tags: [underlay, interfaces]
+
+# -----------------------------------------------------------------------------
+# 4. BFD global parameters
+#    Per architecture: min-rx 100 ms / min-tx 100 ms / multiplier 3
+#    → 300 ms detection window
+# -----------------------------------------------------------------------------
+- name: "UNDERLAY | Configure BFD global default timers"
+  arista.eos.eos_config:
+    lines:
+      - "bfd interval {{ bfd_min_tx }} min-rx {{ bfd_min_rx }} multiplier {{ bfd_multiplier }}"
+    parents: []
+    match: line
+  when: bfd_enabled | bool
+  tags: [underlay, bfd]
+
+# -----------------------------------------------------------------------------
+# 5a. Prefix-list — advertise only loopback /32s into underlay
+# -----------------------------------------------------------------------------
+- name: "UNDERLAY | Configure loopback prefix-list"
+  arista.eos.eos_config:
+    lines:
+      - "seq 10 permit 10.0.0.0/8 le 32"
+    parents: "ip prefix-list {{ underlay_prefix_list_name }}"
+    match: line
+  tags: [underlay, prefix_list]
+
+# -----------------------------------------------------------------------------
+# 5b. Route-maps
+# -----------------------------------------------------------------------------
+- name: "UNDERLAY | Configure route-map OUT (permit loopbacks)"
+  arista.eos.eos_config:
+    lines:
+      - "match ip address prefix-list {{ underlay_prefix_list_name }}"
+    parents:
+      - "route-map {{ underlay_route_map_out_name }} permit 10"
+    match: line
+  tags: [underlay, route_map]
+
+- name: "UNDERLAY | Configure route-map IN (accept all from peers)"
+  arista.eos.eos_config:
+    lines:
+      - "description Accept all underlay prefixes from peers"
+    parents:
+      - "route-map {{ underlay_route_map_in_name }} permit 10"
+    match: line
+  tags: [underlay, route_map]
+
+# -----------------------------------------------------------------------------
+# 6. BGP process — router-ID, timers, ECMP, graceful-restart
+# -----------------------------------------------------------------------------
+- name: "UNDERLAY | Configure BGP process"
+  arista.eos.eos_config:
+    lines:
+      - "router-id {{ bgp_router_id }}"
+      - "no bgp default ipv4-unicast"
+      - "distance bgp 20 200 200"
+      - "graceful-restart restart-time {{ bgp_graceful_restart_timer }}"
+      - "graceful-restart"
+      - "maximum-paths {{ bgp_maximum_paths }} ecmp {{ bgp_ecmp_paths }}"
+      - "bgp log-neighbor-changes"
+      - "timers bgp {{ bgp_keepalive }} {{ bgp_hold_time }}"
+    parents: "router bgp {{ underlay_asn }}"
+    match: line
+  tags: [underlay, bgp]
+
+# =============================================================================
+# SPINE-SPECIFIC TASKS
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# 7a. Spine: peer-filter to accept leaf ASN range 65101–65110
+# -----------------------------------------------------------------------------
+- name: "UNDERLAY | SPINE | Configure peer-filter for leaf ASNs"
+  arista.eos.eos_config:
+    lines:
+      - "10 match as-range {{ leaf_asn_min }}-{{ leaf_asn_max }} result accept"
+    parents: "peer-filter {{ spine_bgp_peer_filter }}"
+    match: line
+  when: "'spines' in group_names"
+  tags: [underlay, bgp, spine]
+
+# -----------------------------------------------------------------------------
+# 7b. Spine: peer-group LEAF-UNDERLAY
+# -----------------------------------------------------------------------------
+- name: "UNDERLAY | SPINE | Configure LEAF-UNDERLAY peer-group"
+  arista.eos.eos_config:
+    lines:
+      - "description eBGP underlay sessions to all Leaves"
+      - "send-community"
+      - "maximum-routes {{ spine_max_prefixes_from_leaf }} warning-only"
+      - "route-map {{ underlay_route_map_out_name }} out"
+      - "bfd"
+    parents:
+      - "router bgp {{ underlay_asn }}"
+      - "neighbor {{ spine_bgp_peer_group }} peer group"
+    match: line
+  when: "'spines' in group_names"
+  tags: [underlay, bgp, spine]
+
+- name: "UNDERLAY | SPINE | Apply password to LEAF-UNDERLAY peer-group"
+  arista.eos.eos_config:
+    lines:
+      - "neighbor {{ spine_bgp_peer_group }} password 7 {{ bgp_underlay_password }}"
+    parents: "router bgp {{ underlay_asn }}"
+    match: line
+  when:
+    - "'spines' in group_names"
+    - bgp_underlay_password | length > 0
+  tags: [underlay, bgp, spine, security]
+
+# -----------------------------------------------------------------------------
+# 7c. Spine: listen range for dynamic leaf neighbors
+# -----------------------------------------------------------------------------
+- name: "UNDERLAY | SPINE | Configure listen range for leaf peers"
+  arista.eos.eos_config:
+    lines:
+      - "bgp listen range 10.0.0.0/8 peer-group {{ spine_bgp_peer_group }} peer-filter {{ spine_bgp_peer_filter }}"
+    parents: "router bgp {{ underlay_asn }}"
+    match: line
+  when: "'spines' in group_names"
+  tags: [underlay, bgp, spine]
+
+# -----------------------------------------------------------------------------
+# 7d. Spine: activate IPv4 unicast for peer-group
+# -----------------------------------------------------------------------------
+- name: "UNDERLAY | SPINE | Activate IPv4 unicast for LEAF-UNDERLAY"
+  arista.eos.eos_config:
+    lines:
+      - "neighbor {{ spine_bgp_peer_group }} activate"
+      - "neighbor {{ spine_bgp_peer_group }} route-map {{ underlay_route_map_in_name }} in"
+    parents:
+      - "router bgp {{ underlay_asn }}"
+      - "address-family ipv4"
+    match: line
+  when: "'spines' in group_names"
+  tags: [underlay, bgp, spine]
+
+# =============================================================================
+# LEAF-SPECIFIC TASKS
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# 8a. Leaf: peer-group SPINE-UNDERLAY
+# -----------------------------------------------------------------------------
+- name: "UNDERLAY | LEAF | Configure SPINE-UNDERLAY peer-group"
+  arista.eos.eos_config:
+    lines:
+      - "description eBGP underlay sessions to Spines"
+      - "remote-as {{ spine_asn }}"
+      - "send-community"
+      - "maximum-routes {{ leaf_max_prefixes_from_spine }} warning-only"
+      - "route-map {{ underlay_route_map_out_name }} out"
+      - "route-map {{ underlay_route_map_in_name }} in"
+      - "bfd"
+    parents:
+      - "router bgp {{ underlay_asn }}"
+      - "neighbor {{ leaf_bgp_peer_group }} peer group"
+    match: line
+  when: "'leaves' in group_names"
+  tags: [underlay, bgp, leaf]
+
+- name: "UNDERLAY | LEAF | Apply password to SPINE-UNDERLAY peer-group"
+  arista.eos.eos_config:
+    lines:
+      - "neighbor {{ leaf_bgp_peer_group }} password 7 {{ bgp_underlay_password }}"
+    parents: "router bgp {{ underlay_asn }}"
+    match: line
+  when:
+    - "'leaves' in group_names"
+    - bgp_underlay_password | length > 0
+  tags: [underlay, bgp, leaf, security]
+
+# -----------------------------------------------------------------------------
+# 8b. Leaf: explicit BGP neighbors (one per spine uplink)
+#     p2p_links entries with 'remote_asn' == spine_asn become neighbors
+# -----------------------------------------------------------------------------
+- name: "UNDERLAY | LEAF | Configure BGP neighbors toward spines"
+  arista.eos.eos_config:
+    lines:
+      - "neighbor {{ item.remote_ip }} peer group {{ leaf_bgp_peer_group }}"
+      - "neighbor {{ item.remote_ip }} description {{ item.description | default('spine uplink') }}"
+    parents: "router bgp {{ underlay_asn }}"
+    match: line
+  loop: "{{ p2p_links | selectattr('remote_asn', 'defined') | selectattr('remote_asn', '==', spine_asn) | list }}"
+  loop_control:
+    label: "{{ item.remote_ip }}"
+  when: "'leaves' in group_names"
+  tags: [underlay, bgp, leaf]
+
+# -----------------------------------------------------------------------------
+# 8c. Leaf: activate IPv4 unicast address-family
+# -----------------------------------------------------------------------------
+- name: "UNDERLAY | LEAF | Activate IPv4 unicast for SPINE-UNDERLAY"
+  arista.eos.eos_config:
+    lines:
+      - "neighbor {{ leaf_bgp_peer_group }} activate"
+    parents:
+      - "router bgp {{ underlay_asn }}"
+      - "address-family ipv4"
+    match: line
+  when: "'leaves' in group_names"
+  tags: [underlay, bgp, leaf]
+
+# -----------------------------------------------------------------------------
+# 8d. Leaf: redistribute connected (loopback0) into BGP
+#     Only the Loopback0 is redistributed; P2P /31s are link-local only
+# -----------------------------------------------------------------------------
+- name: "UNDERLAY | LEAF | Redistribute connected loopbacks"
+  arista.eos.eos_config:
+    lines:
+      - "redistribute connected route-map {{ underlay_route_map_out_name }}"
+    parents:
+      - "router bgp {{ underlay_asn }}"
+      - "address-family ipv4"
+    match: line
+  when: "'leaves' in group_names"
+  tags: [underlay, bgp, leaf]
+
+# -----------------------------------------------------------------------------
+# 9. Spine: redistribute connected (own loopbacks)
+# -----------------------------------------------------------------------------
+- name: "UNDERLAY | SPINE | Redistribute connected loopbacks"
+  arista.eos.eos_config:
+    lines:
+      - "redistribute connected route-map {{ underlay_route_map_out_name }}"
+    parents:
+      - "router bgp {{ underlay_asn }}"
+      - "address-family ipv4"
+    match: line
+  when: "'spines' in group_names"
+  tags: [underlay, bgp, spine]
+
+# -----------------------------------------------------------------------------
+# 10. Verify underlay BGP sessions (non-blocking — just log result)
+# -----------------------------------------------------------------------------
+- name: "UNDERLAY | Verify BGP IPv4 unicast summary"
+  arista.eos.eos_command:
+    commands:
+      - "show bgp summary"
+  register: bgp_summary_output
+  changed_when: false
+  tags: [underlay, verify, never]
+
+- name: "UNDERLAY | Display BGP summary"
+  ansible.builtin.debug:
+    var: bgp_summary_output.stdout_lines
+  when: bgp_summary_output is defined
+  tags: [underlay, verify, never]
+
+# -----------------------------------------------------------------------------
+# 11. Save running config
+# -----------------------------------------------------------------------------
+- name: "UNDERLAY | Save configuration"
+  arista.eos.eos_config:
+    save_when: changed
+  tags: [underlay, save, always]

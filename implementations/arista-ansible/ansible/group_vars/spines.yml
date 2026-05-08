@@ -1,0 +1,79 @@
+
+# =============================================================================
+# ESI Data Center — Spine-wide Variables (group_vars/spines.yml)
+# Applies to: spine-01, spine-02
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# BGP — spines run eBGP toward every leaf and act as EVPN route-reflectors
+# In eBGP EVPN the "route-reflector" role is achieved by advertising all
+# received EVPN NLRIs to all other eBGP EVPN peers (next-hop unchanged).
+# -----------------------------------------------------------------------------
+bgp_as: 65000       # Spine AS (same for both; leaves each have unique AS)
+
+# Peer-group names used in spine BGP config templates
+bgp_spine_peer_group_underlay: LEAF-UNDERLAY
+bgp_spine_peer_group_evpn:     LEAF-EVPN
+
+bgp_timers_keepalive: 3
+bgp_timers_hold: 9
+
+bgp_bfd: true
+bgp_bfd_min_interval: 300
+bgp_bfd_multiplier: 3
+
+# Route-map applied to all leaf EVPN peers — allows the spine to reflect
+# EVPN routes without modifying next-hop (critical for proper VTEP resolution)
+bgp_evpn_next_hop_unchanged: true
+
+# Maximum prefixes accepted per leaf (iBGP safety)
+bgp_max_prefixes_ipv4: 100
+bgp_max_prefixes_evpn: 500
+
+# -----------------------------------------------------------------------------
+# Underlay — spine-side P2P /31 addressing
+# Spine-01 uplinks: eth1..eth10  →  leaf-01..leaf-10
+# Spine-02 uplinks: eth1..eth10  →  leaf-01..leaf-10
+# Address: 10.{spine_index}.{leaf_index}.0/31 (spine=.0, leaf=.1)
+# These are rendered dynamically from host_vars leaf data; the spine template
+# uses the spine_peers list defined in each spine's host_vars.
+# -----------------------------------------------------------------------------
+underlay_p2p_prefix_len: 31
+mtu_fabric: 9214
+
+spine_port_description_prefix: "FABRIC | "
+
+# -----------------------------------------------------------------------------
+# EVPN overlay — spine role
+# Spines do NOT host any VTEPs or VNIs.
+# Their sole overlay role: reflect EVPN type-2/3/5 routes between leaves.
+# -----------------------------------------------------------------------------
+spine_is_vtep: false
+
+# -----------------------------------------------------------------------------
+# Loopback
+# -----------------------------------------------------------------------------
+loopback0_description: "Router-ID / BGP EVPN RR"
+
+# -----------------------------------------------------------------------------
+# EOS features enabled on spines
+# -----------------------------------------------------------------------------
+spine_eos_features:
+  - "routing bgp"
+
+# -----------------------------------------------------------------------------
+# ECMP / load-balancing
+# Spines MUST hash flows across all leaf uplinks equally.
+# -----------------------------------------------------------------------------
+ecmp_hash_fields:
+  - ip
+  - protocol
+  - l4-port
+
+# Maximum ECMP paths toward any destination (10 leaves × 1 path each)
+bgp_max_ecmp_paths: 10
+
+# -----------------------------------------------------------------------------
+# Interface defaults
+# -----------------------------------------------------------------------------
+lldp_enabled: true

@@ -1,0 +1,82 @@
+# =============================================================================
+# ESI Data Center — Fabric-wide Variables
+# SINGLE SOURCE OF TRUTH — 5 Macro Communication Domains
+# =============================================================================
+
+anycast_gateway_mac: "00:1c:73:aa:bb:cc"
+vtep_loopback: Loopback0
+vxlan_udp_port: 4789
+
+bgp_spine_as: 65000
+spine_evpn_peer_group: LEAF-EVPN
+leaf_evpn_peer_group: SPINE-EVPN
+
+public_domain_no_rfc1918: true
+rfc1918_prefix_list_name: PL-BLOCK-RFC1918
+
+# ====================== 5 MACRO COMMUNICATION DOMAINS ======================
+communication_domains:
+  - vrf: VRF-PEDAGOGY
+    l3vni: 90010
+    description: "Teaching and student workloads"
+    firewall_hairpin: true
+    rfc1918_block: false
+    vlans:
+      - id: 10
+        name: PEDAGOGY-STUDENT
+        vni: 10010
+        prefix: 192.168.10.0/24
+        gateway: 192.168.10.1
+        rt: "65000:10010"
+
+  - vrf: VRF-STAFF
+    l3vni: 20000
+    description: "Staff systems"
+    firewall_hairpin: true
+    rfc1918_block: false
+    vlans:
+      - id: 20
+        name: STAFF-WIRED
+        vni: 20020
+        prefix: 192.168.20.0/24
+        gateway: 192.168.20.1
+        rt: "65000:20020"
+
+  - vrf: VRF-ADMINISTRATION
+    l3vni: 30000
+    description: "Administrative systems"
+    firewall_hairpin: true
+    rfc1918_block: false
+    vlans:
+      - id: 30
+        name: ADMIN-SERVERS
+        vni: 30030
+        prefix: 192.168.30.0/24
+        gateway: 192.168.30.1
+        rt: "65000:30030"
+
+  - vrf: VRF-ORIENTATION
+    l3vni: 40000
+    description: "Seasonal BAC Orientation"
+    firewall_hairpin: true
+    rfc1918_block: false
+    vlans:
+      - id: 40
+        name: ORIENTATION
+        vni: 40040
+        prefix: 192.168.40.0/24
+        gateway: 192.168.40.1
+        rt: "65000:40040"
+
+  - vrf: VRF-PUBLIC
+    l3vni: 50000
+    description: "DMZ — no RFC1918"
+    firewall_hairpin: true
+    rfc1918_block: true
+    vlans:
+      - id: 50
+        name: DMZ-WEB
+        vni: 50050
+        prefix: 192.168.50.0/24
+        gateway: 192.168.50.1
+        rt: "65000:50050"

@@ -1,0 +1,159 @@
+# =============================================================================
+# ESI Data Center — Server Base Configuration Playbook
+# Configures Alpine Linux hosts: IP addressing, default routes,
+# LACP bonds (where lacp_bond: true), NTP client, and basic validation.
+#
+# Groups handled:
+#   servers_edge    — server-dmz-01
+#   servers_core    — server-admin-01, server-admin-02
+#   servers_storage — server-hpc-01, server-hpc-02, server-storage-01
+#   servers_ultra   — server-student-01, server-student-02 (LACP bond)
+#   infra_services  — ntp-server, dns-server, dhcp-server, zabbix-server
+#
+# Note: Most servers use startup.sh (bind-mounted by Containerlab).
+# This playbook applies idempotent post-boot configuration and validation.
+#
+# Usage:
+#   ansible-playbook playbooks/servers-base.yml
+#   ansible-playbook playbooks/servers-base.yml --limit servers_ultra
+#   ansible-playbook playbooks/servers-base.yml --tags bond
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# Standard server hosts (single-homed)
+# -----------------------------------------------------------------------------
+- name: "SERVERS | Single-homed base config"
+  hosts: servers_edge:servers_core:servers_storage
+  gather_facts: true
+  become: true
+  ignore_unreachable: true
+
+  tasks:
+    - name: "Ensure IP address is configured on data interface"
+      ansible.builtin.command: >
+        ip addr add {{ server_ip }} dev eth1
+      args:
+        creates: /tmp/.ip_configured_{{ inventory_hostname }}
+      when: server_ip is defined
+      tags: [ip, networking]
+
+    - name: "Ensure default route via gateway"
+      ansible.builtin.command: >
+        ip route replace default via {{ server_gw }}
+      when: server_gw is defined
+      changed_when: true
+      tags: [routing, networking]
+
+    - name: "Set hostname"
+      ansible.builtin.hostname:
+        name: "{{ inventory_hostname }}"
+      tags: [hostname]
+
+    - name: "Verify connectivity to gateway"
+      ansible.builtin.command: >
+        ping -c 2 -W 2 {{ server_gw }}
+      register: gw_ping
+      changed_when: false
+      failed_when: false
+      when: server_gw is defined
+      tags: [verify, ping]
+
+    - name: "Report gateway reachability"
+      ansible.builtin.debug:
+        msg: >
+          {{ inventory_hostname }} → {{ server_gw }}:
+          {{ 'REACHABLE' if gw_ping.rc == 0 else 'UNREACHABLE' }}
+      when: server_gw is defined
+      tags: [verify, ping]
+
+# -----------------------------------------------------------------------------
+# Ultra compute — LACP bond servers (server-student-01, server-student-02)
+# Bond is configured via startup.sh; this task validates it.
+# -----------------------------------------------------------------------------
+- name: "SERVERS | Ultra Compute LACP bond verification"
+  hosts: servers_ultra
+  gather_facts: true
+  become: true
+  ignore_unreachable: true
+
+  tasks:
+    - name: "Check bond0 interface exists"
+      ansible.builtin.command: ip link show bond0
+      register: bond_status
+      changed_when: false
+      failed_when: false
+      when: lacp_bond | default(false)
+      tags: [bond, verify]
+
+    - name: "Assert bond0 is UP"
+      ansible.builtin.assert:
+        that:
+          - "'UP' in bond_status.stdout or 'LOWER_UP' in bond_status.stdout"
+        fail_msg: "bond0 not UP on {{ inventory_hostname }}"
+        success_msg: "bond0 is UP on {{ inventory_hostname }}"
+      when:
+        - lacp_bond | default(false)
+        - bond_status.rc == 0
+      tags: [bond, verify]
+
+    - name: "Ensure IP on bond0"
+      ansible.builtin.command: >
+        ip addr show bond0
+      register: bond_ip
+      changed_when: false
+      failed_when: false
+      when: lacp_bond | default(false)
+      tags: [bond, verify, ip]
+
+    - name: "Report bond IP"
+      ansible.builtin.debug:
+        msg: "{{ inventory_hostname }} bond0: {{ bond_ip.stdout_lines | default([]) }}"
+      when: lacp_bond | default(false)
+      tags: [bond, verify]
+
+    - name: "Verify default route"
+      ansible.builtin.command: ip route show default
+      register: default_route
+      changed_when: false
+      failed_when: false
+      tags: [routing, verify]
+
+    - name: "Report default route"
+      ansible.builtin.debug:
+        msg: "{{ inventory_hostname }} default route: {{ default_route.stdout }}"
+      tags: [routing, verify]
+
+# -----------------------------------------------------------------------------
+# Infrastructure services — verify they are listening
+# -----------------------------------------------------------------------------
+- name: "SERVERS | Infrastructure services health check"
+  hosts: infra_services
+  gather_facts: false
+  ignore_unreachable: true
+
+  tasks:
+    - name: "Ping infra services from bastion perspective"
+      ansible.builtin.ping:
+      tags: [verify, infra]
+
+    - name: "Check NTP service (chrony/busybox ntpd)"
+      ansible.builtin.command: >
+        pgrep -x ntpd || pgrep -x chronyd || echo "no-ntp"
+      register: ntp_proc
+      changed_when: false
+      failed_when: false
+      when: inventory_hostname == 'ntp-server'
+      tags: [verify, ntp]
+
+    - name: "Check DNS (unbound)"
+      ansible.builtin.command: pgrep -x unbound
+      register: dns_proc
+      changed_when: false
+      failed_when: false
+      when: inventory_hostname == 'dns-server'
+      tags: [verify, dns]
+
+    - name: "Report service status"
+      ansible.builtin.debug:
+        msg: "{{ inventory_hostname }}: process check rc={{ ntp_proc.rc | default(dns_proc.rc | default('N/A')) }}"
+      tags: [verify]

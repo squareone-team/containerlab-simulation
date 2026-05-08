@@ -1,0 +1,11 @@
+# Ultra Compute Pod — leaf-09, leaf-10
+pod_name: ultra
+pod_id: 5
+oversubscription: "1:1"
+
+pod_vnis:
+  - 10   # PEDAGOGY-STUDENT (HPC student workloads)
+  - 20   # STAFF-WIRED
+
+roce_enabled: true
+dcqcn_enabled: true

@@ -1,0 +1,72 @@
+# =============================================================================
+# ESI Data Center — Fabric Underlay Playbook
+# Configures eBGP P2P point-to-point underlay across spines and leaves.
+#
+# Execution order matters:
+#   1. Spines first  — P2P interfaces + BGP process ready to accept peers
+#   2. Leaves second — P2P interfaces + BGP neighbors toward both spines
+#
+# After this playbook:
+#   ✓ All /31 P2P links are up with correct IPs
+#   ✓ eBGP IPv4 unicast sessions are Established on every leaf↔spine pair
+#   ✓ Loopback0 prefixes are redistributed and reachable across the fabric
+#   ✓ BFD is active on all underlay sessions
+#
+# Usage:
+#   ansible-playbook playbooks/fabric-underlay.yml
+#   ansible-playbook playbooks/fabric-underlay.yml --tags bgp
+#   ansible-playbook playbooks/fabric-underlay.yml --limit spines
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# Pass 1 — Spines: P2P interfaces + BGP process + leaf peer-groups
+# -----------------------------------------------------------------------------
+- name: "UNDERLAY | Spine P2P interfaces and BGP"
+  hosts: spines
+  gather_facts: false
+  serial: 1          # configure spine-01 before spine-02 to avoid any timing race
+
+  roles:
+    - role: arista-underlay
+      tags: [underlay, bgp, spines]
+
+# -----------------------------------------------------------------------------
+# Pass 2 — Leaves: P2P interfaces + BGP toward spines
+# All leaves can be configured in parallel (they peer up to spines, not
+# each other on the underlay).
+# -----------------------------------------------------------------------------
+- name: "UNDERLAY | Leaf P2P interfaces and BGP"
+  hosts: leaves
+  gather_facts: false
+
+  roles:
+    - role: arista-underlay
+      tags: [underlay, bgp, leaves]
+
+# -----------------------------------------------------------------------------
+# Pass 3 — Verify underlay convergence
+# Quick sanity: check BGP is Established on spines before overlay runs.
+# -----------------------------------------------------------------------------
+- name: "UNDERLAY | Verify BGP Established"
+  hosts: spines
+  gather_facts: false
+  tags: [underlay, verify]
+
+  tasks:
+    - name: "Check BGP summary on spines"
+      arista.eos.eos_command:
+        commands:
+          - "show bgp summary | json"
+      register: bgp_summary
+
+    - name: "Assert all leaf peers are Established"
+      ansible.builtin.assert:
+        that:
+          - item.value.peerState == "Established"
+        fail_msg: >
+          BGP peer {{ item.key }} on {{ inventory_hostname }} is
+          {{ item.value.peerState }}, expected Established
+        success_msg: "BGP peer {{ item.key }} is Established"
+      loop: "{{ (bgp_summary.stdout[0] | from_json).vrfs.default.peers | dict2items }}"
+      when: bgp_summary.stdout is defined
+      ignore_errors: true    # non-fatal — overlay playbook has its own checks

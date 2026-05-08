@@ -1,0 +1,63 @@
+# =============================================================================
+# ESI Data Center — Master Site Playbook
+# Orchestrates full fabric deployment in the correct dependency order:
+#
+#   1. arista-common   → EOS baseline (features, LLDP, NTP, syslog, banner)
+#   2. fabric-underlay → eBGP P2P underlay (IPv4 unicast reachability)
+#   3. fabric-overlay  → EVPN/VXLAN overlay (VRFs, VNIs, anycast GW)
+#   4. firewalls       → nftables + keepalived on Alpine FW pair
+#   5. servers-base    → Linux host baseline (bond, IP, routing)
+#   6. validate-fabric → Smoke-tests: BGP, EVPN, VTEP, reachability
+#
+# Usage:
+#   ansible-playbook playbooks/site.yml
+#   ansible-playbook playbooks/site.yml --tags underlay
+#   ansible-playbook playbooks/site.yml --limit leaf-01
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# Stage 1 — EOS common baseline (all Arista nodes)
+# -----------------------------------------------------------------------------
+- name: "STAGE 1 | EOS Common Baseline"
+  import_playbook: fabric-common.yml
+  tags: [common, baseline]
+
+# -----------------------------------------------------------------------------
+# Stage 2 — Underlay: eBGP P2P links + loopbacks
+# Must converge before overlay can be configured.
+# -----------------------------------------------------------------------------
+- name: "STAGE 2 | Fabric Underlay (eBGP IPv4)"
+  import_playbook: fabric-underlay.yml
+  tags: [underlay, bgp]
+
+# -----------------------------------------------------------------------------
+# Stage 3 — Overlay: EVPN, VXLAN, VRFs, VNIs, anycast GW
+# Depends on loopback reachability established in Stage 2.
+# -----------------------------------------------------------------------------
+- name: "STAGE 3 | Fabric Overlay (EVPN/VXLAN)"
+  import_playbook: fabric-overlay.yml
+  tags: [overlay, evpn, vxlan]
+
+# -----------------------------------------------------------------------------
+# Stage 4 — Firewalls (Alpine + nftables + keepalived)
+# Inter-domain hairpin policy; VRRP VIPs become default GWs per domain.
+# -----------------------------------------------------------------------------
+- name: "STAGE 4 | Firewall HA Pair"
+  import_playbook: firewalls.yml
+  tags: [firewalls, security]
+
+# -----------------------------------------------------------------------------
+# Stage 5 — Server base configuration (Linux hosts)
+# Bond interfaces, IP addressing, routing.
+# -----------------------------------------------------------------------------
+- name: "STAGE 5 | Server Base Configuration"
+  import_playbook: servers-base.yml
+  tags: [servers, hosts]
+
+# -----------------------------------------------------------------------------
+# Stage 6 — Fabric Validation
+# BGP session checks, EVPN route counts, VTEP discovery, ping tests.
+# -----------------------------------------------------------------------------
+- name: "STAGE 6 | Fabric Validation"
+  import_playbook: validate-fabric.yml
+  tags: [validate, smoke-test]

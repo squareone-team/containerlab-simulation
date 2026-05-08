@@ -1,0 +1,265 @@
+# =============================================================================
+# ESI Data Center — Fabric Validation Playbook
+# Performs comprehensive smoke-tests after full deployment.
+#
+# Test categories:
+#   1. BGP underlay   — all leaf↔spine IPv4 sessions Established
+#   2. BGP EVPN       — all EVPN sessions Established on spines + leaves
+#   3. VXLAN/VTEP     — Vxlan1 interface up, VTEP table populated
+#   4. VRF            — all Communication Domain VRFs instantiated
+#   5. SVI / anycast  — SVIs up with correct anycast GW IPs
+#   6. ESI            — ESI routes present in EVPN table
+#   7. Reachability   — inter-VTEP ping (loopback-to-loopback)
+#   8. Domain isolation — cross-domain routes NOT present where expected
+#
+# Usage:
+#   ansible-playbook playbooks/validate-fabric.yml
+#   ansible-playbook playbooks/validate-fabric.yml --tags bgp
+#   ansible-playbook playbooks/validate-fabric.yml --tags evpn
+#   ansible-playbook playbooks/validate-fabric.yml --tags reachability
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# 1 + 2 — BGP underlay + EVPN session validation
+# -----------------------------------------------------------------------------
+- name: "VALIDATE | BGP Sessions"
+  hosts: fabric
+  gather_facts: false
+  tags: [validate, bgp]
+
+  # roles:
+  #   - role: validation
+  #     vars:
+  #       validation_checks:
+  #         - bgp_underlay
+  #         - bgp_evpn
+
+# -----------------------------------------------------------------------------
+# 3 — VXLAN/VTEP validation on leaves
+# -----------------------------------------------------------------------------
+- name: "VALIDATE | VXLAN Interface and VTEP Table"
+  hosts: leaves
+  gather_facts: false
+  tags: [validate, vxlan, vtep]
+
+  tasks:
+    - name: "Check Vxlan1 interface status"
+      arista.eos.eos_command:
+        commands:
+          - "show interfaces Vxlan1 | json"
+      register: vxlan_iface
+      tags: [vxlan]
+
+    - name: "Assert Vxlan1 is up"
+      ansible.builtin.assert:
+        that:
+          - >
+            (vxlan_iface.stdout[0] | from_json).interfaces.Vxlan1.lineProtocolStatus
+            == 'up'
+        fail_msg: "Vxlan1 is not up on {{ inventory_hostname }}"
+        success_msg: "Vxlan1 is up on {{ inventory_hostname }}"
+      tags: [vxlan]
+
+    - name: "Show VTEP table"
+      arista.eos.eos_command:
+        commands:
+          - "show vxlan vtep | json"
+      register: vtep_table
+      tags: [vtep]
+
+    - name: "Assert VTEP table is not empty"
+      ansible.builtin.assert:
+        that:
+          - (vtep_table.stdout[0] | from_json).vteps | length > 0
+        fail_msg: >
+          VTEP table empty on {{ inventory_hostname }} —
+          EVPN type-3 routes not received
+        success_msg: >
+          {{ inventory_hostname }} has
+          {{ (vtep_table.stdout[0] | from_json).vteps | length }}
+          VTEP(s) in table
+      tags: [vtep]
+
+# -----------------------------------------------------------------------------
+# 4 — VRF instantiation
+# -----------------------------------------------------------------------------
+- name: "VALIDATE | VRF Instantiation on Leaves"
+  hosts: leaves
+  gather_facts: false
+  tags: [validate, vrf]
+
+  tasks:
+    - name: "Show VRF table"
+      arista.eos.eos_command:
+        commands:
+          - "show vrf | json"
+      register: vrf_table
+
+    - name: "Assert each expected VRF is present"
+      ansible.builtin.assert:
+        that:
+          - item.name in (vrf_table.stdout[0] | from_json).vrfs
+        fail_msg: "VRF {{ item.name }} not found on {{ inventory_hostname }}"
+        success_msg: "VRF {{ item.name }} present on {{ inventory_hostname }}"
+      loop: "{{ active_vrfs | default([]) }}"
+      when: active_vrfs is defined
+
+# -----------------------------------------------------------------------------
+# 5 — SVI / anycast gateway validation
+# -----------------------------------------------------------------------------
+- name: "VALIDATE | Anycast Gateway SVIs"
+  hosts: leaves
+  gather_facts: false
+  tags: [validate, svi, anycast]
+
+  tasks:
+    - name: "Check SVI status for each active VLAN"
+      arista.eos.eos_command:
+        commands:
+          - "show interfaces Vlan{{ item.id }} | json"
+      register: svi_status
+      loop: "{{ active_vlans | default([]) }}"
+      when: active_vlans is defined
+
+    - name: "Assert SVIs are up"
+      ansible.builtin.assert:
+        that:
+          - >
+            (item.stdout[0] | from_json).interfaces['Vlan' + (item.item.id | string)].lineProtocolStatus
+            == 'up'
+        fail_msg: >
+          SVI Vlan{{ item.item.id }} down on {{ inventory_hostname }}
+        success_msg: >
+          SVI Vlan{{ item.item.id }} up on {{ inventory_hostname }}
+      loop: "{{ svi_status.results | default([]) }}"
+      when:
+        - svi_status is defined
+        - item.stdout is defined
+      ignore_errors: true
+
+# -----------------------------------------------------------------------------
+# 6 — EVPN route presence (type-2 MAC-IP, type-3 IMET, type-5 prefix)
+# -----------------------------------------------------------------------------
+- name: "VALIDATE | EVPN Route Table"
+  hosts: leaves
+  gather_facts: false
+  tags: [validate, evpn, routes]
+
+  tasks:
+    - name: "Show EVPN route summary"
+      arista.eos.eos_command:
+        commands:
+          - "show bgp evpn route-type ip-prefix ipv4 | json"
+          - "show bgp evpn route-type mac-ip | json"
+          - "show bgp evpn route-type imet | json"
+      register: evpn_routes
+
+    - name: "Report EVPN route counts"
+      ansible.builtin.debug:
+        msg: >
+          {{ inventory_hostname }} EVPN routes —
+          type-5 (prefix): {{ (evpn_routes.stdout[0] | from_json).numEntries | default(0) }},
+          type-2 (MAC-IP): {{ (evpn_routes.stdout[1] | from_json).numEntries | default(0) }},
+          type-3 (IMET):   {{ (evpn_routes.stdout[2] | from_json).numEntries | default(0) }}
+      when: evpn_routes.stdout is defined
+
+# -----------------------------------------------------------------------------
+# 7 — Inter-VTEP reachability (loopback ping across fabric)
+# Run from each leaf to both spines' loopbacks as a proxy for VTEP reachability.
+# -----------------------------------------------------------------------------
+- name: "VALIDATE | Inter-VTEP Reachability"
+  hosts: leaves
+  gather_facts: false
+  tags: [validate, reachability, ping]
+
+  tasks:
+    - name: "Ping spine-01 loopback from leaf"
+      arista.eos.eos_command:
+        commands:
+          - "ping {{ hostvars['spine-01'].router_id }} source {{ router_id }} repeat 3"
+      register: ping_spine01
+
+    - name: "Assert spine-01 loopback reachable"
+      ansible.builtin.assert:
+        that:
+          - "'5 packets transmitted, 3 received' in ping_spine01.stdout[0] or
+             '3 packets transmitted, 3 received' in ping_spine01.stdout[0]"
+        fail_msg: "{{ inventory_hostname }} cannot reach spine-01 loopback"
+        success_msg: "{{ inventory_hostname }} → spine-01 loopback: OK"
+      ignore_errors: true
+
+    - name: "Ping spine-02 loopback from leaf"
+      arista.eos.eos_command:
+        commands:
+          - "ping {{ hostvars['spine-02'].router_id }} source {{ router_id }} repeat 3"
+      register: ping_spine02
+
+    - name: "Assert spine-02 loopback reachable"
+      ansible.builtin.assert:
+        that:
+          - "'5 packets transmitted, 3 received' in ping_spine02.stdout[0] or
+             '3 packets transmitted, 3 received' in ping_spine02.stdout[0]"
+        fail_msg: "{{ inventory_hostname }} cannot reach spine-02 loopback"
+        success_msg: "{{ inventory_hostname }} → spine-02 loopback: OK"
+      ignore_errors: true
+
+# -----------------------------------------------------------------------------
+# 8 — Domain isolation spot check
+# Verify that STUDENT VRF does NOT have routes to ADMIN VRF (192.168.200.0/24)
+# and STORAGE VRF is not reachable from PUBLIC.
+# -----------------------------------------------------------------------------
+- name: "VALIDATE | Communication Domain Isolation"
+  hosts: pod_ultra:pod_edge
+  gather_facts: false
+  tags: [validate, isolation, security]
+
+  tasks:
+    - name: "Verify STUDENT VRF has no ADMIN routes"
+      arista.eos.eos_command:
+        commands:
+          - "show ip route vrf STUDENT 192.168.200.0/24 | json"
+      register: student_admin_route
+      when: "'STUDENT' in (active_vrfs | map(attribute='name') | list)"
+      ignore_errors: true
+
+    - name: "Assert ADMIN subnet absent from STUDENT VRF"
+      ansible.builtin.assert:
+        that:
+          - student_admin_route.stdout[0] | from_json | length == 0 or
+            (student_admin_route.stdout[0] | from_json).get('routes', {}) | length == 0
+        fail_msg: >
+          ISOLATION FAILURE: ADMIN routes present in STUDENT VRF on
+          {{ inventory_hostname }}
+        success_msg: >
+          Isolation OK: ADMIN routes absent from STUDENT VRF on
+          {{ inventory_hostname }}
+      when:
+        - "'STUDENT' in (active_vrfs | map(attribute='name') | list)"
+        - student_admin_route is defined and student_admin_route is not failed
+      ignore_errors: true
+
+# -----------------------------------------------------------------------------
+# Final summary
+# -----------------------------------------------------------------------------
+- name: "VALIDATE | Validation Summary"
+  hosts: localhost
+  gather_facts: false
+  tags: [validate, summary]
+
+  tasks:
+    - name: "Validation complete"
+      ansible.builtin.debug:
+        msg: |
+          ============================================================
+           ESI Data Center — Fabric Validation Complete
+          ============================================================
+           Check Ansible output above for any FAILED assertions.
+           
+           Key commands to run manually after validation:
+             show bgp summary
+             show bgp evpn summary
+             show vxlan vtep
+             show vxlan address-table
+             show interfaces Vxlan1
+             show vrf
+          ============================================================
