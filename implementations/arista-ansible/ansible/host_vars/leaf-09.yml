@@ -1,4 +1,3 @@
-
 # =============================================================================
 # ESI Data Center — Leaf-09 Host Variables
 # Pod: Ultra Compute (pod_id=5) | ESI pair: leaf-09 ↔ leaf-10
@@ -7,142 +6,319 @@
 # =============================================================================
 
 ansible_host: 172.20.20.29
+
+# -----------------------------------------------------------------------------
+# Underlay identity — used by arista-underlay role
+# router_id / bgp_as kept for backward compat with other roles/templates
+# -----------------------------------------------------------------------------
 router_id:    10.0.5.1
 loopback0:    10.0.5.1/32
+loopback0_description: "Router-ID / VTEP"
 bgp_as:       65109
+underlay_asn: 65109        # required by arista-underlay role
+bgp_router_id: 10.0.5.1   # required by arista-underlay role
 
-spine01_p2p:      10.1.9.0/31
-spine02_p2p:      10.2.9.0/31
-spine01_leaf_ip:  10.1.9.1
-spine02_leaf_ip:  10.2.9.1
-spine01_ip:       10.1.9.0
-spine02_ip:       10.2.9.0
+# VTEP
+vtep_ip:              10.0.5.1
+vtep_loopback:        Loopback0
+vtep_source_interface: Loopback0
+vtep_interface:       Loopback1
+vxlan_interface:      Vxlan1
+vxlan_udp_port:       4789
+vxlan_flood_learning: head-end-replication
+
+# -----------------------------------------------------------------------------
+# P2P underlay links — used by arista-underlay role (p2p_links loop)
+# Flat spine*_* vars kept for backward compat
+# -----------------------------------------------------------------------------
+spine01_interface:  Ethernet1
+spine02_interface:  Ethernet2
+peer_interface:     Ethernet10
+
+spine01_p2p:        10.1.9.0/31
+spine02_p2p:        10.2.9.0/31
+spine01_leaf_ip:    10.1.9.1
+spine02_leaf_ip:    10.2.9.1
+spine01_ip:         10.1.9.0
+spine02_ip:         10.2.9.0
+
+p2p_links:
+  - interface:   Ethernet1
+    ip:          10.1.9.1/31
+    description: "FABRIC | P2P → spine-01 eth9 [10.1.9.0/31]"
+    mtu:         9214
+  - interface:   Ethernet2
+    ip:          10.2.9.1/31
+    description: "FABRIC | P2P → spine-02 eth9 [10.2.9.0/31]"
+    mtu:         9214
+
+# -----------------------------------------------------------------------------
+# Interface map — structured form (mirrors leaf-10 schema)
+# -----------------------------------------------------------------------------
+loopbacks:
+  Loopback0:
+    description: "Router-ID / VTEP"
+    ip: 10.0.5.1/32
+
+interfaces:
+  Ethernet1:
+    description: "P2P → spine-01 eth9 [10.1.9.0/31]"
+    ip:          10.1.9.1/31
+    mtu:         "{{ mtu_fabric }}"
+    type:        routed
+  Ethernet2:
+    description: "P2P → spine-02 eth9 [10.2.9.0/31]"
+    ip:          10.2.9.1/31
+    mtu:         "{{ mtu_fabric }}"
+    type:        routed
+  Ethernet3:
+    description: "server-student-01 eth1 [VLAN 500 STUDENT — ESI bond primary]"
+    channel_group: 20
+    lacp_mode:   active
+    lacp_rate:   fast
+    mtu:         9000
+    type:        trunk
+    access_vlan: 500
+  Ethernet4:
+    description: "server-student-01 eth1b [VLAN 500 STUDENT — ESI bond primary]"
+    channel_group: 20
+    lacp_mode:   active
+    lacp_rate:   fast
+    mtu:         9000
+    type:        trunk
+    access_vlan: 500
+  Ethernet5:
+    description: "GPU node HPC-01 [VLAN 400 HPC RoCEv2]"
+    mtu:         9000
+    type:        access
+    access_vlan: 400
+  Ethernet10:
+    description: "OOB switch uplink"
+    type:        access
+    access_vlan: 1
+
+# -----------------------------------------------------------------------------
+# BGP knobs — used by arista-underlay and arista-evpn roles
+# -----------------------------------------------------------------------------
+bgp_spine_as:               65000
+bgp_timers_keepalive:       3
+bgp_timers_hold:            9
+bgp_bfd:                    true
+bgp_bfd_min_interval:       300
+bgp_bfd_multiplier:         3
+bgp_max_prefixes_ipv4:      100
+bgp_max_prefixes_evpn:      500
+bgp_send_community:         extended
+bgp_leaf_peer_group_underlay: SPINE-UNDERLAY
+bgp_leaf_peer_group_evpn:   SPINE-EVPN
+leaf_evpn_peer_group:       SPINE-EVPN
 
 # -----------------------------------------------------------------------------
 # ESI Multi-homing — leaf-09 ↔ leaf-10
 # -----------------------------------------------------------------------------
-esi_peer:             leaf-10
-esi_id:               "0000:0000:0509:0000:0001"
-esi_portchannel_id:   59
-esi_lacp_id:          "0000.0509.0001"
+esi_peer:                 leaf-10
+esi_id:                   "0000:0000:0509:0000:0001"
+esi_portchannel_id:       59
+esi_lacp_id:              "0000.0509.0001"
+esi_lacp_system_id_prefix: "0000.0000"
+evpn_multihoming:         true
 
-spine01_interface: Ethernet1
-spine02_interface: Ethernet2
-peer_interface:    Ethernet10
+# -----------------------------------------------------------------------------
+# Pod identity
+# -----------------------------------------------------------------------------
+pod_id:   5
+pod_name: ultra
+pod_vnis:
+  - 10
+  - 20
 
 # -----------------------------------------------------------------------------
 # VRFs active on leaf-09
 # -----------------------------------------------------------------------------
+vrf_list:
+  - HPC
+  - STUDENT
+
 active_vrfs:
-  - name: HPC
-    vrf_id: 400
-    l3vni: 10400
-    rd: "10.0.5.1:400"
+  - name:      HPC
+    vrf_id:    400
+    l3vni:     10400
+    rd:        "10.0.5.1:400"
     rt_import: "65000:10400"
     rt_export: "65000:10400"
-    # HPC nodes also need STORAGE routes for Ceph I/O
     extra_rt_import:
-      - "65000:10300"    # STORAGE VRF
+      - "65000:10300"   # STORAGE VRF — Ceph I/O routes
 
-  - name: STUDENT
-    vrf_id: 500
-    l3vni: 10500
-    rd: "10.0.5.1:500"
+  - name:      STUDENT
+    vrf_id:    500
+    l3vni:     10500
+    rd:        "10.0.5.1:500"
     rt_import: "65000:10500"
     rt_export: "65000:10500"
 
 # -----------------------------------------------------------------------------
 # VLANs / VNIs
 # -----------------------------------------------------------------------------
+vlan_vni_map:
+  - name: HPC-DATA
+    vlan: 400
+    vni:  10400
+  - name: STUDENT-WORKLOAD
+    vlan: 500
+    vni:  10500
+
 active_vlans:
-  - id: 400
-    vni: 10400
-    vrf: HPC
-    anycast_gw_ip: 192.168.60.1/24
+  - id:           400
+    vni:          10400
+    vrf:          HPC
+    anycast_gw_ip:  192.168.60.1/24
     anycast_gw_mac: 00:1c:73:00:04:00
     arp_suppression: true
-    description: "HPC-DATA (RoCEv2)"
-    # RoCEv2 specifics — no ARP suppression disruption for RDMA
-    pfc_enabled: true
+    description:  "HPC-DATA (RoCEv2)"
+    pfc_enabled:  true
     pfc_priority: 3
 
-  - id: 500
-    vni: 10500
-    vrf: STUDENT
-    anycast_gw_ip: 192.168.50.1/24
+  - id:           500
+    vni:          10500
+    vrf:          STUDENT
+    anycast_gw_ip:  192.168.50.1/24
     anycast_gw_mac: 00:1c:73:00:05:00
     arp_suppression: true
-    description: "STUDENT-WORKLOAD"
+    description:  "STUDENT-WORKLOAD"
 
 # -----------------------------------------------------------------------------
 # Host-facing ports
 # -----------------------------------------------------------------------------
+host_port_mode:        trunk
+host_port_native_vlan: 1
+
 host_ports:
-  # Student server — LACP bond (2 member links → Port-Channel 20)
-  - interface: Ethernet3
+  - interface:   Ethernet3
     description: "server-student-01 | LACP bond member 0"
-    mode: trunk
-    vlan: 500
+    mode:        trunk
+    vlan:        500
     portchannel: Port-Channel20
-    lacp_mode: active
-    lacp_rate: fast
-    mtu: 9000
+    lacp_mode:   active
+    lacp_rate:   fast
+    mtu:         9000
 
-  - interface: Ethernet4
+  - interface:   Ethernet4
     description: "server-student-01 | LACP bond member 1"
-    mode: trunk
-    vlan: 500
+    mode:        trunk
+    vlan:        500
     portchannel: Port-Channel20
-    lacp_mode: active
-    lacp_rate: fast
-    mtu: 9000
+    lacp_mode:   active
+    lacp_rate:   fast
+    mtu:         9000
 
-  # HPC / GPU bare-metal node — single 10G in lab (100G in production)
-  - interface: Ethernet5
+  - interface:   Ethernet5
     description: "GPU node HPC-01 | RoCEv2 lossless"
-    mode: access
-    vlan: 400
-    mtu: 9000
+    mode:        access
+    vlan:        400
+    mtu:         9000
     spanning_tree_portfast: true
-    bpduguard: true
-    pfc_enabled: true      # Priority Flow Control for lossless RoCEv2
+    bpduguard:   true
+    pfc_enabled: true
     pfc_priority: 3
-    ets_policy: ROCE-ETS   # ETS policy defined in QoS template
+    ets_policy:  ROCE-ETS
 
 # -----------------------------------------------------------------------------
-# Port-Channel 20 — student LACP bond (ESI multi-home toward server-student-01)
+# Port-channels
 # -----------------------------------------------------------------------------
+lacp_rate: fast
+
 portchannels:
-  - id: 20
+  - id:          20
     description: "Po20 | server-student-01 LACP bond"
-    mode: active
+    mode:        active
     members:
       - Ethernet3
       - Ethernet4
-    vlan: 500
-    vrf: STUDENT
-    mtu: 9000
+    vlan:        500
+    vrf:         STUDENT
+    mtu:         9000
 
 # -----------------------------------------------------------------------------
-# QoS — RoCEv2 / DCQCN full config
-# All knobs referencing group_vars/pod_ultra.yml values
+# QoS — RoCEv2 / DCQCN
 # -----------------------------------------------------------------------------
-qos_policy_name: ULTRA-ROCE-QOS
-
-# DCQCN / ECN thresholds (in KB) — applied on HPC-facing ports
+qos_policy_name:      ULTRA-ROCE-QOS
+dcqcn_enabled:        true
+dcqcn_cnp_dscp:       48
+roce_enabled:         true
 ecn_min_threshold_kb: 150
 ecn_max_threshold_kb: 1500
-dcqcn_cnp_dscp: 48
 
-# Traffic class map: CoS 3 → TC3 (lossless / RoCEv2)
 traffic_class_map:
   - cos: 3
-    tc: 3
+    tc:  3
     pfc: true
 
-# ETS bandwidth allocation per traffic class
 ets_bw_map:
-  - tc: 3
-    bw_pct: 50        # RoCEv2 lossless class
-  - tc: 0
-    bw_pct: 50        # Best-effort (all other)
+  - tc:     3
+    bw_pct: 50    # RoCEv2 lossless class
+  - tc:     0
+    bw_pct: 50    # Best-effort
+
+# -----------------------------------------------------------------------------
+# Fabric-wide settings (mirror group_vars — explicit here for clarity)
+# -----------------------------------------------------------------------------
+mtu_fabric:  9214
+mtu_host:    9000
+uplink_speed: 10g
+oversubscription: "1:1"
+anycast_gateway_mac: 00:1c:73:aa:bb:cc
+arp_suppression: true
+fabric_port_description_prefix: "FABRIC | "
+spanning_tree_bpduguard: true
+spanning_tree_portfast:  true
+
+leaf_eos_features:
+  - vxlan
+  - "routing bgp"
+  - "spanning-tree portfast default"
+  - "hardware speed unsupported forced"
+
+# -----------------------------------------------------------------------------
+# Management / infra services
+# -----------------------------------------------------------------------------
+lldp_enabled: true
+lldp_tlv_transmit:
+  - system-name
+  - system-description
+  - management-address
+  - port-description
+
+ntp_servers:
+  - 192.168.20.200
+  - 172.20.20.163
+
+dns_servers:
+  - 192.168.20.201
+  - 1.1.1.1
+
+domain_name:   esi.lab
+mgmt_subnet:   172.20.20.0/24
+mgmt_user:     admin
+mgmt_password: admin
+enable_password: ""
+
+snmp_community: esi-ro
+snmp_contact:   noc@esi.lab
+snmp_location:  "ESI DataCenter Lab"
+
+syslog_server:   192.168.20.174
+syslog_level:    informational
+syslog_facility: local7
+
+zabbix_server: 192.168.20.167
+
+public_domain_no_rfc1918: true
+rfc1918_prefix_list_name: PL-BLOCK-RFC1918
+
+lab_name: esi-datacenter
+
+login_banner: |
+  ******************************************************************
+  *  ESI Data Center Lab — Authorised access only                  *
+  *  All sessions are monitored and recorded                       *
+  ******************************************************************
