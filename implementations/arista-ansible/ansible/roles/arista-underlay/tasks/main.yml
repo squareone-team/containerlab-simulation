@@ -66,8 +66,8 @@
 - name: "UNDERLAY | Configure BFD global default timers"
   arista.eos.eos_config:
     lines:
-      - "bfd interval {{ bfd_min_tx }} min-rx {{ bfd_min_rx }} multiplier {{ bfd_multiplier }}"
-    parents: []
+      - "interval {{ underlay_bfd_interval }} min-rx {{ underlay_bfd_min_rx }} multiplier {{ underlay_bfd_multiplier }}"
+    parents: router bfd
     match: line
   when: bfd_enabled | bool
   tags: [underlay, bfd]
