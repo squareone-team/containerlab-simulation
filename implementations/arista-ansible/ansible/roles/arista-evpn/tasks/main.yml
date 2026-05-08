@@ -72,6 +72,8 @@
       - "ip prefix-list {{ rfc1918_prefix_list_name }} seq 100 permit 0.0.0.0/0 le 32"
     match: line
   when:
+    - "'leaves' in group_names"                         
+    - leaf_active_vrfs is defined  
     - "'VRF-PUBLIC' in leaf_active_vrfs"
     - public_domain_no_rfc1918 | default(true) | bool
   tags: [evpn, dmz, policy]
