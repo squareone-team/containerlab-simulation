@@ -6,6 +6,7 @@
 #       NTP dual-home (eth9), Zabbix (eth11)
 # BGP AS: 65103
 # =============================================================================
+underlay_asn: 65103
 
 interfaces:
   Ethernet1:

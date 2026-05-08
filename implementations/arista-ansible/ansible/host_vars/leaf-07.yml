@@ -11,6 +11,7 @@ ansible_host: 172.20.20.27
 router_id:    10.0.4.1
 loopback0:    10.0.4.1/32
 bgp_as:       65107
+underlay_asn: 65107
 
 # -----------------------------------------------------------------------------
 # Spine uplink P2P addresses (leaf side = .1)

@@ -9,6 +9,7 @@ ansible_host: 172.20.20.26
 router_id:    10.0.3.2
 loopback0:    10.0.3.2/32
 bgp_as:       65106
+underlay_asn: 65102
 
 spine01_p2p:      10.1.6.0/31
 spine02_p2p:      10.2.6.0/31
