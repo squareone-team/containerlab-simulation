@@ -51,10 +51,8 @@
 - name: "UNDERLAY | Configure BFD global default timers"
   arista.eos.eos_config:
     lines:
-      - "bfd"
-      - "interval {{ underlay_bfd_interval | default(100) }}"
-      - "min-rx {{ underlay_bfd_min_rx | default(100) }}"
-      - "multiplier {{ underlay_bfd_multiplier | default(3) }}"
+      - "bfd default-interval {{ underlay_bfd_interval | default(100) }} min-rx {{ underlay_bfd_min_rx | default(100) }} multiplier {{ underlay_bfd_multiplier | default(3) }}"
+    match: line
   when: bfd_enabled | default(true) | bool
   tags: [underlay, bfd]
 
