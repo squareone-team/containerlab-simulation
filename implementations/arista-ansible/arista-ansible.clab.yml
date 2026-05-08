@@ -62,11 +62,13 @@ topology:
       kind: ceos
       image: ceos:4.35.1F
       mgmt-ipv4: 172.20.20.29
+      startup-config: configs/leaf-09/startup.cfg
 
     leaf-10:
       kind: ceos
       image: ceos:4.35.1F
       mgmt-ipv4: 172.20.20.30
+      startup-config: configs/leaf-10/startup.cfg
 
     # ───────── ISP / INTERNET ─────────
     isp-router-01:
