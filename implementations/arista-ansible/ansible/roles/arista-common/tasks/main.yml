@@ -77,7 +77,7 @@
 - name: "COMMON | Set NTP source interface"
   arista.eos.eos_config:
     lines:
-      - "ntp source {{ ntp_source_interface }}"
+      - "ntp local-interface {{ ntp_source_interface }}"
     match: line
   when: ntp_source_interface is defined
   tags: [ntp]
