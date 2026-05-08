@@ -113,7 +113,7 @@
   arista.eos.eos_config:
     lines:
       - "router bgp {{ underlay_asn }}"
-    match: line
+    match: none
   tags: [underlay, bgp]
 
 - name: "UNDERLAY | Configure BGP process"
