@@ -4,6 +4,7 @@ RUN set -eux; \
     apk add --no-cache \
       busybox-extras \
       chrony \
+      freeradius-utils \
       iproute2 \
       iptables \
       nftables \

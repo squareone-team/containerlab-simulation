@@ -13,7 +13,8 @@ This page is the shortest high-level map of what exists in `frr-containerlab` an
 | Storage pod | `leaf-07`, `leaf-08`, `server-storage-01`, `ftp-server` | Storage services and Ring 5 micro-segmentation checks |
 | Student pod | `leaf-09`, `leaf-10`, `server-student-*` | Pedagogy VRF workloads, DHCP relay, dual-homing |
 | Security and management | `firewall-01`, `firewall-02`, `bastion-01`, `oob-sw`, `syslog-server` | Ring 1 HA firewall, Ring 4 OOB SSH, Ring 6 central logging |
-| Campus edge | `campus-bp`, `student-bp-01`, `wifi-controller` | Campus test subnet, service reachability, WiFi management micro-VRF |
+| Identity and access | `auth-server`, `campus-bp`, `vpn-gateway` | LDAP directory, TACACS+/RADIUS services, campus NAC edge, and remote access VPN |
+| Campus edge | `campus-bp`, `campus-student-01`, `campus-admin-01`, `student-bp-01`, `wifi-controller` | Campus test subnet, NAC role separation, WiFi management micro-VRF |
 | Observability | `frr-exporter`, `prometheus`, `grafana`, `zabbix-server` | Metrics, alerts, dashboards, SNMP polling |
 
 ## VRFs And Main Segments
@@ -43,6 +44,7 @@ This page is the shortest high-level map of what exists in `frr-containerlab` an
 | Ring 4 bastion SSH | `bastion-01`, `oob-sw`, SSH hardening in nodes | bastion can SSH to `172.16.0.x`; non-bastion should not |
 | Ring 5 host micro-segmentation | host startup scripts using `nftables` | student cannot reach `ftp-server` data IP |
 | Ring 6 central logging | `syslog-server`, rsyslog config on nodes | `logger` from a reachable node appears on syslog server |
+| Identity and access | `auth-server`, `campus-bp`, `vpn-gateway`, TACACS+/RADIUS scripts | `tail /var/log/esi-tacacs.log` on auth-server and `nft list set inet campus_nac campus_students` on campus-bp |
 | SNMP and Zabbix | node `snmpd` + FRR `agentx`, `zabbix-server` | `snmpget` from `zabbix-server` to `10.1.0.x` |
 | Prometheus/Grafana/exporter | `configs/prometheus`, `configs/grafana`, exporter script | `curl http://localhost:9090/api/v1/targets` |
 

@@ -5,6 +5,7 @@ LAB="${LAB:-esi-datacenter}"
 CLAB_PREFIX="clab-${LAB}"
 
 AUTH_SERVER="${CLAB_PREFIX}-auth-server"
+CAMPUS_BP="${CLAB_PREFIX}-campus-bp"
 CAMPUS_STUDENT="${CLAB_PREFIX}-campus-student-01"
 CAMPUS_ADMIN="${CLAB_PREFIX}-campus-admin-01"
 STUDENT_BP="${CLAB_PREFIX}-student-bp-01"
@@ -16,6 +17,12 @@ STUDENT_TARGET="192.168.10.10"
 ADMIN_TARGET="192.168.50.10"
 HPC_TARGET="192.168.70.10"
 AUTH_IP="192.168.50.80"
+RADIUS_SECRET_CAMPUS="CampusRadiusSecret@2026"
+
+NAC_STUDENT_IP="192.168.110.31"
+NAC_ADMIN_IP="192.168.110.32"
+NAC_ATTACKER_IP="192.168.110.30"
+NAC_GATEWAY_IP="192.168.110.1"
 
 failures=0
 
@@ -41,12 +48,64 @@ wait_for_tcp() {
   return 1
 }
 
+expect_radius_role() {
+  local node="$1" user="$2" password="$3" expected_role="$4" label="$5"
+  local output
+  output=$(run_in "$node" "printf 'User-Name = \"${user}\"\\nUser-Password = \"${password}\"\\nNAS-Identifier = \"campus-nac\"\\n' | radclient -x ${AUTH_IP}:1812 auth ${RADIUS_SECRET_CAMPUS} 2>&1")
+  if echo "$output" | grep -q "Access-Accept" && echo "$output" | grep -q "Filter-Id" && echo "$output" | grep -q "$expected_role"; then
+    ok "$label"
+  else
+    fail "$label failed: ${output}"
+  fi
+}
+
+wait_for_nac_set() {
+  local node="$1" set_name="$2" ip="$3" label="$4"
+  local i
+  for i in $(seq 1 20); do
+    if run_in "$node" "nft list set inet campus_nac ${set_name} 2>/dev/null | grep -q '${ip}'"; then
+      ok "$label"
+      return 0
+    fi
+    sleep 3
+  done
+  fail "$label"
+  return 1
+}
+
+expect_nac_absent() {
+  local node="$1" set_name="$2" ip="$3" label="$4"
+  if run_in "$node" "nft list set inet campus_nac ${set_name} 2>/dev/null | grep -q '${ip}'"; then
+    fail "$label"
+  else
+    ok "$label"
+  fi
+}
+
 expect_tcp_blocked() {
   local node="$1" ip="$2" port="$3" label="$4"
   if run_in "$node" "timeout 4 nc -z -w2 ${ip} ${port}" >/dev/null 2>&1; then
     fail "$label unexpectedly reachable at ${ip}:${port}"
   else
     ok "$label blocked at ${ip}:${port}"
+  fi
+}
+
+expect_runtime_rule() {
+  local node="$1" fragment="$2" label="$3"
+  if run_in "$node" "nft list ruleset 2>/dev/null | grep -F '${fragment}' >/dev/null"; then
+    ok "$label"
+  else
+    fail "$label missing runtime rule fragment: ${fragment}"
+  fi
+}
+
+expect_runtime_absent() {
+  local node="$1" fragment="$2" label="$3"
+  if run_in "$node" "nft list ruleset 2>/dev/null | grep -F '${fragment}' >/dev/null"; then
+    fail "$label still has runtime fragment: ${fragment}"
+  else
+    ok "$label"
   fi
 }
 
@@ -91,7 +150,7 @@ expect_ssh_denied() {
 echo "=== Fabric Authentication and Authorization Validation ==="
 echo "Lab: ${LAB}"
 
-for node in "$AUTH_SERVER" "$CAMPUS_STUDENT" "$CAMPUS_ADMIN" "$STUDENT_BP" "$SERVER_STUDENT" "$SERVER_ADMIN" "$SERVER_HPC"; do
+for node in "$AUTH_SERVER" "$CAMPUS_BP" "$CAMPUS_STUDENT" "$CAMPUS_ADMIN" "$STUDENT_BP" "$SERVER_STUDENT" "$SERVER_ADMIN" "$SERVER_HPC"; do
   if docker inspect "$node" >/dev/null 2>&1; then
     ok "$node exists"
   else
@@ -114,6 +173,32 @@ fi
 wait_for_tcp "$SERVER_STUDENT" "$AUTH_IP" 49 "student server to TACACS+"
 wait_for_tcp "$SERVER_ADMIN" "$AUTH_IP" 49 "admin server to TACACS+"
 wait_for_tcp "$SERVER_HPC" "$AUTH_IP" 49 "HPC server to TACACS+"
+
+expect_radius_role "${CAMPUS_BP}" "dev-campus-student-01" "DeviceStudent@2026" "campus-student" "campus device RADIUS returns student role"
+expect_radius_role "${CAMPUS_BP}" "dev-campus-admin-01" "DeviceAdmin@2026" "campus-admin" "campus device RADIUS returns admin role"
+
+wait_for_nac_set "${CAMPUS_BP}" "campus_students" "${NAC_STUDENT_IP}" "campus student registered in NAC set"
+wait_for_nac_set "${CAMPUS_BP}" "campus_admins" "${NAC_ADMIN_IP}" "campus admin registered in NAC set"
+expect_nac_absent "${CAMPUS_BP}" "campus_students" "${NAC_ATTACKER_IP}" "student-bp not registered as campus student"
+expect_nac_absent "${CAMPUS_BP}" "campus_admins" "${NAC_ATTACKER_IP}" "student-bp not registered as campus admin"
+
+expect_runtime_rule "$SERVER_STUDENT" "ip saddr 192.168.110.0/24 tcp dport 22" "student server trusts campus subnet behind NAC, not fixed device IPs"
+expect_runtime_rule "$SERVER_ADMIN" "ip saddr 192.168.110.0/24 tcp dport 22" "admin server trusts campus subnet behind NAC, not fixed admin IP"
+expect_runtime_rule "$SERVER_HPC" "ip saddr 192.168.110.0/24 tcp dport 22" "HPC server trusts campus subnet behind NAC, not fixed device IPs"
+expect_runtime_absent "$SERVER_STUDENT" "192.168.110.31" "student server no longer hardcodes campus-student IP"
+expect_runtime_absent "$SERVER_HPC" "192.168.110.31" "HPC server no longer hardcodes campus-student IP"
+expect_runtime_absent "$SERVER_ADMIN" "192.168.110.32" "admin server no longer hardcodes campus-admin IP"
+expect_runtime_rule "$SERVER_STUDENT" "ip saddr 198.51.100.20 tcp dport 22" "student server accepts only VPN gateway NAT source for VPN SSH"
+expect_runtime_rule "$SERVER_HPC" "ip saddr 198.51.100.20 tcp dport 22" "HPC server accepts only VPN gateway NAT source for VPN SSH"
+expect_runtime_absent "$SERVER_ADMIN" "198.51.100.20" "admin server does not accept VPN gateway SSH source"
+expect_runtime_rule "$AUTH_SERVER" "ip saddr { 192.168.110.1, 198.51.100.20 } udp dport 1812" "auth server accepts RADIUS only from NAC gateway and VPN gateway"
+expect_runtime_absent "$AUTH_SERVER" "10.200.0.2" "auth server does not trust campus transit /30 as RADIUS client"
+
+if run_in "$CAMPUS_BP" "ip route get ${AUTH_IP} | grep -q 'src ${NAC_GATEWAY_IP}'"; then
+  ok "campus-bp uses NAC gateway source for RADIUS"
+else
+  fail "campus-bp does not source RADIUS from ${NAC_GATEWAY_IP}"
+fi
 
 wait_for_tcp "$CAMPUS_STUDENT" "$STUDENT_TARGET" 22 "campus student to student pod SSH"
 wait_for_tcp "$CAMPUS_STUDENT" "$HPC_TARGET" 22 "campus student to HPC pod SSH"

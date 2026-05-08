@@ -6,8 +6,10 @@ This page is for the campus test segment, the WiFi management path, and the DMZ 
 
 | Node | Important addresses | Why it matters |
 | --- | --- | --- |
-| `campus-bp` | `100.10.0.2/30` on `eth1`, `10.200.0.2/30` on `eth3`, `192.168.110.1/24` on `br-student` | upstream edge, service transit, and campus gateway |
+| `campus-bp` | `100.10.0.2/30` on `eth1`, `10.200.0.2/30` on `eth3`, `192.168.110.1/24` on `br-student` | upstream edge, service transit, and campus NAC gateway |
 | `student-bp-01` | `192.168.110.30/24` | stable campus client for manual tests |
+| `campus-student-01` | `192.168.110.31/24` | NAC-enrolled student device |
+| `campus-admin-01` | `192.168.110.32/24` | NAC-enrolled admin device |
 | `wifi-controller` | `192.168.10.100/24` | target behind `VRF-WIFI-CTRL` |
 | `server-dmz-01` | `198.51.100.10/24` | DMZ web service |
 | `leaf-01` | `10.200.0.1/30`, `192.168.1.252/24`, `VRF-WIFI-CTRL` | policy-routing pivot between campus, firewall, and WiFi path |
@@ -20,9 +22,21 @@ This page is for the campus test segment, the WiFi management path, and the DMZ 
 | `docker exec clab-esi-datacenter-student-bp-01 cat /etc/resolv.conf` | confirms DNS is prepointed to core services | nameserver `192.168.50.30` |
 | `docker exec clab-esi-datacenter-student-bp-01 nslookup dmz-server-01.esi.internal 192.168.50.30` | checks campus-to-DNS path | returns `198.51.100.10` |
 | `docker exec clab-esi-datacenter-student-bp-01 curl -s http://dmz-server-01.esi.internal` | checks campus-to-DMZ HTTP | returns the DMZ page |
-| `docker exec clab-esi-datacenter-student-bp-01 ping -c2 -W2 192.168.50.20` | checks allowed reachability to NTP | succeeds |
-| `docker exec clab-esi-datacenter-student-bp-01 ping -c2 -W2 192.168.50.30` | checks allowed reachability to DNS | succeeds |
-| `docker exec clab-esi-datacenter-student-bp-01 ping -c2 -W2 192.168.50.40` | checks allowed reachability to DHCP | succeeds |
+| `docker exec clab-esi-datacenter-student-bp-01 nslookup ntp-server.esi.internal 192.168.50.30` | checks campus DNS service access | returns `192.168.50.20` |
+| `docker exec clab-esi-datacenter-student-bp-01 nc -zu -w2 192.168.50.20 123` | checks allowed UDP path to NTP | command exits cleanly |
+| `docker exec clab-esi-datacenter-campus-bp ip route get 192.168.50.80` | checks NAC RADIUS source identity | contains `src 192.168.110.1` |
+
+## Campus NAC Checks
+
+```bash
+docker exec clab-esi-datacenter-campus-bp nft list set inet campus_nac campus_students
+docker exec clab-esi-datacenter-campus-bp nft list set inet campus_nac campus_admins
+```
+
+- `campus_students` should include `192.168.110.31`.
+- `campus_admins` should include `192.168.110.32`.
+- `student-bp-01` should not appear in either set.
+- Protected servers accept the campus subnet as a possible SSH source; role separation is enforced at `campus-bp`, not by fixed endpoint IPs on the servers.
 
 ## Campus Border Checks
 
@@ -34,6 +48,7 @@ docker exec clab-esi-datacenter-campus-bp wget -qO- http://198.51.100.10
 ```
 
 - The route table should show the narrow service routes via `10.200.0.1`.
+- The auth-server route should keep the NAC identity source as `192.168.110.1`; `10.200.0.2` is only transit.
 - The WiFi controller ping proves the micro-VRF path on `leaf-01` is usable.
 - `wget` to the DMZ IP checks the routed path without depending on campus DNS.
 

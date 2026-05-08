@@ -98,9 +98,10 @@ test_shared_dhcp_access_present() {
 
 test_tacacs_auth_policy_present() {
     rule_present "ip saddr @tacacs_auth_clients ip daddr @core_infra_auth tcp dport 49 ct state new" &&
-        rule_present "ip saddr @campus_student_clients ip daddr @campus_student_ssh_targets tcp dport 22 ct state new" &&
-        rule_present "ip saddr @campus_admin_clients ip daddr @campus_admin_ssh_targets tcp dport 22 ct state new" &&
-        rule_present "ip saddr @cluster_campus_access ip daddr @campus_admin_ssh_targets tcp dport 22" &&
+        rule_present "ip saddr @cluster_campus_access ip daddr @campus_ssh_targets tcp dport 22 ct state new" &&
+        rule_present "ip saddr @campus_nac_gateway ip daddr @core_infra_auth udp dport 1812 ct state new" &&
+        rule_present "ip saddr @vpn_gateway ip daddr @core_infra_auth udp dport 1812 ct state new" &&
+        rule_present "ip saddr @vpn_gateway ip daddr @vpn_student_ssh_targets tcp dport 22 ct state new" &&
         rule_present "ip saddr @cluster_campus_access ip daddr @core_infra_auth tcp dport { 49, 389, 8080 }"
 }
 

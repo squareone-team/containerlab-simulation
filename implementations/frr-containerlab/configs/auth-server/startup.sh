@@ -4,6 +4,8 @@ set -eu
 LDAP_BASE_DN="dc=esi,dc=internal"
 LDAP_BIND_DN="cn=admin,${LDAP_BASE_DN}"
 LDAP_BIND_PASSWORD="DirectoryAdmin@2026"
+RADIUS_SECRET_CAMPUS="CampusRadiusSecret@2026"
+RADIUS_SECRET_VPN="VpnRadiusSecret@2026"
 
 wait_for_iface() {
     iface="$1"
@@ -54,6 +56,9 @@ table inet filter {
 
         # Only protected servers may query TACACS+. LDAP stays loopback-only.
         ip saddr { 192.168.10.10, 192.168.50.10, 192.168.70.10 } tcp dport 49 accept
+
+        # RADIUS is exposed only to the campus NAC gateway and VPN gateway.
+        ip saddr { 192.168.110.1, 198.51.100.20 } udp dport 1812 accept
     }
     chain forward {
         type filter hook forward priority 0;
@@ -68,12 +73,15 @@ NFT
 nft -f /etc/nftables.conf
 
 pkill -f esi-tacacsd 2>/dev/null || true
+pkill radiusd 2>/dev/null || true
 pkill slapd 2>/dev/null || true
 rm -rf /var/lib/openldap/openldap-data/*
 
 ROOTPW="$(slappasswd -s "${LDAP_BIND_PASSWORD}")"
 ADMINPW="$(slappasswd -s 'Admin@2026')"
 STUDENTPW="$(slappasswd -s 'Student@2026')"
+DEVICE_STUDENT_PW="$(slappasswd -s 'DeviceStudent@2026')"
+DEVICE_ADMIN_PW="$(slappasswd -s 'DeviceAdmin@2026')"
 
 cat > /etc/openldap/slapd.conf << EOF
 include         /etc/openldap/schema/core.schema
@@ -125,6 +133,11 @@ objectClass: top
 objectClass: organizationalUnit
 ou: Groups
 
+dn: ou=Devices,${LDAP_BASE_DN}
+objectClass: top
+objectClass: organizationalUnit
+ou: Devices
+
 dn: uid=admin1,ou=People,${LDAP_BASE_DN}
 objectClass: top
 objectClass: account
@@ -150,6 +163,35 @@ gidNumber: 2102
 homeDirectory: /home/student1
 loginShell: /bin/sh
 userPassword: ${STUDENTPW}
+description: vpn-student
+
+dn: uid=dev-campus-student-01,ou=Devices,${LDAP_BASE_DN}
+objectClass: top
+objectClass: account
+objectClass: posixAccount
+objectClass: shadowAccount
+cn: Campus Student Device
+uid: dev-campus-student-01
+uidNumber: 2201
+gidNumber: 2201
+homeDirectory: /dev/null
+loginShell: /sbin/nologin
+userPassword: ${DEVICE_STUDENT_PW}
+description: campus-student-device
+
+dn: uid=dev-campus-admin-01,ou=Devices,${LDAP_BASE_DN}
+objectClass: top
+objectClass: account
+objectClass: posixAccount
+objectClass: shadowAccount
+cn: Campus Admin Device
+uid: dev-campus-admin-01
+uidNumber: 2202
+gidNumber: 2202
+homeDirectory: /dev/null
+loginShell: /sbin/nologin
+userPassword: ${DEVICE_ADMIN_PW}
+description: campus-admin-device
 
 dn: cn=admins,ou=Groups,${LDAP_BASE_DN}
 objectClass: top
@@ -198,4 +240,21 @@ for _ in $(seq 1 20); do
     sleep 1
 done
 
-echo "[auth-server] ready: OpenLDAP on loopback, TACACS+ on 192.168.50.80:49"
+if [ -x /usr/local/bin/esi-radiusd ]; then
+    ESI_RADIUS_CLIENTS="192.168.110.1:${RADIUS_SECRET_CAMPUS}:campus-nac,198.51.100.20:${RADIUS_SECRET_VPN}:vpn-gateway" \
+    LDAP_URI="ldap://127.0.0.1:389" \
+    LDAP_BASE_DN="${LDAP_BASE_DN}" \
+    LDAP_BIND_DN="${LDAP_BIND_DN}" \
+    LDAP_BIND_PASSWORD="${LDAP_BIND_PASSWORD}" \
+    ESI_RADIUS_LOG="/var/log/esi-radius.log" \
+    nohup /usr/local/bin/esi-radiusd >/var/log/esi-radius.stdout 2>&1 &
+
+    for _ in $(seq 1 20); do
+        nc -z -u -w1 127.0.0.1 1812 >/dev/null 2>&1 && break
+        sleep 1
+    done
+else
+    echo "[auth-server] WARNING: esi-radiusd missing; rebuild the auth-server image" >&2
+fi
+
+echo "[auth-server] ready: OpenLDAP on loopback, TACACS+ on 192.168.50.80:49, RADIUS on 192.168.50.80:1812"

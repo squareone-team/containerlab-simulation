@@ -27,7 +27,8 @@ table inet filter {
 		ct state established,related accept
 		ip protocol icmp accept
 		ip saddr 192.168.70.0/24 accept
-		ip saddr { 192.168.110.31, 192.168.110.32 } tcp dport 22 accept
+		ip saddr 192.168.110.0/24 tcp dport 22 accept
+		ip saddr 198.51.100.20 tcp dport 22 accept
 		ip saddr 172.16.0.50 tcp dport 22 accept
 	}
 

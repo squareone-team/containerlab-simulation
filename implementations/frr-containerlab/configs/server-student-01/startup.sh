@@ -28,7 +28,8 @@ table inet filter {
 		ip protocol icmp accept
 		ip saddr { 192.168.50.0/24, 192.168.60.0/24 } tcp dport 9100 accept
 		ip saddr 192.168.10.0/24 accept
-		ip saddr { 192.168.110.31, 192.168.110.32 } tcp dport 22 accept
+		ip saddr 192.168.110.0/24 tcp dport 22 accept
+		ip saddr 198.51.100.20 tcp dport 22 accept
 		ip saddr 172.16.0.50 tcp dport 22 accept
 	}
 

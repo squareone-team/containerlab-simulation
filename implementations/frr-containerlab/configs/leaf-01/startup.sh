@@ -233,6 +233,11 @@ if ip link show eth7 >/dev/null 2>&1; then
   bridge vlan add vid 100 dev eth7 pvid untagged
 fi
 
+if ip link show eth6 >/dev/null 2>&1; then
+  ip link set eth6 master br0
+  bridge vlan add vid 100 dev eth6 pvid untagged
+fi
+
 ip link add vlan100 link br0 type vlan id 100
 ip link set vlan100 master VRF-PUBLIC
 ip link set vlan100 address $ANYCAST_MAC || true
