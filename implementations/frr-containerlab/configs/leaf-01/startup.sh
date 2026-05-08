@@ -66,9 +66,11 @@ ip rule add iif br-fw-ha to 192.168.10.0/24 lookup 30 prio 10000 || true
 ip rule add iif br-fw-ha to 192.168.20.0/24 lookup 30 prio 10001 || true
 ip rule add iif br-fw-ha to 192.168.50.0/24 lookup 20 prio 10002 || true
 ip rule add iif br-fw-ha to 192.168.60.0/24 lookup 20 prio 10003 || true
-ip rule add iif br-fw-ha to 10.200.0.0/30 lookup 60 prio 10004 || true
-ip rule add iif br-fw-ha to 192.168.110.0/24 lookup 60 prio 10005 || true
-ip rule add iif br-fw-ha to 198.51.100.0/24 lookup 40 prio 10006 || true
+ip rule add iif br-fw-ha to 192.168.70.0/24 lookup 20 prio 10004 || true
+ip rule add iif br-fw-ha to 192.168.80.0/24 lookup 20 prio 10005 || true
+ip rule add iif br-fw-ha to 10.200.0.0/30 lookup 60 prio 10006 || true
+ip rule add iif br-fw-ha to 192.168.110.0/24 lookup 60 prio 10007 || true
+ip rule add iif br-fw-ha to 198.51.100.0/24 lookup 40 prio 10008 || true
 ip rule add iif br-fw-ha from 192.168.50.0/24 lookup 30 prio 10010 || true
 ip rule add iif br-fw-ha from 192.168.60.0/24 lookup 30 prio 10011 || true
 ip rule add iif br-fw-ha from 192.168.10.0/24 lookup 20 prio 10012 || true
@@ -271,7 +273,7 @@ for SUBNET in $FW_INTERNAL_SUBNETS; do
 done
 
 # Campus traffic keeps its dedicated micro-VRF uplink, but only the shared
-# service IPs and the explicit DMZ test subnet are steered through Ring 1.
+# service IPs, auth proof targets, and the explicit DMZ test subnet are steered through Ring 1.
 # No broader internal prefixes leak.
 FW_CAMPUS_TABLE=160
 FW_CAMPUS_SERVICE_IPS="
@@ -279,6 +281,10 @@ FW_CAMPUS_SERVICE_IPS="
 192.168.50.30/32
 192.168.50.40/32
 192.168.50.70/32
+192.168.50.80/32
+192.168.10.10/32
+192.168.50.10/32
+192.168.70.10/32
 198.51.100.0/24
 "
 

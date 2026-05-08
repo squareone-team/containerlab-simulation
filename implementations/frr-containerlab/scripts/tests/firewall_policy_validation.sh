@@ -96,6 +96,14 @@ test_shared_dhcp_access_present() {
         rule_present "ip saddr @cluster_campus_access ip daddr @core_infra_dhcp udp dport { 67, 68 } ct state new"
 }
 
+test_tacacs_auth_policy_present() {
+    rule_present "ip saddr @tacacs_auth_clients ip daddr @core_infra_auth tcp dport 49 ct state new" &&
+        rule_present "ip saddr @campus_student_clients ip daddr @campus_student_ssh_targets tcp dport 22 ct state new" &&
+        rule_present "ip saddr @campus_admin_clients ip daddr @campus_admin_ssh_targets tcp dport 22 ct state new" &&
+        rule_present "ip saddr @cluster_campus_access ip daddr @campus_admin_ssh_targets tcp dport 22" &&
+        rule_present "ip saddr @cluster_campus_access ip daddr @core_infra_auth tcp dport { 49, 389, 8080 }"
+}
+
 test_dmz_isolation_present() {
     rule_present "ip saddr @cluster_public_dmz ip daddr @cluster_1_pedagogy" &&
         rule_present "ip saddr @cluster_public_dmz ip daddr @cluster_2_admin"
@@ -119,6 +127,7 @@ assert_ok "rule Orientation explicit drops present with counters" test_orientati
 assert_ok "rule Moodle access present with counters" test_moodle_access_present
 assert_ok "rule centralized syslog export present with counters" test_syslog_access_present
 assert_ok "rule shared DHCP access present with counters" test_shared_dhcp_access_present
+assert_ok "strict campus TACACS+/SSH policy present with counters" test_tacacs_auth_policy_present
 assert_ok "rule DMZ isolation explicit drops present with counters" test_dmz_isolation_present
 assert_ok "no HPC<->Storage firewall rule (hairpinning constraint)" test_no_hpc_to_storage_rule_present
 

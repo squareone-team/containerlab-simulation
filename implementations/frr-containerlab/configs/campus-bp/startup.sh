@@ -34,10 +34,16 @@ ip route replace 192.168.50.20/32 via 10.200.0.1 dev eth3
 ip route replace 192.168.50.30/32 via 10.200.0.1 dev eth3
 ip route replace 192.168.50.40/32 via 10.200.0.1 dev eth3
 ip route replace 192.168.50.70/32 via 10.200.0.1 dev eth3
+ip route replace 192.168.50.80/32 via 10.200.0.1 dev eth3
+ip route replace 192.168.10.10/32 via 10.200.0.1 dev eth3
+ip route replace 192.168.50.10/32 via 10.200.0.1 dev eth3
+ip route replace 192.168.70.10/32 via 10.200.0.1 dev eth3
 
-wait_for_iface eth4
-ip link set eth4 up
-ip link set eth4 master br-student
+for IFACE in eth4 eth5 eth6; do
+    wait_for_iface "$IFACE"
+    ip link set "$IFACE" up
+    ip link set "$IFACE" master br-student
+done
 
 sysctl -w net.ipv4.ip_forward=1 >/dev/null 2>&1 || true
 

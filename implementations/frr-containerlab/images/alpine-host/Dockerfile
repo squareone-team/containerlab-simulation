@@ -9,6 +9,10 @@ RUN set -eux; \
       nftables \
       openssh-client \
       openssh-server \
+      openssh-server-pam \
+      linux-pam \
+      python3 \
+      sshpass \
       rsyslog; \
     mkdir -p \
       /run/sshd \

@@ -42,6 +42,7 @@ if ip link show eth6 >/dev/null 2>&1; then ip link set eth6 master br0; bridge v
 if ip link show eth7 >/dev/null 2>&1; then ip link set eth7 master br0; bridge vlan add vid 50 dev eth7 pvid untagged; fi
 if ip link show eth8 >/dev/null 2>&1; then ip link set eth8 master br0; bridge vlan add vid 50 dev eth8 pvid untagged; fi
 if ip link show eth9 >/dev/null 2>&1; then ip link set eth9 master br0; bridge vlan add vid 50 dev eth9 pvid untagged; fi
+if ip link show eth11 >/dev/null 2>&1; then ip link set eth11 master br0; bridge vlan add vid 50 dev eth11 pvid untagged; fi
 
 for V in 10030 10040 10050 10060; do
   ip link add vxlan$V type vxlan id $V local $VTEP_IP dstport 4789 nolearning tos inherit
@@ -202,6 +203,7 @@ ip link set eth6 up
 ip link set eth7 up 2>/dev/null || true
 ip link set eth8 up 2>/dev/null || true
 ip link set eth9 up 2>/dev/null || true
+ip link set eth11 up 2>/dev/null || true
 
 # Ring 4: OOB management for bastion-only SSH
 OOB_IF="eth10"

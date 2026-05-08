@@ -55,6 +55,8 @@ ip rule add iif br-fw-ha to 192.168.10.0/24 lookup 30 prio 10000 || true
 ip rule add iif br-fw-ha to 192.168.20.0/24 lookup 30 prio 10001 || true
 ip rule add iif br-fw-ha to 192.168.50.0/24 lookup 20 prio 10002 || true
 ip rule add iif br-fw-ha to 192.168.60.0/24 lookup 20 prio 10003 || true
+ip rule add iif br-fw-ha to 192.168.70.0/24 lookup 20 prio 10004 || true
+ip rule add iif br-fw-ha to 192.168.80.0/24 lookup 20 prio 10005 || true
 ip rule add iif br-fw-ha to 198.51.100.0/24 lookup 40 prio 10006 || true
 ip rule add iif br-fw-ha from 192.168.50.0/24 lookup 30 prio 10010 || true
 ip rule add iif br-fw-ha from 192.168.60.0/24 lookup 30 prio 10011 || true

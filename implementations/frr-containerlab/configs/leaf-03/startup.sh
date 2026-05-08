@@ -286,6 +286,11 @@ bridge vlan add vid 50 dev eth8 pvid untagged
 ip link set eth11 master br0
 bridge vlan add vid 50 dev eth11 pvid untagged
 
+# eth12 = auth-server
+ip link set eth12 master br0
+bridge vlan add vid 50 dev eth12 pvid untagged
+ip link set eth12 up
+
 # CORE-INFRA route leak to global routing table 
 # Needed so FRR nodes (spines/leaves) can reach NTP/DNS in VRF-STAFF via underlay
 # Underlay return path for control-plane sourced from CORE-INFRA services.
