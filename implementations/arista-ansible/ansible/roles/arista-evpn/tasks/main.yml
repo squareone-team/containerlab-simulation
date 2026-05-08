@@ -19,6 +19,7 @@
     item: "{{ item }}"
   loop: "{{ communication_domains }}"
   tags: [evpn, facts]
+  when: communication_domains is defined
 
 - name: EVPN | Derive leaf_active_l2vnis
   ansible.builtin.set_fact:

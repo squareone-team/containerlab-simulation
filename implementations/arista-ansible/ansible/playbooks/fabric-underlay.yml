@@ -67,6 +67,6 @@
           BGP peer {{ item.key }} on {{ inventory_hostname }} is
           {{ item.value.peerState }}, expected Established
         success_msg: "BGP peer {{ item.key }} is Established"
-      loop: "{{ (bgp_summary.stdout[0] | from_json).vrfs.default.peers | dict2items }}"
+      loop: "{{ bgp_summary.stdout[0].vrfs.default.peers | dict2items }}"
       when: bgp_summary.stdout is defined
       ignore_errors: true    # non-fatal — overlay playbook has its own checks
