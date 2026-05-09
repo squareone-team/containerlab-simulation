@@ -84,5 +84,5 @@
       ansible.builtin.debug:
         msg: >
           {{ inventory_hostname }}: EVPN peers —
-          {{ (evpn_summary.stdout[0] | from_json).vrfs.default.peers | length }}
+          {{  evpn_summary.stdout[0].vrfs.default.peers | length }}
       when: evpn_summary.stdout is defined

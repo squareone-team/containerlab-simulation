@@ -48,12 +48,6 @@
 # ─────────────────────────────────────────────────────────────────────────────
 # 1. Features & Global Settings
 # ─────────────────────────────────────────────────────────────────────────────
-- name: EVPN | Enable VXLAN feature
-  arista.eos.eos_config:
-    lines: "feature vxlan"
-    match: none
-  ignore_errors: true
-  tags: [evpn, features]
 
 - name: EVPN | Set Anycast Gateway MAC (Symmetric IRB)
   arista.eos.eos_config:

@@ -26,6 +26,21 @@
   when: loopback0 is defined
   tags: [underlay, loopback]
 
+- name: "UNDERLAY | Normalize spine p2p_links from spine_p2p_peers"
+  ansible.builtin.set_fact:
+    p2p_links: >-
+      {{
+        spine_p2p_peers | map('combine', {
+          'ip': item.spine_ip,
+          'mtu': 9214
+        }) | list
+      }}
+  loop: "{{ spine_p2p_peers }}"
+  when:
+    - "'spines' in group_names"
+    - spine_p2p_peers is defined
+    - p2p_links | default([]) | length == 0
+
 # -----------------------------------------------------------------------------
 # 3. P2P interfaces (without BFD)
 # -----------------------------------------------------------------------------
