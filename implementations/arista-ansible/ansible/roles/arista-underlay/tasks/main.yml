@@ -145,14 +145,7 @@
 #    eos_config with match: line + parents silently fails when the
 #    parent doesn't yet exist in running-config.
 # -----------------------------------------------------------------------------
-- name: "UNDERLAY | Create BGP process"
-  arista.eos.eos_config:
-    lines:
-      - "router bgp {{ underlay_asn }}"
-    match: none
-  tags: [underlay, bgp]
-
-- name: "UNDERLAY | Configure BGP process"
+- name: "UNDERLAY | Create and configure BGP process"
   arista.eos.eos_config:
     lines:
       - "router-id {{ bgp_router_id | default(router_id) | default(loopback0 | ipaddr('address')) }}"
