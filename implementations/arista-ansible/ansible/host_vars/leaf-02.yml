@@ -1,81 +1,329 @@
-
 # =============================================================================
-# ESI Data Center — Leaf-06 Host Variables
-# Pod: Storage (pod_id=3) | ESI pair: leaf-06 ↔ leaf-05
-# Management IP: 172.20.20.26
+# ESI Data Center — Leaf-02 Host Variables
+# Pod: Edge (pod_id=1) | ESI pair: leaf-02 ↔ leaf-01
+# Role: ISP uplink redundancy, Firewall trunk secondary,
+#       Campus/WiFi secondary attachment, DMZ secondary
+# BGP AS: 65102
+# Management IP: 172.20.20.22
 # =============================================================================
 
-ansible_host: 172.20.20.26
-router_id:    10.0.3.2
-loopback0:    10.0.3.2/32
-bgp_as:       65106
-underlay_asn: 65102
+ansible_host: 172.20.20.22
 
-spine01_p2p:      10.1.6.0/31
-spine02_p2p:      10.2.6.0/31
-spine01_leaf_ip:  10.1.6.1
-spine02_leaf_ip:  10.2.6.1
-spine01_ip:       10.1.6.0
-spine02_ip:       10.2.6.0
+# -----------------------------------------------------------------------------
+# Underlay identity — used by arista-underlay role
+# -----------------------------------------------------------------------------
+router_id:     10.0.1.2
+loopback0:     10.0.1.2/32
+loopback0_description: "Router-ID / VTEP"
+bgp_as:        65102
+underlay_asn:  65102
+bgp_router_id: 10.0.1.2
 
-esi_peer:             leaf-05
-esi_id:               "0000:0000:0306:0000:0001"
-esi_portchannel_id:   36
-esi_lacp_id:          "0000.0306.0001"
+# -----------------------------------------------------------------------------
+# VTEP
+# -----------------------------------------------------------------------------
+vtep_ip:               10.0.1.2
+vtep_loopback:         Loopback0
+vtep_source_interface: Loopback0
+vtep_interface:        Loopback1
+vxlan_interface:       Vxlan1
+vxlan_udp_port:        4789
+vxlan_flood_learning:  head-end-replication
 
-spine01_interface: Ethernet1
-spine02_interface: Ethernet2
-peer_interface:    Ethernet10
+# -----------------------------------------------------------------------------
+# P2P underlay links
+# -----------------------------------------------------------------------------
+spine01_interface:  Ethernet1    # → spine-01 : Ethernet2
+spine02_interface:  Ethernet2    # → spine-02 : Ethernet2
+peer_interface:     Ethernet9    # → leaf-01 ESI heartbeat (mirrors leaf-01 Ethernet9)
+
+spine01_p2p:        10.1.2.0/31
+spine02_p2p:        10.2.2.0/31
+spine01_leaf_ip:    10.1.2.1
+spine02_leaf_ip:    10.2.2.1
+spine01_ip:         10.1.2.0
+spine02_ip:         10.2.2.0
+
+p2p_links:
+  - interface:   Ethernet1
+    ip:          10.1.2.1/31
+    description: "FABRIC | P2P → spine-01 eth2 [10.1.2.0/31]"
+    mtu:         9214
+  - interface:   Ethernet2
+    ip:          10.2.2.1/31
+    description: "FABRIC | P2P → spine-02 eth2 [10.2.2.0/31]"
+    mtu:         9214
+
+# -----------------------------------------------------------------------------
+# Loopback
+# -----------------------------------------------------------------------------
+loopbacks:
+  Loopback0:
+    ip:          10.0.1.2/32
+    description: "Router-ID / VTEP"
+
+# -----------------------------------------------------------------------------
+# Physical interface map
+# -----------------------------------------------------------------------------
+interfaces:
+  Ethernet1:
+    description: "P2P → spine-01 eth2 [10.1.2.0/31]"
+    ip:          10.1.2.1/31
+    mtu:         "{{ mtu_fabric }}"
+    type:        routed
+
+  Ethernet2:
+    description: "P2P → spine-02 eth2 [10.2.2.0/31]"
+    ip:          10.2.2.1/31
+    mtu:         "{{ mtu_fabric }}"
+    type:        routed
+
+  Ethernet5:
+    description: "Firewall-01 uplink secondary (VLAN trunk)"
+    type:        trunk
+    trunk_vlans: "100,110,200,210,220,230,500"
+    mtu:         "{{ mtu_fabric }}"
+
+  Ethernet7:
+    description: "server-dmz-01 eth2 [VLAN 100 PUBLIC — secondary]"
+    type:        access
+    access_vlan: 100
+    mtu:         "{{ mtu_host }}"
+    spanning_tree_portfast: true
+
+  Ethernet8:
+    description: "campus-bp uplink secondary [VLAN 110 CAMPUS]"
+    type:        trunk
+    trunk_vlans: "110"
+    mtu:         "{{ mtu_host }}"
+
+  Ethernet9:
+    description: "ESI peer-link → leaf-01 eth9"
+    type:        routed
+    ip:          10.255.1.1/31    # /31 peer-link (leaf-01=.0, leaf-02=.1)
+
+  Ethernet10:
+    description: "OOB switch uplink"
+    type:        access
+    access_vlan: 1
+
+  Ethernet14:
+    description: "wifi-controller secondary [WIFI-CTRL-MGMT]"
+    type:        access
+    access_vlan: 110
+    mtu:         "{{ mtu_host }}"
+    spanning_tree_portfast: true
+
+# -----------------------------------------------------------------------------
+# BGP knobs
+# -----------------------------------------------------------------------------
+bgp_spine_as:                 65000
+bgp_timers_keepalive:         3
+bgp_timers_hold:              9
+bgp_bfd:                      true
+bgp_bfd_min_interval:         300
+bgp_bfd_multiplier:           3
+bgp_max_prefixes_ipv4:        100
+bgp_max_prefixes_evpn:        500
+bgp_send_community:           extended
+bgp_leaf_peer_group_underlay: SPINE-UNDERLAY
+bgp_leaf_peer_group_evpn:     SPINE-EVPN
+leaf_evpn_peer_group:         SPINE-EVPN
+
+bgp_neighbors:
+  - peer_ip:    10.1.2.0
+    remote_as:  65000
+    description: "spine-01 underlay"
+    address_family: [ipv4_unicast]
+
+  - peer_ip:    10.2.2.0
+    remote_as:  65000
+    description: "spine-02 underlay"
+    address_family: [ipv4_unicast]
+
+  - peer_ip:    10.0.0.1
+    remote_as:  65000
+    description: "spine-01 EVPN"
+    update_source: Loopback0
+    ebgp_multihop: 3
+    address_family: [evpn]
+
+  - peer_ip:    10.0.0.2
+    remote_as:  65000
+    description: "spine-02 EVPN"
+    update_source: Loopback0
+    ebgp_multihop: 3
+    address_family: [evpn]
+
+# -----------------------------------------------------------------------------
+# ESI Multi-homing — leaf-02 ↔ leaf-01
+# -----------------------------------------------------------------------------
+esi_peer:                  leaf-01
+esi_id:                    "0000:0000:0001:0001:0001"   # shared with leaf-01
+lacp_system_id:            "0001.0001.0001"              # shared with leaf-01
+esi_portchannel_id:        2
+evpn_multihoming:          true
+
+# -----------------------------------------------------------------------------
+# Pod identity
+# -----------------------------------------------------------------------------
+pod_id:   1
+pod_name: edge
+
+# -----------------------------------------------------------------------------
+# VRFs active on leaf-02 (mirrors leaf-01 Edge Pod)
+# -----------------------------------------------------------------------------
+vrf_list:
+  - PUBLIC
+  - CAMPUS
 
 active_vrfs:
-  - name: STORAGE
-    vrf_id: 300
-    l3vni: 10300
-    rd: "10.0.3.2:300"
-    rt_import: "65000:10300"
-    rt_export: "65000:10300"
+  - name:      PUBLIC
+    vrf_id:    100
+    l3vni:     10100
+    rd:        "10.0.1.2:10100"
+    rt_import: "65000:10100"
+    rt_export: "65000:10100"
+
+  - name:      CAMPUS
+    vrf_id:    110
+    l3vni:     10110
+    rd:        "10.0.1.2:10110"
+    rt_import: "65000:10110"
+    rt_export: "65000:10110"
+
+# -----------------------------------------------------------------------------
+# VLANs / VNIs
+# Anycast MACs must match leaf-01 (symmetric IRB requirement)
+# -----------------------------------------------------------------------------
+vlan_vni_map:
+  - name: DMZ
+    vlan: 100
+    vni:  10100
+  - name: CAMPUS-WIFI
+    vlan: 110
+    vni:  10110
 
 active_vlans:
-  - id: 300
-    vni: 10300
-    vrf: STORAGE
-    anycast_gw_ip: 192.168.130.1/24
-    anycast_gw_mac: 00:1c:73:00:03:00
+  - id:             100
+    vni:            10100
+    vrf:            PUBLIC
+    anycast_gw_ip:  192.168.100.1/24
+    anycast_gw_mac: 00:1c:73:00:01:00   # same as leaf-01
     arp_suppression: true
-    description: "STORAGE-CEPH-PUBLIC"
-  - id: 310
-    vni: 10310
-    vrf: STORAGE
-    anycast_gw_ip: 192.168.131.1/24
-    anycast_gw_mac: 00:1c:73:00:03:10
+    description:    "DMZ-PUBLIC"
+
+  - id:             110
+    vni:            10110
+    vrf:            CAMPUS
+    anycast_gw_ip:  192.168.110.1/24
+    anycast_gw_mac: 00:1c:73:00:01:10   # same as leaf-01
     arp_suppression: true
-    description: "STORAGE-CEPH-PRIVATE"
+    description:    "CAMPUS-WIFI"
+
+# -----------------------------------------------------------------------------
+# Host-facing ports
+# -----------------------------------------------------------------------------
+host_port_mode:        trunk
+host_port_native_vlan: 1
 
 host_ports:
-  - interface: Ethernet3
-    description: "server-hpc-02 | Ceph public (VLAN 300)"
-    mode: access
-    vlan: 300
-    mtu: 9000
-    spanning_tree_portfast: true
-    bpduguard: true
+  - interface:   Ethernet5
+    description: "Firewall-01 uplink secondary (VLAN trunk)"
+    mode:        trunk
+    trunk_vlans: "100,110,200,210,220,230,500"
+    mtu:         "{{ mtu_fabric }}"
 
-  - interface: Ethernet4
-    description: "server-hpc-02 | Ceph replication (VLAN 310)"
-    mode: access
-    vlan: 310
-    mtu: 9000
+  - interface:   Ethernet7
+    description: "server-dmz-01 eth2 | secondary [VLAN 100]"
+    mode:        access
+    vlan:        100
+    mtu:         9000
     spanning_tree_portfast: true
-    bpduguard: true
+    bpduguard:   true
 
-  - interface: Ethernet5
-    description: "server-storage-01 (VLAN 310)"
-    mode: access
-    vlan: 310
-    mtu: 9000
+  - interface:   Ethernet8
+    description: "campus-bp uplink secondary [VLAN 110]"
+    mode:        trunk
+    trunk_vlans: "110"
+    mtu:         "{{ mtu_host }}"
+
+  - interface:   Ethernet14
+    description: "wifi-controller secondary [VLAN 110]"
+    mode:        access
+    vlan:        110
+    mtu:         9000
     spanning_tree_portfast: true
-    bpduguard: true
+    bpduguard:   true
 
-qos_policy_name: STORAGE-QOS
-qos_ceph_replication_dscp: 18
-bgp_community_storage: "65000:300"
+# -----------------------------------------------------------------------------
+# Port mirroring — IDS span secondary (mirrors leaf-01 session)
+# -----------------------------------------------------------------------------
+monitor_sessions:
+  - name:        IDS-SPAN
+    source_interfaces: [Ethernet5, Ethernet7, Ethernet8]
+    source_direction: both
+    destination: Ethernet6
+
+# -----------------------------------------------------------------------------
+# Fabric-wide settings
+# -----------------------------------------------------------------------------
+mtu_fabric:  9214
+mtu_host:    9000
+uplink_speed: 10g
+oversubscription: "4:1"
+anycast_gateway_mac: 00:1c:73:aa:bb:cc
+arp_suppression: true
+fabric_port_description_prefix: "FABRIC | "
+spanning_tree_bpduguard: true
+spanning_tree_portfast:  true
+
+leaf_eos_features:
+  - vxlan
+  - "routing bgp"
+  - "spanning-tree portfast default"
+
+# -----------------------------------------------------------------------------
+# Management / infra services
+# -----------------------------------------------------------------------------
+lldp_enabled: true
+lldp_tlv_transmit:
+  - system-name
+  - system-description
+  - management-address
+  - port-description
+
+ntp_servers:
+  - 192.168.20.200
+  - 172.20.20.163
+
+dns_servers:
+  - 192.168.20.201
+  - 1.1.1.1
+
+domain_name:     esi.lab
+mgmt_subnet:     172.20.20.0/24
+mgmt_user:       admin
+mgmt_password:   admin
+enable_password: ""
+
+snmp_community: esi-ro
+snmp_contact:   noc@esi.lab
+snmp_location:  "ESI DataCenter Lab"
+
+syslog_server:   192.168.20.174
+syslog_level:    informational
+syslog_facility: local7
+
+zabbix_server: 192.168.20.167
+
+public_domain_no_rfc1918: true
+rfc1918_prefix_list_name: PL-BLOCK-RFC1918
+
+lab_name: esi-datacenter
+
+login_banner: |
+  ******************************************************************
+  *  ESI Data Center Lab — Authorised access only                  *
+  *  All sessions are monitored and recorded                       *
+  ******************************************************************
