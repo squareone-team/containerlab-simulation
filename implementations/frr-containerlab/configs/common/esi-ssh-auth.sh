@@ -7,7 +7,11 @@ ensure_user() {
     username="$1"
     uid="$2"
     if ! id "$username" >/dev/null 2>&1; then
-        adduser -D -u "$uid" -h "/home/$username" -s /bin/sh "$username"
+        if command -v useradd >/dev/null 2>&1; then
+            useradd -u "$uid" -m -d "/home/$username" -s /bin/sh "$username"
+        else
+            adduser -D -u "$uid" -h "/home/$username" -s /bin/sh "$username"
+        fi
     fi
 }
 
@@ -49,4 +53,8 @@ set_sshd_config MaxAuthTries 3
 set_sshd_config LoginGraceTime 30
 
 pkill sshd 2>/dev/null || true
-/usr/sbin/sshd.pam
+if [ -x /usr/sbin/sshd.pam ]; then
+    /usr/sbin/sshd.pam
+else
+    /usr/sbin/sshd
+fi

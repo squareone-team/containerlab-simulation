@@ -161,6 +161,11 @@ log "NFS exports are provided via read-only mount..."
 
 log "Starting NFS server daemons..."
 
+mkdir -p /proc/fs/nfsd
+if ! grep -qs ' nfsd ' /proc/mounts; then
+	mount -t nfsd nfsd /proc/fs/nfsd
+fi
+
 # Start RPC portmapper (if not already running)
 if ! pgrep -x rpcbind >/dev/null 2>&1; then
 	rpcbind &
@@ -171,12 +176,16 @@ fi
 # Start NFS server
 if command -v rpc.nfsd >/dev/null 2>&1; then
 	log "Starting NFS daemon..."
-	rpc.nfsd 8 &
+	rpc.nfsd 8
 	sleep 1
 elif command -v nfsd >/dev/null 2>&1; then
 	log "Starting NFSD..."
-	nfsd 8 &
+	nfsd 8
 	sleep 1
+fi
+
+if ! rpcinfo -p 127.0.0.1 2>/dev/null | grep -q '100003.*2049'; then
+	die "NFS daemon did not register on port 2049"
 fi
 
 # Start mount daemon
