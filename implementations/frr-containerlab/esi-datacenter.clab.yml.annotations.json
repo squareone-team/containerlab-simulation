@@ -1283,6 +1283,16 @@
       "iconCornerRadius": 5
     },
     {
+      "id": "server-hpc-jupyter",
+      "position": {
+        "x": 660,
+        "y": 720
+      },
+      "icon": "server",
+      "iconColor": "#000000",
+      "iconCornerRadius": 5
+    },
+    {
       "id": "server-storage-01",
       "position": {
         "x": 900,
