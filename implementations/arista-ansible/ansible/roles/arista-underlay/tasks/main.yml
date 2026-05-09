@@ -1,0 +1,237 @@
+# =============================================================================
+# Role: arista-underlay
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# 1. Routing model
+# -----------------------------------------------------------------------------
+- name: "UNDERLAY | Enable multi-agent routing model"
+  arista.eos.eos_config:
+    lines:
+      - "service routing protocols model multi-agent"
+    match: line
+  tags: [underlay, routing_model]
+
+# -----------------------------------------------------------------------------
+# 2. Loopback0
+# -----------------------------------------------------------------------------
+- name: "UNDERLAY | Configure Loopback0"
+  arista.eos.eos_config:
+    lines:
+      - "description {{ loopback0_description | default('Router-ID / VTEP') }}"
+      - "ip address {{ loopback0 }}"
+      - "no shutdown"
+    parents: "interface Loopback0"
+    match: line
+  when: loopback0 is defined
+  tags: [underlay, loopback]
+
+- name: "UNDERLAY | Normalize spine p2p_links from spine_p2p_peers"
+  ansible.builtin.set_fact:
+    p2p_links: >-
+      {{
+        spine_p2p_peers | map('combine', {
+          'ip': item.spine_ip,
+          'mtu': 9214
+        }) | list
+      }}
+  loop: "{{ spine_p2p_peers }}"
+  when:
+    - "'spines' in group_names"
+    - spine_p2p_peers is defined
+    - p2p_links | default([]) | length == 0
+
+- name: "UNDERLAY | Normalize leaf p2p_links from spine*_p2p vars"
+  ansible.builtin.set_fact:
+    p2p_links:
+      - interface: "{{ spine01_interface | default('Ethernet1') }}"
+        ip: "{{ spine01_leaf_ip }}/31"
+        description: "FABRIC | P2P → spine-01"
+        mtu: 9214
+        remote_ip: "{{ spine01_ip }}"
+        remote_asn: "{{ spine_asn }}"
+      - interface: "{{ spine02_interface | default('Ethernet2') }}"
+        ip: "{{ spine02_leaf_ip }}/31"
+        description: "FABRIC | P2P → spine-02"
+        mtu: 9214
+        remote_ip: "{{ spine02_ip }}"
+        remote_asn: "{{ spine_asn }}"
+  when:
+    - "'leaves' in group_names"
+    - spine01_leaf_ip is defined
+    - spine02_leaf_ip is defined
+    - p2p_links | default([]) | length == 0
+
+# -----------------------------------------------------------------------------
+# 3. P2P interfaces (without BFD)
+# -----------------------------------------------------------------------------
+- name: "UNDERLAY | Configure P2P underlay interfaces"
+  arista.eos.eos_config:
+    lines:
+      - "description {{ item.description | default('P2P underlay') }}"
+      - "no switchport"
+      - "mtu {{ item.mtu | default(underlay_mtu | default(9000)) }}"
+      - "ip address {{ item.ip }}"
+      - "no shutdown"
+    parents: "interface {{ item.interface }}"
+    match: line
+  loop: "{{ p2p_links | default([]) }}"
+  loop_control:
+    label: "{{ item.interface }}"
+  when:
+    - p2p_links is defined
+    - p2p_links | length > 0
+    - not (bfd_enabled | default(true) | bool)
+  tags: [underlay, interfaces]
+
+# -----------------------------------------------------------------------------
+# 4. P2P interfaces (with BFD timers)
+# -----------------------------------------------------------------------------
+- name: "UNDERLAY | Configure P2P underlay interfaces with BFD"
+  arista.eos.eos_config:
+    lines:
+      - "description {{ item.description | default('P2P underlay') }}"
+      - "no switchport"
+      - "mtu {{ item.mtu | default(underlay_mtu | default(9000)) }}"
+      - "ip address {{ item.ip }}"
+      - "bfd interval {{ underlay_bfd_interval | default(100) }} min-rx {{ underlay_bfd_min_rx | default(100) }} multiplier {{ underlay_bfd_multiplier | default(3) }}"
+      - "no shutdown"
+    parents: "interface {{ item.interface }}"
+    match: line
+  loop: "{{ p2p_links | default([]) }}"
+  loop_control:
+    label: "{{ item.interface }}"
+  when:
+    - p2p_links is defined
+    - p2p_links | length > 0
+    - bfd_enabled | default(true) | bool
+  tags: [underlay, interfaces]
+
+# -----------------------------------------------------------------------------
+# 5. Prefix-list
+# -----------------------------------------------------------------------------
+- name: "UNDERLAY | Configure loopback prefix-list"
+  arista.eos.eos_config:
+    lines:
+      - "seq 10 permit 10.0.0.0/8 le 32"
+    parents: "ip prefix-list {{ underlay_prefix_list_name | default('LOOPBACKS') }}"
+    match: line
+  tags: [underlay, prefix_list]
+
+# -----------------------------------------------------------------------------
+# 6. Route-maps
+# -----------------------------------------------------------------------------
+- name: "UNDERLAY | Route-map OUT"
+  arista.eos.eos_config:
+    lines:
+      - "match ip address prefix-list {{ underlay_prefix_list_name | default('LOOPBACKS') }}"
+    parents:
+      - "route-map {{ underlay_route_map_out_name | default('RM-OUT') }} permit 10"
+    match: line
+  tags: [underlay, route_map]
+
+- name: "UNDERLAY | Route-map IN"
+  arista.eos.eos_config:
+    lines:
+      - "description Accept all underlay prefixes"
+    parents:
+      - "route-map {{ underlay_route_map_in_name | default('RM-IN') }} permit 10"
+    match: line
+  tags: [underlay, route_map]
+
+# -----------------------------------------------------------------------------
+# 7. BGP — create process first so the parent context exists before
+#    any task tries to navigate into it with children.
+#    eos_config with match: line + parents silently fails when the
+#    parent doesn't yet exist in running-config.
+# -----------------------------------------------------------------------------
+- name: "UNDERLAY | Create and configure BGP process"
+  arista.eos.eos_config:
+    lines:
+      - "router-id {{ bgp_router_id | default(router_id) | default(loopback0 | ipaddr('address')) }}"
+      - "no bgp default ipv4-unicast"
+      - "distance bgp 20 200 200"
+      - "graceful-restart"
+      - "maximum-paths {{ bgp_maximum_paths | default(2) }} ecmp {{ bgp_ecmp_paths | default(2) }}"
+      - "bgp log-neighbor-changes"
+      - "timers bgp {{ bgp_keepalive | default(3) }} {{ bgp_hold_time | default(9) }}"
+    parents: "router bgp {{ underlay_asn }}"
+    match: none
+  tags: [underlay, bgp]
+
+# =============================================================================
+# SPINE
+# =============================================================================
+
+- name: "SPINE | peer-filter"
+  arista.eos.eos_config:
+    lines:
+      - "10 match as-range {{ leaf_asn_min }}-{{ leaf_asn_max }} result accept"
+    parents: "peer-filter {{ spine_bgp_peer_filter }}"
+    match: line
+  when: "'spines' in group_names"
+  tags: [underlay, spine]
+
+- name: "SPINE | peer-group"
+  arista.eos.eos_config:
+    lines:
+      - "neighbor {{ spine_bgp_peer_group }} peer group"
+      - "neighbor {{ spine_bgp_peer_group }} description Underlay to Leaves"
+      - "neighbor {{ spine_bgp_peer_group }} send-community"
+      - "neighbor {{ spine_bgp_peer_group }} bfd"
+      - "neighbor {{ spine_bgp_peer_group }} route-map {{ underlay_route_map_out_name | default('RM-OUT') }} out"
+    parents: "router bgp {{ underlay_asn }}"
+    match: line
+  when: "'spines' in group_names"
+  tags: [underlay, spine]
+
+- name: "SPINE | listen range"
+  arista.eos.eos_config:
+    lines:
+      - "bgp listen range 10.0.0.0/8 peer-group {{ spine_bgp_peer_group }} peer-filter {{ spine_bgp_peer_filter }}"
+    parents: "router bgp {{ underlay_asn }}"
+    match: line
+  when: "'spines' in group_names"
+  tags: [underlay, spine]
+
+# =============================================================================
+# LEAF
+# =============================================================================
+
+- name: "LEAF | peer-group"
+  arista.eos.eos_config:
+    lines:
+      - "neighbor {{ leaf_bgp_peer_group }} peer group"
+      - "neighbor {{ leaf_bgp_peer_group }} description To Spines"
+      - "neighbor {{ leaf_bgp_peer_group }} remote-as {{ spine_asn }}"
+      - "neighbor {{ leaf_bgp_peer_group }} bfd"
+      - "neighbor {{ leaf_bgp_peer_group }} route-map {{ underlay_route_map_in_name | default('RM-IN') }} in"
+      - "neighbor {{ leaf_bgp_peer_group }} route-map {{ underlay_route_map_out_name | default('RM-OUT') }} out"
+    parents: "router bgp {{ underlay_asn }}"
+    match: line
+  when: "'leaves' in group_names"
+  tags: [underlay, leaf]
+
+- name: "LEAF | neighbors"
+  arista.eos.eos_config:
+    lines:
+      - "neighbor {{ item.remote_ip }} peer group {{ leaf_bgp_peer_group }}"
+    parents: "router bgp {{ underlay_asn }}"
+    match: line
+  loop: "{{ p2p_links | default([]) }}"
+  loop_control:
+    label: "{{ item.remote_ip | default(item.interface) }}"
+  when:
+    - "'leaves' in group_names"
+    - p2p_links is defined
+    - item.remote_asn is defined
+    - item.remote_asn == spine_asn
+  tags: [underlay, leaf]
+
+# -----------------------------------------------------------------------------
+# SAVE
+# -----------------------------------------------------------------------------
+- name: "UNDERLAY | Save config"
+  arista.eos.eos_config:
+    save_when: changed
+  tags: [underlay, save]

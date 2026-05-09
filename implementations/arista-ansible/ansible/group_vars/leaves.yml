@@ -1,0 +1,101 @@
+
+# =============================================================================
+# ESI Data Center — Leaf-wide Variables (group_vars/leaves.yml)
+# Applies to: all leaf switches (leaf-01 … leaf-10)
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# BGP — eBGP underlay toward both spines
+# Each leaf peers with spine-01 and spine-02 using the p2p /31 addresses
+# defined in host_vars.  These timers and knobs apply to all leaf BGP sessions.
+# -----------------------------------------------------------------------------
+bgp_timers_keepalive: 3
+bgp_timers_hold: 9
+underlay_asn: "{{ bgp_as }}"
+
+bgp_leaf_peer_group_underlay: SPINE-UNDERLAY
+bgp_leaf_peer_group_evpn:     SPINE-EVPN
+
+# Maximum prefixes accepted from each spine (safety valve)
+bgp_max_prefixes_ipv4: 100
+bgp_max_prefixes_evpn: 500
+
+# Activate send-community extended on EVPN peer-group (required for RT/RD)
+bgp_send_community: extended
+
+# BFD on underlay eBGP sessions
+bgp_bfd: true
+bgp_bfd_min_interval: 300
+bgp_bfd_multiplier: 3
+
+# -----------------------------------------------------------------------------
+# EVPN / VXLAN overlay — leaf-side settings
+# -----------------------------------------------------------------------------
+vtep_loopback: Loopback0
+vtep_source_interface: Loopback0
+vtep_interface: Loopback1
+vxlan_interface: Vxlan1
+vxlan_udp_port: 4789
+
+# All leaves act as EVPN speakers; spines are route-reflectors in eBGP mode.
+# RFC 7432 eBGP EVPN — no RR needed (iBGP path NOT used in ESI lab).
+evpn_multihoming: true          # Enable EVPN ESI multi-homing on all leaves
+
+# ARP/ND suppression (reduces flood traffic in L2 VNIs)
+arp_suppression: true
+
+# Flood-list — head-end replication (no multicast in cEOS lab)
+vxlan_flood_learning: head-end-replication
+
+# -----------------------------------------------------------------------------
+# ESI Multi-homing — per-leaf-pair ESI value is derived in host_vars
+# Format:  00:00:00:00:00:<pod_id_hex>:<leaf_pair_hex>:00:00:01
+# The esi_multihoming_id host_var carries the full ESI string.
+# -----------------------------------------------------------------------------
+esi_lacp_system_id_prefix: "0000.0000"   # lower 2 bytes come from host_vars
+
+# -----------------------------------------------------------------------------
+# Layer-2 interface defaults (host-facing / server ports)
+# -----------------------------------------------------------------------------
+host_port_mode: trunk           # all server ports are 802.1Q trunk in lab
+host_port_native_vlan: 1
+mtu_host: 9000
+
+# STP — portfast on all host-facing ports (no topology change on server bounce)
+spanning_tree_portfast: true
+spanning_tree_bpduguard: true
+
+# LACP fast on port-channels toward servers
+lacp_rate: fast
+
+# -----------------------------------------------------------------------------
+# Fabric uplink defaults
+# -----------------------------------------------------------------------------
+mtu_fabric: 9214
+uplink_speed: 10g               # cEOS default in Containerlab
+fabric_port_description_prefix: "FABRIC | "
+
+# -----------------------------------------------------------------------------
+# Loopback interfaces
+# Loopback0 = router-id / EVPN NHop / VTEP (same IP in cEOS single-loopback mode)
+# -----------------------------------------------------------------------------
+loopback0_description: "Router-ID / VTEP"
+
+# -----------------------------------------------------------------------------
+# EOS features enabled on every leaf
+# -----------------------------------------------------------------------------
+leaf_eos_features:
+  - "vxlan"
+  - "routing bgp"
+  - "spanning-tree portfast default"
+  - "hardware speed unsupported forced"    # cEOS: suppress speed negotiation warnings
+
+# -----------------------------------------------------------------------------
+# LLDP
+# -----------------------------------------------------------------------------
+lldp_enabled: true
+lldp_tlv_transmit:
+  - system-name
+  - system-description
+  - management-address
+  - port-description

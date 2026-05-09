@@ -1,0 +1,29 @@
+# =============================================================================
+# ESI Data Center — EOS Common Baseline
+# Applies to: all Arista cEOS nodes (spines + leaves)
+# Role: arista-common
+#
+# Configures:
+#   - Hostname, domain-name, login banner
+#   - EOS feature enables (routing bgp, vxlan, etc.)
+#   - Management IP + default route via mgmt VRF
+#   - NTP, syslog, SNMP
+#   - LLDP
+#   - AAA / local user
+#   - Loopback0 interface
+# =============================================================================
+- name: "EOS Common Baseline"
+  hosts: fabric
+  gather_facts: false
+  serial: "{{ serial_limit | default('100%') }}"
+
+  pre_tasks:
+    - name: "Wait for EOS SSH to be reachable"
+      ansible.builtin.wait_for_connection:
+        timeout: 120
+        sleep: 5
+      tags: [always]
+
+  roles:
+    - role: arista-common
+      tags: [common]

@@ -1,0 +1,183 @@
+# =============================================================================
+# ESI Data Center — Leaf-08 Host Variables
+# Pod: Compute (pod_id=4) | ESI pair: leaf-08 ↔ leaf-07
+# Role: General-purpose multi-tenant workloads (4:1 oversubscription)
+#       server-storage-01 secondary attachment
+# BGP AS: 65108
+# Management IP: 172.20.20.28
+# =============================================================================
+
+ansible_host: 172.20.20.28
+router_id:    10.0.4.2
+loopback0:    10.0.4.2/32
+bgp_as:       65108
+underlay_asn: 65108
+
+# -----------------------------------------------------------------------------
+# Spine uplink P2P addresses (leaf side = .1)
+# -----------------------------------------------------------------------------
+spine01_p2p:     10.1.8.0/31
+spine02_p2p:     10.2.8.0/31
+spine01_leaf_ip: 10.1.8.1
+spine02_leaf_ip: 10.2.8.1
+spine01_ip:      10.1.8.0
+spine02_ip:      10.2.8.0
+
+# -----------------------------------------------------------------------------
+# ESI Multi-homing parameters (paired with leaf-07)
+# ESI = 00:00:00:00:00:04:08:00:00:01  (pod=04, position=08)
+# -----------------------------------------------------------------------------
+esi_peer:           leaf-07
+esi_id:             "0000:0000:0408:0000:0001"
+esi_portchannel_id: 71
+esi_lacp_id:        "0000.0408.0001"
+
+# -----------------------------------------------------------------------------
+# Uplink interface names
+# -----------------------------------------------------------------------------
+spine01_interface: Ethernet1    # → spine-01 : Ethernet8
+spine02_interface: Ethernet2    # → spine-02 : Ethernet8
+peer_interface:    Ethernet10   # → leaf-07 ESI heartbeat
+
+# -----------------------------------------------------------------------------
+# Physical interface map
+# -----------------------------------------------------------------------------
+interfaces:
+  Ethernet1:
+    description: "P2P → spine-01 eth8 [10.1.8.0/31]"
+    ip: 10.1.8.1/31
+    mtu: "{{ mtu_fabric }}"
+    type: routed
+
+  Ethernet2:
+    description: "P2P → spine-02 eth8 [10.2.8.0/31]"
+    ip: 10.2.8.1/31
+    mtu: "{{ mtu_fabric }}"
+    type: routed
+
+  Ethernet3:
+    description: "server-storage-01 eth2 [VLAN 700/710 — ESI bond secondary]"
+    type: trunk
+    trunk_vlans: "700,710"
+    mtu: "{{ mtu_host }}"
+    channel_group: 71
+    spanning_tree_portfast: true
+
+  Ethernet10:
+    description: "OOB switch uplink"
+    type: access
+    access_vlan: 1
+
+# -----------------------------------------------------------------------------
+# Loopback
+# -----------------------------------------------------------------------------
+loopbacks:
+  Loopback0:
+    ip: 10.0.4.2/32
+    description: "Router-ID / VTEP"
+
+# -----------------------------------------------------------------------------
+# VXLAN VTEP
+# -----------------------------------------------------------------------------
+vtep_source_interface: Loopback0
+vtep_ip: 10.0.4.2
+
+# -----------------------------------------------------------------------------
+# ESI Port-Channels
+# server-storage-01 secondary leg
+# -----------------------------------------------------------------------------
+port_channels:
+  - id: 71
+    description: "ESI LAG → server-storage-01 (leaf-08 leg)"
+    lacp_mode: active
+    members: [Ethernet3]
+    esi: "0000:0000:0004:0070:0001"    # same ESI as leaf-07 Po70 — shared segment
+    lacp_system_id: "0004.0070.0001"   # same LACP system-id — required for ESI
+    mode: trunk
+    trunk_vlans: "700,710"
+
+# -----------------------------------------------------------------------------
+# BGP neighbors
+# -----------------------------------------------------------------------------
+bgp_neighbors:
+  - peer_ip: 10.1.8.0
+    remote_as: 65000
+    description: "spine-01 underlay"
+    address_family: [ipv4_unicast]
+
+  - peer_ip: 10.2.8.0
+    remote_as: 65000
+    description: "spine-02 underlay"
+    address_family: [ipv4_unicast]
+
+  - peer_ip: 10.0.0.1
+    remote_as: 65000
+    description: "spine-01 EVPN"
+    update_source: Loopback0
+    ebgp_multihop: 3
+    address_family: [evpn]
+
+  - peer_ip: 10.0.0.2
+    remote_as: 65000
+    description: "spine-02 EVPN"
+    update_source: Loopback0
+    ebgp_multihop: 3
+    address_family: [evpn]
+
+# -----------------------------------------------------------------------------
+# VRFs active on leaf-08 (mirrors leaf-07)
+# -----------------------------------------------------------------------------
+active_vrfs:
+  - name: TENANT_A
+    vrf_id: 700
+    l3vni: 10700
+    rd: "10.0.4.2:10700"
+    rt_import: "65000:10700"
+    rt_export: "65000:10700"
+
+  - name: TENANT_B
+    vrf_id: 710
+    l3vni: 10710
+    rd: "10.0.4.2:10710"
+    rt_import: "65000:10710"
+    rt_export: "65000:10710"
+
+# -----------------------------------------------------------------------------
+# VLANs / VNIs active on leaf-08
+# -----------------------------------------------------------------------------
+active_vlans:
+  - id: 700
+    vni: 10700
+    vrf: TENANT_A
+    anycast_gw_ip: 192.168.70.1/24
+    anycast_gw_mac: 00:1c:73:00:07:00   # same anycast MAC as leaf-07 (symmetric IRB)
+    arp_suppression: true
+    description: "TENANT-A general VM workloads"
+
+  - id: 710
+    vni: 10710
+    vrf: TENANT_B
+    anycast_gw_ip: 192.168.71.1/24
+    anycast_gw_mac: 00:1c:73:00:07:10
+    arp_suppression: true
+    description: "TENANT-B general VM workloads"
+
+# -----------------------------------------------------------------------------
+# Host-facing ports
+# -----------------------------------------------------------------------------
+host_ports:
+  - interface: Ethernet3
+    description: "server-storage-01 eth2 | ESI trunk bond secondary"
+    mode: trunk
+    trunk_vlans: "700,710"
+    mtu: 9000
+    portchannel: Port-Channel71
+
+# VLAN→VNI map
+vlan_vni_map:
+  - vlan: 700
+    vni: 10700
+    name: TENANT-A
+  - vlan: 710
+    vni: 10710
+    name: TENANT-B

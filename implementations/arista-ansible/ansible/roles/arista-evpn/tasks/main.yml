@@ -1,0 +1,210 @@
+# =============================================================================
+# Role: arista-evpn — Tasks (FINAL CLEAN & COMPLETE VERSION)
+# =============================================================================
+
+# ─────────────────────────────────────────────────────────────────────────────
+# 0. FACT BUILDING — Clean & Reliable
+# ─────────────────────────────────────────────────────────────────────────────
+- name: EVPN | Build leaf_active_domains and derived facts
+  ansible.builtin.set_fact:
+    leaf_active_domains: "{{ communication_domains | default([]) }}"
+    leaf_active_l2vnis: >-
+      {{
+        communication_domains
+        | default([])
+        | map(attribute='vlans', default=[])
+        | flatten
+        | list
+      }}
+    leaf_active_vrfs: >-
+      {{
+        communication_domains
+        | default([])
+        | map(attribute='vrf')
+        | list
+      }}
+  when: "'leaves' in group_names"
+  tags: [always]
+# ─────────────────────────────────────────────────────────────────────────────
+# 1. Features & Global Settings
+# ─────────────────────────────────────────────────────────────────────────────
+
+- name: EVPN | Set Anycast Gateway MAC (Symmetric IRB)
+  arista.eos.eos_config:
+    lines: "ip virtual-router mac-address {{ anycast_gateway_mac }}"
+  tags: [evpn, irb]
+
+# ─────────────────────────────────────────────────────────────────────────────
+# 2. RFC1918 Isolation for VRF-PUBLIC
+# ─────────────────────────────────────────────────────────────────────────────
+- name: EVPN | RFC1918 Prefix-List for DMZ
+  arista.eos.eos_config:
+    lines:
+      - "ip prefix-list {{ rfc1918_prefix_list_name }} seq 10 deny 10.0.0.0/8 le 32"
+      - "ip prefix-list {{ rfc1918_prefix_list_name }} seq 20 deny 172.16.0.0/12 le 32"
+      - "ip prefix-list {{ rfc1918_prefix_list_name }} seq 30 deny 192.168.0.0/16 le 32"
+      - "ip prefix-list {{ rfc1918_prefix_list_name }} seq 100 permit 0.0.0.0/0 le 32"
+    match: line
+  when:
+    - "'leaves' in group_names"                         
+    - leaf_active_vrfs is defined  
+    - "'VRF-PUBLIC' in leaf_active_vrfs"
+    - public_domain_no_rfc1918 | default(true) | bool
+  tags: [evpn, dmz, policy]
+
+# ─────────────────────────────────────────────────────────────────────────────
+# 3. VRFs + IP Routing
+# ─────────────────────────────────────────────────────────────────────────────
+- name: EVPN | Create VRF instances
+  arista.eos.eos_vrf:
+    name: "{{ item.vrf }}"
+    rd: "{{ router_id }}:{{ item.l3vni }}"
+    state: present
+  loop: "{{ leaf_active_domains | default([]) }}"
+  when:
+    - "'leaves' in group_names"
+    - leaf_active_domains is defined
+  tags: [evpn, vrf]
+
+- name: EVPN | Enable IP routing in each VRF
+  arista.eos.eos_config:
+    lines: "ip routing vrf {{ item.vrf }}"
+    match: line
+  loop: "{{ leaf_active_domains }}"
+  when: "'leaves' in group_names"
+  tags: [evpn, vrf]
+
+# ─────────────────────────────────────────────────────────────────────────────
+# 4. VLANs
+# ─────────────────────────────────────────────────────────────────────────────
+- name: EVPN | Create VLANs
+  arista.eos.eos_vlans:
+    config:
+      - vlan_id: "{{ item.id }}"
+        name: "{{ item.name }}"
+        state: active
+    state: merged
+  loop: "{{ leaf_active_l2vnis }}"
+  when: "'leaves' in group_names"
+  tags: [evpn, vlan]
+
+# ─────────────────────────────────────────────────────────────────────────────
+# 5. SVIs — Symmetric IRB (Anycast)
+# ─────────────────────────────────────────────────────────────────────────────
+- name: EVPN | Configure Anycast IRB SVIs
+  arista.eos.eos_config:
+    lines:
+      - "description IRB {{ item.name }} [VNI {{ item.vni }}]"
+      - "vrf {{ item.vrf }}"
+      - "ip address virtual {{ item.gateway }}/{{ item.prefix | ansible.utils.ipaddr('prefix') }}"
+      - "no autostate"
+    parents: "interface Vlan{{ item.id }}"
+    match: line
+  loop: "{{ leaf_active_l2vnis }}"
+  when:
+    - "'leaves' in group_names"
+    - item.gateway is defined and item.gateway != ""
+  tags: [evpn, svi, irb]
+
+# ─────────────────────────────────────────────────────────────────────────────
+# 6. VXLAN Interface (Vxlan1)
+# ─────────────────────────────────────────────────────────────────────────────
+- name: EVPN | Configure Vxlan1 base
+  arista.eos.eos_config:
+    lines:
+      - "description VTEP - {{ inventory_hostname }}"
+      - "vxlan source-interface {{ vtep_loopback }}"
+      - "vxlan udp-port {{ vxlan_udp_port }}"
+    parents: "interface Vxlan1"
+    match: line
+  when: "'leaves' in group_names"
+  tags: [evpn, vxlan]
+
+- name: EVPN | Map L2VNIs on Vxlan1
+  arista.eos.eos_config:
+    lines: "vxlan vlan {{ item.id }} vni {{ item.vni }}"
+    parents: "interface Vxlan1"
+    match: line
+  loop: "{{ leaf_active_l2vnis }}"
+  when: "'leaves' in group_names"
+  tags: [evpn, vxlan, l2vni]
+
+- name: EVPN | Map L3VNIs on Vxlan1
+  arista.eos.eos_config:
+    lines: "vxlan vrf {{ item.vrf }} vni {{ item.l3vni }}"
+    parents: "interface Vxlan1"
+    match: line
+  loop: "{{ leaf_active_domains }}"
+  when: "'leaves' in group_names"
+  tags: [evpn, vxlan, l3vni]
+
+# =============================================================================
+# 7. BGP EVPN Configuration
+# =============================================================================
+- name: EVPN | Leaf — Define SPINE-EVPN Peer Group
+  arista.eos.eos_config:
+    lines:
+      - "neighbor {{ leaf_evpn_peer_group }} peer group"
+      - "neighbor {{ leaf_evpn_peer_group }} send-community extended"
+      - "neighbor {{ leaf_evpn_peer_group }} ebgp-multihop 3"
+      - "neighbor {{ leaf_evpn_peer_group }} update-source {{ vtep_loopback }}"
+    parents: "router bgp {{ bgp_as }}"
+    match: line
+  when: "'leaves' in group_names"
+
+- name: EVPN | Leaf — Activate EVPN Address-Family
+  arista.eos.eos_config:
+    lines:
+      - "neighbor {{ leaf_evpn_peer_group }} activate"
+      - "neighbor {{ leaf_evpn_peer_group }} maximum-routes {{ leaf_max_evpn_routes | default(5000) }}"
+    parents:
+      - "router bgp {{ bgp_as }}"
+      - "address-family evpn"
+    match: line
+  when: "'leaves' in group_names"
+
+- name: EVPN | Per-VRF RD + Route-Targets
+  arista.eos.eos_config:
+    lines:
+      - "rd {{ router_id }}:{{ item.l3vni }}"
+      - "route-target import evpn {{ item.rt_import | first | default('65000:' ~ item.l3vni) }}"
+      - "route-target export evpn {{ item.rt_export | first | default('65000:' ~ item.l3vni) }}"
+    parents:
+      - "router bgp {{ bgp_as }}"
+      - "vrf {{ item.vrf }}"
+    match: line
+  loop: "{{ leaf_active_domains }}"
+  when: "'leaves' in group_names"
+
+- name: EVPN | Redistribute connected into VRFs (Type-5)
+  arista.eos.eos_config:
+    lines: "redistribute connected"
+    parents:
+      - "router bgp {{ bgp_as }}"
+      - "vrf {{ item.vrf }}"
+      - "address-family ipv4"
+    match: line
+  loop: "{{ leaf_active_domains }}"
+  when: "'leaves' in group_names"
+
+- name: EVPN | MAC-VRF per L2VNI
+  arista.eos.eos_config:
+    lines:
+      - "rd {{ router_id }}:{{ item.vni }}"
+      - "route-target import evpn {{ item.rt }}"
+      - "route-target export evpn {{ item.rt }}"
+      - "redistribute learned"
+    parents:
+      - "router bgp {{ bgp_as }}"
+      - "vlan {{ item.id }}"
+    match: line
+  loop: "{{ leaf_active_l2vnis }}"
+  when: "'leaves' in group_names"
+
+# =============================================================================
+# Final Save
+# =============================================================================
+- name: EVPN | Save running config
+  arista.eos.eos_config:
+    save_when: changed
+  tags: [evpn, save]

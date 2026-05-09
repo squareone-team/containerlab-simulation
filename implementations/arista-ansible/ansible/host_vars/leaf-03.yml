@@ -1,0 +1,176 @@
+
+# =============================================================================
+# host_vars/leaf-03.yml — Core Pod, Primary Leaf
+# Role: Admin servers (eth4/eth6), LMS-staff (eth5), FTP (eth3),
+#       DNS dual-home (eth7), DHCP dual-home (eth8),
+#       NTP dual-home (eth9), Zabbix (eth11)
+# BGP AS: 65103
+# =============================================================================
+underlay_asn: 65103
+
+interfaces:
+  Ethernet1:
+    description: "P2P → spine-01 eth3 [10.1.3.0/31]"
+    ip: 10.1.3.1/31
+    mtu: "{{ mtu_fabric }}"
+    type: routed
+
+  Ethernet2:
+    description: "P2P → spine-02 eth3 [10.2.3.0/31]"
+    ip: 10.2.3.1/31
+    mtu: "{{ mtu_fabric }}"
+    type: routed
+
+  Ethernet3:
+    description: "ftp-server eth1 [VLAN 210 INFRA]"
+    type: access
+    access_vlan: 210
+    mtu: "{{ mtu_host }}"
+    spanning_tree_portfast: true
+
+  Ethernet4:
+    description: "server-admin-01 eth1 [VLAN 200 ADMIN — ESI bond]"
+    type: access
+    access_vlan: 200
+    mtu: "{{ mtu_host }}"
+    channel_group: 10          # Port-Channel10 for ESI LACP bond
+
+  Ethernet5:
+    description: "lms-staff eth1 [VLAN 220 LMS]"
+    type: access
+    access_vlan: 220
+    mtu: "{{ mtu_host }}"
+    spanning_tree_portfast: true
+
+  Ethernet6:
+    description: "server-admin-02 eth1 [VLAN 200 ADMIN — ESI bond]"
+    type: access
+    access_vlan: 200
+    mtu: "{{ mtu_host }}"
+    channel_group: 11          # Port-Channel11 for ESI LACP bond
+
+  Ethernet7:
+    description: "dns-server eth1 [VLAN 210 INFRA]"
+    type: access
+    access_vlan: 210
+    mtu: "{{ mtu_host }}"
+    spanning_tree_portfast: true
+
+  Ethernet8:
+    description: "dhcp-server eth1 [VLAN 210 INFRA]"
+    type: access
+    access_vlan: 210
+    mtu: "{{ mtu_host }}"
+    spanning_tree_portfast: true
+
+  Ethernet9:
+    description: "ntp-server eth1 [VLAN 210 INFRA]"
+    type: access
+    access_vlan: 210
+    mtu: "{{ mtu_host }}"
+    spanning_tree_portfast: true
+
+  Ethernet10:
+    description: "OOB switch uplink"
+    type: access
+    access_vlan: 1
+
+  Ethernet11:
+    description: "zabbix-server eth1 [VLAN 210 INFRA]"
+    type: access
+    access_vlan: 210
+    mtu: "{{ mtu_host }}"
+    spanning_tree_portfast: true
+
+loopbacks:
+  Loopback0:
+    ip: 10.0.2.1/32
+    description: "Router-ID / VTEP"
+
+# ESI Port Channels (dual-homed servers with leaf-04)
+port_channels:
+  - id: 10
+    description: "ESI LAG → server-admin-01"
+    lacp_mode: active
+    members: [Ethernet4]
+    esi: "0000:0000:0002:0010:0001"
+    lacp_system_id: "0002.0010.0001"
+    access_vlan: 200
+
+  - id: 11
+    description: "ESI LAG → server-admin-02"
+    lacp_mode: active
+    members: [Ethernet6]
+    esi: "0000:0000:0002:0011:0001"
+    lacp_system_id: "0002.0011.0001"
+    access_vlan: 200
+
+vtep_source_interface: Loopback0
+vtep_ip: 10.0.2.1
+
+bgp_as: 65103
+router_id: 10.0.2.1
+
+bgp_neighbors:
+  - peer_ip: 10.1.3.0
+    remote_as: 65000
+    description: "spine-01 underlay"
+    address_family: [ipv4_unicast]
+
+  - peer_ip: 10.2.3.0
+    remote_as: 65000
+    description: "spine-02 underlay"
+    address_family: [ipv4_unicast]
+
+  - peer_ip: 10.0.0.1
+    remote_as: 65000
+    description: "spine-01 EVPN"
+    update_source: Loopback0
+    ebgp_multihop: 3
+    address_family: [evpn]
+
+  - peer_ip: 10.0.0.2
+    remote_as: 65000
+    description: "spine-02 EVPN"
+    update_source: Loopback0
+    ebgp_multihop: 3
+    address_family: [evpn]
+
+vrfs:
+  - name: ADMIN
+    rd: "10.0.2.1:10200"
+    rt_import: "65000:10200"
+    rt_export: "65000:10200"
+    l3vni: 10200
+
+  - name: INFRA
+    rd: "10.0.2.1:10210"
+    rt_import: "65000:10210"
+    rt_export: "65000:10210"
+    l3vni: 10210
+
+  - name: LMS
+    rd: "10.0.2.1:10220"
+    rt_import: "65000:10220"
+    rt_export: "65000:10220"
+    l3vni: 10220
+
+  - name: SERVICES
+    rd: "10.0.2.1:10230"
+    rt_import: "65000:10230"
+    rt_export: "65000:10230"
+    l3vni: 10230
+
+vlan_vni_map:
+  - vlan: 200
+    vni: 10200
+    name: ADMIN
+  - vlan: 210
+    vni: 10210
+    name: INFRA-MGMT
+  - vlan: 220
+    vni: 10220
+    name: LMS-STAFF
+  - vlan: 230
+    vni: 10230
+    name: SERVICES-WEB

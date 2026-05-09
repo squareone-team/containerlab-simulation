@@ -1,0 +1,130 @@
+
+# =============================================================================
+# ESI Data Center — Firewall Group Variables (group_vars/firewalls.yml)
+# Applies to: firewall-01 and firewall-02 (Alpine + nftables + keepalived)
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# VLAN trunk from Edge Pod leaves (leaf-01:eth5 / leaf-02:eth5)
+# Each VLAN = one Communication Domain crossing the firewall
+# -----------------------------------------------------------------------------
+fw_trunk_interface: eth1         # uplink to leaf (VLAN trunk)
+fw_sync_interface: eth3          # VRRP/keepalived state sync
+fw_sync_network: 169.254.200.0/30
+
+# -----------------------------------------------------------------------------
+# VRRP groups — one per inter-domain or N-S zone
+# VRRP virtual IPs become the default gateway for each VLAN SVIs
+# -----------------------------------------------------------------------------
+vrrp_groups:
+  - vrid: 10
+    vlan: 100
+    vip: 192.168.100.254
+    description: "PUBLIC / DMZ gateway"
+  - vrid: 11
+    vlan: 110
+    vip: 192.168.10.254
+    description: "CAMPUS gateway"
+  - vrid: 20
+    vlan: 200
+    vip: 192.168.200.254
+    description: "ADMIN gateway"
+  - vrid: 21
+    vlan: 210
+    vip: 192.168.20.254
+    description: "INFRA gateway"
+  - vrid: 22
+    vlan: 220
+    vip: 192.168.30.254
+    description: "LMS gateway"
+  - vrid: 23
+    vlan: 230
+    vip: 192.168.40.254
+    description: "SERVICES gateway"
+  - vrid: 50
+    vlan: 500
+    vip: 192.168.50.254
+    description: "STUDENT gateway"
+
+# -----------------------------------------------------------------------------
+# nftables policy — inter-domain rules (hairpin through firewall)
+# Format: src_domain → dst_domain → action
+# -----------------------------------------------------------------------------
+fw_inter_domain_policy:
+  - src: CAMPUS
+    dst: PUBLIC
+    action: accept
+    comment: "Campus users → Internet"
+  - src: CAMPUS
+    dst: LMS
+    action: accept
+    comment: "Campus users → LMS portal"
+  - src: STUDENT
+    dst: PUBLIC
+    action: accept
+    comment: "Student workloads → Internet (restricted)"
+  - src: STUDENT
+    dst: SERVICES
+    action: accept
+    comment: "Student → web services"
+  - src: ADMIN
+    dst: INFRA
+    action: accept
+    comment: "Admin → infrastructure management"
+  - src: ADMIN
+    dst: PUBLIC
+    action: accept
+    comment: "Admin → Internet"
+  - src: LMS
+    dst: INFRA
+    action: accept
+    comment: "LMS → DNS/NTP"
+  - src: SERVICES
+    dst: INFRA
+    action: accept
+    comment: "Services → DNS/NTP"
+  - src: PUBLIC
+    dst: ADMIN
+    action: drop
+    comment: "DMZ CANNOT reach admin network"
+  - src: STUDENT
+    dst: ADMIN
+    action: drop
+    comment: "Students CANNOT reach admin network"
+  - src: STUDENT
+    dst: STORAGE
+    action: drop
+    comment: "Students CANNOT reach storage"
+
+# Default inter-domain policy (anything not explicitly permitted)
+fw_default_policy: drop
+
+# North-South (Internet-facing) policy
+fw_ns_policy:
+  - direction: inbound
+    dst: PUBLIC
+    action: accept
+    comment: "Allow inbound to DMZ"
+  - direction: inbound
+    dst: any
+    action: drop
+    comment: "Block all other inbound"
+  - direction: outbound
+    src: any
+    action: accept
+    comment: "Permit all outbound"
+
+# -----------------------------------------------------------------------------
+# keepalived VRRP authentication
+# -----------------------------------------------------------------------------
+keepalived_auth_pass: "esifw2024"
+keepalived_advert_int: 1
+
+# -----------------------------------------------------------------------------
+# Package requirements on Alpine firewall nodes
+# -----------------------------------------------------------------------------
+fw_packages:
+  - nftables
+  - keepalived
+  - iproute2
+  - iputils

@@ -1,0 +1,97 @@
+# =============================================================================
+# ESI Data Center — Fabric Overlay Playbook (EVPN / VXLAN)
+# Configures EVPN control-plane and VXLAN data-plane across the fabric.
+#
+# Requires: fabric-underlay.yml has run and loopbacks are reachable.
+#
+# Execution order:
+#   1. Spines  — EVPN peer-groups, eBGP EVPN sessions to all leaf loopbacks
+#   2. Leaves  — VXLAN interface, EVPN sessions to both spines,
+#                VRFs + L3VNIs, VLAN↔VNI maps, anycast GW SVIs,
+#                ARP suppression, ESI multi-homing
+#
+# After this playbook:
+#   ✓ EVPN BGP sessions Established (eBGP multihop loopback↔loopback)
+#   ✓ VXLAN interface Vxlan1 up on every leaf (source: Loopback0)
+#   ✓ All Communication Domain VRFs instantiated with L3VNIs
+#   ✓ VLAN SVIs with anycast gateway IPs and MACs
+#   ✓ ARP/ND suppression enabled on L2VNIs
+#   ✓ ESI LAGs configured on dual-homed server ports
+#
+# Usage:
+#   ansible-playbook playbooks/fabric-overlay.yml
+#   ansible-playbook playbooks/fabric-overlay.yml --tags evpn
+#   ansible-playbook playbooks/fabric-overlay.yml --tags vxlan
+#   ansible-playbook playbooks/fabric-overlay.yml --tags esi
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# Pass 1 — Spines: EVPN BGP peer configuration
+# Spines act as eBGP EVPN reflectors (next-hop-unchanged toward all leaves).
+# -----------------------------------------------------------------------------
+- name: "OVERLAY | Spine EVPN BGP"
+  hosts: spines
+  gather_facts: false
+  serial: 1
+
+  roles:
+    - role: arista-evpn
+      tags: [overlay, evpn, spines]
+
+# -----------------------------------------------------------------------------
+# Pass 2 — Leaves: VXLAN + EVPN + VRFs + SVIs
+# All leaf pods can run in parallel; each leaf is independent.
+# -----------------------------------------------------------------------------
+- name: "OVERLAY | Leaf EVPN/VXLAN"
+  hosts: leaves
+  gather_facts: false
+
+  roles:
+    - role: arista-evpn
+      tags: [overlay, evpn, vxlan, leaves]
+
+# -----------------------------------------------------------------------------
+# Pass 3 — ESI multi-homing LAGs (pod-specific, paired leaves)
+# Runs after base EVPN is up so LACP ESI routes are immediately signalled.
+# -----------------------------------------------------------------------------
+- name: "OVERLAY | ESI Multi-homing LAGs"
+  hosts: leaves
+  gather_facts: false
+  tags: [overlay, esi]
+
+  tasks:
+    - name: "Configure ESI Port-Channels"
+      arista.eos.eos_config:
+        src: "esi-lag.j2"
+      when: esi_id is defined
+
+# -----------------------------------------------------------------------------
+# Pass 4 — Verify EVPN overlay
+# -----------------------------------------------------------------------------
+- name: "OVERLAY | Verify EVPN sessions on spines"
+  hosts: spines
+  gather_facts: false
+  tags: [overlay, verify]
+
+  tasks:
+    - name: "Show EVPN BGP summary"
+      arista.eos.eos_command:
+        commands:
+          - "show bgp evpn summary | json"
+      register: evpn_summary
+
+    - name: "Report EVPN peer count"
+      vars:
+        evpn_peers: >-
+          {{ (bgp_summary.stdout[0] | from_json)
+            .vrfs | default({})
+            | dict2items
+            | selectattr('key', 'equalto', 'default')
+            | map(attribute='value')
+            | map(attribute='peers')
+            | first | default({})
+            | dict2items }}
+      assert:
+        that:
+          - evpn_peers | length > 0
+        fail_msg: "No EVPN peers established on {{ inventory_hostname }}"

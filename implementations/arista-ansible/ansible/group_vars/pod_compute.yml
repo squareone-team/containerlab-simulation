@@ -1,0 +1,9 @@
+# Compute Pod — leaf-07, leaf-08
+pod_name: compute
+pod_id: 4
+oversubscription: "4:1"
+
+pod_vnis:
+  - 10   # PEDAGOGY-STUDENT
+  - 11   # PEDAGOGY-LAB
+  - 20   # STAFF-WIRED

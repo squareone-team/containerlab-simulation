@@ -1,0 +1,41 @@
+{# =============================================================================
+   Template: vrf_config.j2
+   Renders the full VRF stanza for one Communication Domain.
+   Required vars:
+     domain    — one item from communication_domains list
+     router_id — leaf's Loopback0 IP
+     bgp_as    — leaf's BGP AS
+   ============================================================================= #}
+
+! ── VRF: {{ domain.vrf }} ── {{ domain.description }}
+vrf instance {{ domain.vrf }}
+!
+ip routing vrf {{ domain.vrf }}
+!
+{% if domain.rfc1918_block | default(false) | bool %}
+! RFC1918 structural isolation (VRF-PUBLIC / DMZ)
+ip prefix-list {{ rfc1918_prefix_list_name }} seq 10 deny 10.0.0.0/8 le 32
+ip prefix-list {{ rfc1918_prefix_list_name }} seq 20 deny 172.16.0.0/12 le 32
+ip prefix-list {{ rfc1918_prefix_list_name }} seq 30 deny 192.168.0.0/16 le 32
+ip prefix-list {{ rfc1918_prefix_list_name }} seq 100 permit 0.0.0.0/0 le 32
+!
+route-map RM-PUBLIC-NO-RFC1918 deny 10
+   match ip address prefix-list {{ rfc1918_prefix_list_name }}
+   set community no-export
+route-map RM-PUBLIC-NO-RFC1918 permit 20
+!
+{% endif %}
+router bgp {{ bgp_as }}
+   !
+   vrf {{ domain.vrf }}
+      rd {{ router_id }}:{{ domain.l3vni }}
+      route-target import evpn {{ domain.rt_import | first }}
+      route-target export evpn {{ domain.rt_export | first }}
+{% if domain.rfc1918_block | default(false) | bool %}
+      route-target import evpn route-map RM-PUBLIC-NO-RFC1918
+{% endif %}
+      !
+      address-family ipv4
+         redistribute connected
+      !
+   !

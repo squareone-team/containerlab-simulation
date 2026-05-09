@@ -1,0 +1,83 @@
+{# =============================================================================
+   Template: esi-lag.j2
+   Renders EVPN ESI multi-homing Port-Channel configuration for a leaf.
+
+   This template is called per-host from fabric-overlay.yml when
+   esi_id is defined in host_vars.
+
+   Required host_vars:
+     esi_id             — EVPN ESI string  e.g. "0000:0000:0509:0000:0001"
+     esi_lacp_id        — LACP system-ID   e.g. "0000.0509.0001"
+     portchannels       — list of port-channel objects (see schema below)
+     host_ports         — list of host-facing port objects
+
+   portchannel schema:
+     id:               integer           Port-Channel ID
+     description:      string            Human-readable label
+     mode:             active | passive   LACP mode
+     members:          list[str]         Ethernet interfaces in the LAG
+     vlan:             integer           Access VLAN (for access-mode PO)
+     mtu:              integer           MTU on port-channel SVI
+     esi:              string            ESI identifier (overrides host esi_id)
+     lacp_system_id:   string            LACP system-ID (overrides host default)
+
+   host_port schema:
+     interface:        string            EOS interface name (e.g. Ethernet3)
+     portchannel:      string            Port-Channel name (e.g. Port-Channel20)
+     lacp_mode:        active | passive
+     lacp_rate:        fast | normal
+     mtu:              integer
+     description:      string
+   ============================================================================= #}
+
+{% if portchannels is defined and portchannels | length > 0 %}
+! ── ESI Multi-homing: {{ inventory_hostname }}
+! ── ESI ID: {{ esi_id }}
+! ── LACP System-ID: {{ esi_lacp_id }}
+!
+{% for pc in portchannels %}
+! Port-Channel{{ pc.id }} — {{ pc.description | default('ESI LAG') }}
+interface Port-Channel{{ pc.id }}
+   description {{ pc.description | default('ESI LAG — ' ~ inventory_hostname) }}
+   !
+{%   if pc.mode is defined and pc.mode == 'trunk' %}
+   switchport mode trunk
+{%     if pc.trunk_vlans is defined %}
+   switchport trunk allowed vlan {{ pc.trunk_vlans }}
+{%     elif pc.vlan is defined %}
+   switchport trunk allowed vlan {{ pc.vlan }}
+{%     endif %}
+{%   else %}
+   switchport access vlan {{ pc.vlan | default(1) }}
+{%   endif %}
+   !
+   ! EVPN ESI multi-homing — RFC 7432
+   evpn ethernet-segment
+      identifier {{ pc.esi | default(esi_id) }}
+      route-target import {{ (pc.esi | default(esi_id)).split(':')[2:5] | join(':') }}
+   !
+   lacp system-id {{ pc.lacp_system_id | default(esi_lacp_id) }}
+   spanning-tree portfast
+   mtu {{ pc.mtu | default(mtu_host) }}
+   no shutdown
+!
+{% endfor %}
+
+! ── Member interfaces → Port-Channels
+{% if host_ports is defined %}
+{%   for port in host_ports %}
+{%     if port.portchannel is defined %}
+interface {{ port.interface }}
+   description {{ port.description | default(port.interface ~ ' ESI LAG member') }}
+   channel-group {{ port.portchannel | regex_replace('Port-Channel', '') }} mode {{ port.lacp_mode | default('active') }}
+   lacp rate {{ port.lacp_rate | default('fast') }}
+   mtu {{ port.mtu | default(mtu_host) }}
+   no shutdown
+!
+{%     endif %}
+{%   endfor %}
+{% endif %}
+
+{% else %}
+! No ESI Port-Channels defined for {{ inventory_hostname }}
+{% endif %}

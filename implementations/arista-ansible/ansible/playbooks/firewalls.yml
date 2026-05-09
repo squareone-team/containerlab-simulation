@@ -1,0 +1,57 @@
+# =============================================================================
+# ESI Data Center — Firewall Playbook
+# Configures Alpine + nftables + keepalived HA pair (firewall-01 / firewall-02)
+#
+# firewall-01: primary (VRRP priority 110)
+# firewall-02: secondary (VRRP priority 100)
+#
+# Configures:
+#   - VLAN sub-interfaces on eth1 (trunk from leaf-01 / leaf-02)
+#   - IP addressing per VLAN (upstream of VRRP VIP)
+#   - keepalived VRRP groups (one per Communication Domain)
+#   - nftables inter-domain and N-S policy
+#   - State-sync via eth3 (169.254.200.0/30)
+#   - IP forwarding
+#
+# Usage:
+#   ansible-playbook playbooks/firewalls.yml
+#   ansible-playbook playbooks/firewalls.yml --tags nftables
+#   ansible-playbook playbooks/firewalls.yml --tags keepalived
+# =============================================================================
+
+- name: "FIREWALLS | Deploy HA Pair"
+  hosts: firewalls
+  gather_facts: true
+  become: true
+
+  pre_tasks:
+    - name: "Verify firewall connectivity"
+      ansible.builtin.ping:
+      tags: [always]
+
+
+  post_tasks:
+    - name: "Check keepalived service status"
+      ansible.builtin.command: rc-service keepalived status
+      register: keepalived_status
+      changed_when: false
+      tags: [verify, keepalived]
+
+    - name: "Report VRRP status"
+      ansible.builtin.debug:
+        msg: "{{ inventory_hostname }} keepalived: {{ keepalived_status.stdout }}"
+      tags: [verify, keepalived]
+
+    - name: "Check nftables ruleset loaded"
+      ansible.builtin.command: nft list ruleset
+      register: nft_ruleset
+      changed_when: false
+      tags: [verify, nftables]
+
+    - name: "Assert nftables has inter-domain chains"
+      ansible.builtin.assert:
+        that:
+          - "'inter-domain' in nft_ruleset.stdout"
+        fail_msg: "nftables inter-domain chain not found on {{ inventory_hostname }}"
+        success_msg: "nftables inter-domain chain loaded on {{ inventory_hostname }}"
+      tags: [verify, nftables]

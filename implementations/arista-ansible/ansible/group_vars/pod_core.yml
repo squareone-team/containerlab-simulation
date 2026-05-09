@@ -1,0 +1,10 @@
+# Core Pod — leaf-03, leaf-04
+pod_name: core
+pod_id: 2
+oversubscription: "3:1"
+
+pod_vnis:
+  - 20   # STAFF
+  - 21   # STAFF-WIFI
+  - 30   # ADMIN-SERVERS
+  - 31   # INFRA-MGMT

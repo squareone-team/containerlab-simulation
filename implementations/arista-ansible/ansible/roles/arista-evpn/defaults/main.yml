@@ -1,0 +1,15 @@
+# arista-evpn defaults
+
+bgp_as: 65000
+anycast_gateway_mac: "00:1c:73:00:00:99"
+
+leaf_evpn_peer_group: EVPN-SPINE
+spine_evpn_peer_group: EVPN-LEAF
+
+vxlan_udp_port: 4789
+
+leaf_max_evpn_routes: 12000
+spine_max_evpn_routes: 12000
+
+rfc1918_prefix_list_name: RM-PUBLIC-NO-RFC1918
+public_domain_no_rfc1918: true

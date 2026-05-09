@@ -1,0 +1,38 @@
+# =============================================================================
+# Role: arista-common — Defaults
+# These values are the lowest-priority defaults; override in group_vars/all.yml
+# or group_vars/fabric.yml as needed.
+# =============================================================================
+
+# EOS features to enable (merged with group-level leaf_eos_features / spine_eos_features)
+common_eos_features: []
+
+# Management VRF name
+mgmt_vrf: MGMT
+
+# Management interface
+mgmt_interface: Management0
+
+# Default NTP source interface (management plane)
+ntp_source_interface: Management0
+
+# LLDP — transmit and receive enabled by default
+lldp_enabled: true
+
+# AAA — local fallback user (should be overridden by Vault in production)
+local_user: "{{ mgmt_user | default('admin') }}"
+local_password: "{{ mgmt_password | default('admin') }}"
+local_privilege: 15
+
+# Logging source interface (use loopback for consistent source)
+logging_source_interface: Loopback0
+logging_buffered_size: 10000
+
+# Banner shown at login
+enable_login_banner: true
+
+# Alias shortcuts configured on EOS
+enable_eos_aliases: true
+
+# Spanning-tree default mode
+spanning_tree_mode: mstp

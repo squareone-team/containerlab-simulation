@@ -1,0 +1,195 @@
+# =============================================================================
+# Role: arista-common — Tasks
+# EOS baseline applied to every Arista node in the fabric.
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# 1. EOS features (daemon / service enables)
+# -----------------------------------------------------------------------------
+- name: "COMMON | Enable EOS features"
+  arista.eos.eos_config:
+    lines:
+      - "service routing protocols model multi-agent"
+    match: line
+  tags: [features]
+
+- name: "COMMON | Enable required EOS features from group_vars"
+  arista.eos.eos_config:
+    lines: >
+      {{
+        (common_eos_features +
+         (leaf_eos_features | default([])) +
+         (spine_eos_features | default([])))
+        | map('regex_replace', '^(.*)$', 'feature \1') | list
+      }}
+    match: line
+  when: >
+    (common_eos_features +
+     (leaf_eos_features | default([])) +
+     (spine_eos_features | default([]))) | length > 0
+  tags: [features]
+
+# -----------------------------------------------------------------------------
+# 2. Hostname and domain
+# -----------------------------------------------------------------------------
+- name: "COMMON | Set hostname"
+  arista.eos.eos_system:
+    hostname: "{{ inventory_hostname }}"
+    domain_name: "{{ domain_name | default('esi.lab') }}"
+  tags: [hostname]
+
+# -----------------------------------------------------------------------------
+# 3. Login banner
+# -----------------------------------------------------------------------------
+- name: "COMMON | Configure login banner"
+  arista.eos.eos_banner:
+    banner: login
+    text: "{{ login_banner }}"
+    state: present
+  when:
+    - enable_login_banner | bool
+    - login_banner is defined
+  tags: [banner]
+
+# -----------------------------------------------------------------------------
+# 4. Local user (admin)
+# -----------------------------------------------------------------------------
+- name: "COMMON | Configure local admin user"
+  arista.eos.eos_user:
+    name: "{{ local_user }}"
+    privilege: "{{ local_privilege }}"
+    configured_password: "{{ local_password }}"
+    state: present
+  tags: [users, aaa]
+  no_log: true
+
+# -----------------------------------------------------------------------------
+# 5. NTP
+# -----------------------------------------------------------------------------
+- name: "COMMON | Configure NTP servers"
+  arista.eos.eos_config:
+    lines:
+      - "ntp server {{ item }} prefer"
+    parents: []
+    match: line
+  loop: "{{ ntp_servers | default(['172.20.20.163']) }}"
+  tags: [ntp]
+
+- name: "COMMON | Set NTP source interface"
+  arista.eos.eos_config:
+    lines:
+      - "ntp local-interface {{ ntp_source_interface }}"
+    match: line
+  when: ntp_source_interface is defined
+  tags: [ntp]
+
+# -----------------------------------------------------------------------------
+# 6. Syslog
+# -----------------------------------------------------------------------------
+- name: "COMMON | Configure syslog"
+  arista.eos.eos_logging:
+    dest: host
+    name: "{{ syslog_server }}"
+    facility: "{{ syslog_facility | default('local7') }}"
+    level: "{{ syslog_level | default('informational') }}"
+    state: present
+  when: syslog_server is defined
+  tags: [syslog, logging]
+
+- name: "COMMON | Set logging buffer size"
+  arista.eos.eos_config:
+    lines:
+      - "logging buffered {{ logging_buffered_size | default(10000) }}"
+    match: line
+  tags: [logging]
+
+- name: "COMMON | Set logging source interface"
+  arista.eos.eos_config:
+    lines:
+      - "logging source-interface {{ logging_source_interface }}"
+    match: line
+  when: logging_source_interface is defined
+  tags: [logging]
+
+# -----------------------------------------------------------------------------
+# 7. LLDP
+# -----------------------------------------------------------------------------
+- name: "COMMON | Enable LLDP"
+  arista.eos.eos_config:
+    lines:
+      - "lldp run"
+    match: line
+  when: lldp_enabled | bool
+  tags: [lldp]
+
+- name: "COMMON | Configure LLDP TLV transmit"
+  arista.eos.eos_config:
+    lines: >
+      {{
+        (lldp_tlv_transmit | default(['system-name', 'system-description', 'port-description']))
+        | map('regex_replace', '^(.*)$', 'lldp tlv transmit \1') | list
+      }}
+    match: line
+  when:
+    - lldp_enabled | bool
+    - lldp_tlv_transmit is defined
+  tags: [lldp]
+
+# -----------------------------------------------------------------------------
+# 8. SNMP
+# -----------------------------------------------------------------------------
+- name: "COMMON | Configure SNMP community"
+  arista.eos.eos_config:
+    lines:
+      - "snmp-server community {{ snmp_community }} ro"
+      - "snmp-server location {{ snmp_location }}"
+      - "snmp-server contact {{ snmp_contact }}"
+    match: line
+  when: snmp_community is defined
+  tags: [snmp]
+
+# -----------------------------------------------------------------------------
+# 9. Loopback0 interface
+# -----------------------------------------------------------------------------
+- name: "COMMON | Configure Loopback0"
+  arista.eos.eos_config:
+    lines:
+      - "description {{ loopback0_description | default('Router-ID / VTEP') }}"
+      - "ip address {{ loopback0 }}"
+    parents: "interface Loopback0"
+    match: line
+  when: loopback0 is defined
+  tags: [loopback, interfaces]
+
+# -----------------------------------------------------------------------------
+# 10. Spanning-tree global mode
+# -----------------------------------------------------------------------------
+- name: "COMMON | Set spanning-tree mode"
+  arista.eos.eos_config:
+    lines:
+      - "spanning-tree mode {{ spanning_tree_mode | default('mstp') }}"
+    match: line
+  tags: [stp]
+
+# -----------------------------------------------------------------------------
+# 11. Useful EOS aliases (optional QoL shortcuts)
+# -----------------------------------------------------------------------------
+- name: "COMMON | Configure EOS aliases"
+  arista.eos.eos_config:
+    lines:
+      - "alias bsum show bgp summary"
+      - "alias esum show bgp evpn summary"
+      - "alias vtep show vxlan vtep"
+      - "alias vmac show vxlan address-table"
+      - "alias vvni show vxlan vni"
+    match: line
+  when: enable_eos_aliases | bool
+  tags: [aliases]
+
+# -----------------------------------------------------------------------------
+# 12. Save configuration
+# -----------------------------------------------------------------------------
+- name: "COMMON | Save running config to startup"
+  arista.eos.eos_config:
+    save_when: changed
+  tags: [always, save]

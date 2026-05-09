@@ -1,0 +1,240 @@
+name: esi-datacenter
+
+mgmt:
+  network: esi-mgmt
+  ipv4-subnet: 172.20.20.0/24
+
+topology:
+  nodes:
+    # ───────── SPINES ─────────
+    spine-01:
+      kind: ceos
+      image: ceos:4.35.1F
+      mgmt-ipv4: 172.20.20.11
+
+    spine-02:
+      kind: ceos
+      image: ceos:4.35.1F
+      mgmt-ipv4: 172.20.20.12
+
+    # ───────── LEAVES ─────────
+    leaf-01:
+      kind: ceos
+      image: ceos:4.35.1F
+      mgmt-ipv4: 172.20.20.21
+
+    leaf-02:
+      kind: ceos
+      image: ceos:4.35.1F
+      mgmt-ipv4: 172.20.20.22
+
+    leaf-03:
+      kind: ceos
+      image: ceos:4.35.1F
+      mgmt-ipv4: 172.20.20.23
+
+    leaf-04:
+      kind: ceos
+      image: ceos:4.35.1F
+      mgmt-ipv4: 172.20.20.24
+
+    leaf-05:
+      kind: ceos
+      image: ceos:4.35.1F
+      mgmt-ipv4: 172.20.20.25
+
+    leaf-06:
+      kind: ceos
+      image: ceos:4.35.1F
+      mgmt-ipv4: 172.20.20.26
+
+    leaf-07:
+      kind: ceos
+      image: ceos:4.35.1F
+      mgmt-ipv4: 172.20.20.27
+
+    leaf-08:
+      kind: ceos
+      image: ceos:4.35.1F
+      mgmt-ipv4: 172.20.20.28
+
+    leaf-09:
+      kind: ceos
+      image: ceos:4.35.1F
+      mgmt-ipv4: 172.20.20.29
+      startup-config: configs/leaf-09/startup.cfg
+
+    leaf-10:
+      kind: ceos
+      image: ceos:4.35.1F
+      mgmt-ipv4: 172.20.20.30
+      startup-config: configs/leaf-10/startup.cfg
+
+    # ───────── ISP / INTERNET ─────────
+    isp-router-01:
+      kind: linux
+      image: frrouting/frr:latest
+      mgmt-ipv4: 172.20.20.41
+
+    isp-router-02:
+      kind: linux
+      image: frrouting/frr:latest
+      mgmt-ipv4: 172.20.20.42
+
+    isp-router-03:
+      kind: linux
+      image: frrouting/frr:latest
+      mgmt-ipv4: 172.20.20.43
+
+    isp-router-04:
+      kind: linux
+      image: frrouting/frr:latest
+      mgmt-ipv4: 172.20.20.44
+
+    internet-router-01:
+      kind: linux
+      image: frrouting/frr:latest
+
+    internet-router-02:
+      kind: linux
+      image: frrouting/frr:latest
+
+    internet-client-01:
+      kind: linux
+      image: alpine:3.20
+
+    internet-client-02:
+      kind: linux
+      image: alpine:3.20
+
+    internet-web-01:
+      kind: linux
+      image: python:3.11-alpine
+      cmd: sleep infinity
+
+    # ───────── FIREWALLS ─────────
+    firewall-01:
+      kind: linux
+      image: esi/alpine-firewall:3.20
+      mgmt-ipv4: 172.20.20.101
+
+    firewall-02:
+      kind: linux
+      image: esi/alpine-firewall:3.20
+      mgmt-ipv4: 172.20.20.102
+
+    # ───────── SERVERS ─────────
+    server-student-01:
+      kind: linux
+      image: esi/alpine-host:3.20
+
+    server-student-02:
+      kind: linux
+      image: esi/alpine-host:3.20
+
+    server-admin-01:
+      kind: linux
+      image: esi/alpine-host:3.20
+
+    server-admin-02:
+      kind: linux
+      image: esi/alpine-host:3.20
+
+    server-hpc-01:
+      kind: linux
+      image: esi/alpine-host:3.20
+
+    server-hpc-02:
+      kind: linux
+      image: esi/alpine-host:3.20
+
+    server-storage-01:
+      kind: linux
+      image: esi/alpine-host:3.20
+
+    server-dmz-01:
+      kind: linux
+      image: esi/alpine-host:3.20
+
+    # ───────── SERVICES ─────────
+    ntp-server:
+      kind: linux
+      image: esi/alpine-host:3.20
+
+    dns-server:
+      kind: linux
+      image: esi/alpine-services:3.20
+
+    dhcp-server:
+      kind: linux
+      image: esi/alpine-services:3.20
+
+    ftp-server:
+      kind: linux
+      image: esi/alpine-host:3.20
+
+    zabbix-server:
+      kind: linux
+      image: esi/alpine-zabbix:3.20
+
+    # ───────── OBSERVABILITY ─────────
+    prometheus:
+      kind: linux
+      image: prom/prometheus:latest
+      ports:
+        - 9090:9090
+
+    grafana:
+      kind: linux
+      image: grafana/grafana:latest
+      ports:
+        - 3000:3000
+
+    syslog-server:
+      kind: linux
+      image: esi/alpine-host:3.20
+
+    # ───────── SECURITY ─────────
+    bastion-01:
+      kind: linux
+      image: esi/alpine-host:3.20
+
+    ids-01:
+      kind: linux
+      image: alpine:3.20
+
+    # ───────── MANAGEMENT ─────────
+    oob-sw:
+      kind: linux
+      image: alpine:3.20
+
+    # ───────── ANSIBLE ─────────
+    ansible:
+      kind: linux
+      image: willhallonline/ansible:2.16-alpine-3.19
+      mgmt-ipv4: 172.20.20.100
+      binds:
+        - ./ansible:/ansible
+
+      cmd: sleep infinity
+
+  # ───────── LINKS (UNCHANGED) ─────────
+  links:
+    - endpoints: ["spine-01:eth1", "leaf-01:eth1"]
+    - endpoints: ["spine-02:eth1", "leaf-02:eth1"]
+
+    - endpoints: ["leaf-01:eth3", "isp-router-01:eth1"]
+    - endpoints: ["leaf-02:eth3", "isp-router-02:eth1"]
+
+    - endpoints: ["leaf-01:eth5", "firewall-01:eth1"]
+    - endpoints: ["leaf-02:eth5", "firewall-02:eth1"]
+
+    - endpoints: ["leaf-03:eth1", "server-admin-01:eth1"]
+    - endpoints: ["leaf-04:eth1", "server-admin-02:eth1"]
+
+    - endpoints: ["leaf-05:eth1", "server-hpc-01:eth1"]
+    - endpoints: ["leaf-06:eth1", "server-hpc-02:eth1"]
+
+    - endpoints: ["leaf-07:eth1", "server-storage-01:eth1"]
+
+    - endpoints: ["leaf-08:eth1", "server-dmz-01:eth1"]

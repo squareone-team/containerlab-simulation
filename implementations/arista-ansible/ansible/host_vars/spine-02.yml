@@ -1,0 +1,112 @@
+
+# =============================================================================
+# ESI Data Center — Spine-02 Host Variables
+# Role: Underlay BGP spine + EVPN route-reflector (eBGP) — redundant path
+# Management IP: 172.20.20.12
+# =============================================================================
+
+ansible_host: 172.20.20.12
+router_id:    10.0.0.2
+loopback0:    10.0.0.2/32
+bgp_as:       65000
+underlay_asn: 65000
+
+# -----------------------------------------------------------------------------
+# Underlay P2P interfaces — Ethernet1..10 connect to leaf-01..leaf-10
+# spine-02 uses 10.2.N.0/31 prefix range (spine=.0, leaf=.1)
+# -----------------------------------------------------------------------------
+spine_p2p_peers:
+  - interface:    Ethernet1
+    leaf:         leaf-01
+    leaf_bgp_as:  65101
+    spine_ip:     10.2.1.0/31
+    leaf_ip:      10.2.1.1
+    description:  "FABRIC | leaf-01 | Eth2"
+
+  - interface:    Ethernet2
+    leaf:         leaf-02
+    leaf_bgp_as:  65102
+    spine_ip:     10.2.2.0/31
+    leaf_ip:      10.2.2.1
+    description:  "FABRIC | leaf-02 | Eth2"
+
+  - interface:    Ethernet3
+    leaf:         leaf-03
+    leaf_bgp_as:  65103
+    spine_ip:     10.2.3.0/31
+    leaf_ip:      10.2.3.1
+    description:  "FABRIC | leaf-03 | Eth2"
+
+  - interface:    Ethernet4
+    leaf:         leaf-04
+    leaf_bgp_as:  65104
+    spine_ip:     10.2.4.0/31
+    leaf_ip:      10.2.4.1
+    description:  "FABRIC | leaf-04 | Eth2"
+
+  - interface:    Ethernet5
+    leaf:         leaf-05
+    leaf_bgp_as:  65105
+    spine_ip:     10.2.5.0/31
+    leaf_ip:      10.2.5.1
+    description:  "FABRIC | leaf-05 | Eth2"
+
+  - interface:    Ethernet6
+    leaf:         leaf-06
+    leaf_bgp_as:  65106
+    spine_ip:     10.2.6.0/31
+    leaf_ip:      10.2.6.1
+    description:  "FABRIC | leaf-06 | Eth2"
+
+  - interface:    Ethernet7
+    leaf:         leaf-07
+    leaf_bgp_as:  65107
+    spine_ip:     10.2.7.0/31
+    leaf_ip:      10.2.7.1
+    description:  "FABRIC | leaf-07 | Eth2"
+
+  - interface:    Ethernet8
+    leaf:         leaf-08
+    leaf_bgp_as:  65108
+    spine_ip:     10.2.8.0/31
+    leaf_ip:      10.2.8.1
+    description:  "FABRIC | leaf-08 | Eth2"
+
+  - interface:    Ethernet9
+    leaf:         leaf-09
+    leaf_bgp_as:  65109
+    spine_ip:     10.2.9.0/31
+    leaf_ip:      10.2.9.1
+    description:  "FABRIC | leaf-09 | Eth2"
+
+  - interface:    Ethernet10
+    leaf:         leaf-10
+    leaf_bgp_as:  65110
+    spine_ip:     10.2.10.0/31
+    leaf_ip:      10.2.10.1
+    description:  "FABRIC | leaf-10 | Eth2"
+
+# -----------------------------------------------------------------------------
+# EVPN peers — identical list to spine-01 (both spines reflect independently)
+# -----------------------------------------------------------------------------
+evpn_peers:
+  - neighbor_ip: 10.0.1.1    # leaf-01
+    bgp_as:      65101
+  - neighbor_ip: 10.0.1.2    # leaf-02
+    bgp_as:      65102
+  - neighbor_ip: 10.0.2.1    # leaf-03
+    bgp_as:      65103
+  - neighbor_ip: 10.0.2.2    # leaf-04
+    bgp_as:      65104
+  - neighbor_ip: 10.0.3.1    # leaf-05
+    bgp_as:      65105
+  - neighbor_ip: 10.0.3.2    # leaf-06
+    bgp_as:      65106
+  - neighbor_ip: 10.0.4.1    # leaf-07
+    bgp_as:      65107
+  - neighbor_ip: 10.0.4.2    # leaf-08
+    bgp_as:      65108
+  - neighbor_ip: 10.0.5.1    # leaf-09
+    bgp_as:      65109
+  - neighbor_ip: 10.0.5.2    # leaf-10
+    bgp_as:      65110

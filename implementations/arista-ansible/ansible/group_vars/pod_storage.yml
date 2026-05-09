@@ -1,0 +1,8 @@
+# Storage Pod — leaf-05, leaf-06
+pod_name: storage
+pod_id: 3
+oversubscription: "1:1"
+
+pod_vnis:
+  - 30   # ADMIN (for management)
+  - 31   # INFRA-MGMT
