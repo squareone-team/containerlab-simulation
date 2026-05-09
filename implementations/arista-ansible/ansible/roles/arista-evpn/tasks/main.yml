@@ -14,12 +14,12 @@
         | flatten
         | list
       }}
-  tags: [evpn, facts]
   when:
     - communication_domains is defined
     - "'leaves' in group_names"
+  tags: [always]
 
-- name: EVPN | Derive leaf_active_l2vnis
+- name: EVPN | Derive leaf_active_l2vnis and domains
   ansible.builtin.set_fact:
     leaf_active_l2vnis: >-
       {{
@@ -27,25 +27,17 @@
         | selectattr('id', 'in', (pod_vnis | default([])))
         | list
       }}
-  tags: [evpn, facts]
-  when:
-    - "'leaves' in group_names"
-    - all_l2vnis is defined
-
-- name: EVPN | Derive leaf_active_vrfs and domains
-  ansible.builtin.set_fact:
     leaf_active_vrfs: >-
       {{
         communication_domains
-        | selectattr('vlans', 'defined')
         | map(attribute='vrf')
         | list
       }}
     leaf_active_domains: "{{ communication_domains | list }}"
-  tags: [evpn, facts]
   when:
     - "'leaves' in group_names"
     - all_l2vnis is defined
+  tags: [always]
 
 # ─────────────────────────────────────────────────────────────────────────────
 # 1. Features & Global Settings
@@ -82,8 +74,10 @@
     name: "{{ item.vrf }}"
     rd: "{{ router_id }}:{{ item.l3vni }}"
     state: present
-  loop: "{{ leaf_active_domains }}"
-  when: "'leaves' in group_names"
+  loop: "{{ leaf_active_domains | default([]) }}"
+  when:
+    - "'leaves' in group_names"
+    - leaf_active_domains is defined
   tags: [evpn, vrf]
 
 - name: EVPN | Enable IP routing in each VRF
