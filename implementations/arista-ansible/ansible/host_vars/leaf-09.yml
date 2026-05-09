@@ -143,7 +143,7 @@ active_vrfs:
   - name:      HPC
     vrf_id:    400
     l3vni:     10400
-    rd:        "10.0.5.1:400"
+    rd:        "10.0.5.1:10400"
     rt_import: "65000:10400"
     rt_export: "65000:10400"
     extra_rt_import:
@@ -152,7 +152,7 @@ active_vrfs:
   - name:      STUDENT
     vrf_id:    500
     l3vni:     10500
-    rd:        "10.0.5.1:500"
+    rd:        "10.0.5.1:10500"
     rt_import: "65000:10500"
     rt_export: "65000:10500"
 

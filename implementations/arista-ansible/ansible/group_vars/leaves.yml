@@ -31,8 +31,11 @@ bgp_bfd_multiplier: 3
 # -----------------------------------------------------------------------------
 # EVPN / VXLAN overlay — leaf-side settings
 # -----------------------------------------------------------------------------
+vtep_loopback: Loopback0
+vtep_source_interface: Loopback0
+vtep_interface: Loopback1
 vxlan_interface: Vxlan1
-vtep_interface:  Loopback1      # VTEP source loopback (same IP as Loopback0 in cEOS)
+vxlan_udp_port: 4789
 
 # All leaves act as EVPN speakers; spines are route-reflectors in eBGP mode.
 # RFC 7432 eBGP EVPN — no RR needed (iBGP path NOT used in ESI lab).
