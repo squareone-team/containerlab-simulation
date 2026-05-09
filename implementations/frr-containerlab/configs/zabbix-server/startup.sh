@@ -56,6 +56,246 @@ log "=== PHASE 3: MariaDB ==="
 mkdir -p /var/lib/mysql /run/mysqld /var/log/mysql
 chown -R mysql:mysql /var/lib/mysql /run/mysqld /var/log/mysql 2>/dev/null || true
 
+find_schema_dir() {
+    for d in \
+        /usr/share/zabbix/database/mysql \
+        /usr/share/zabbix-server-mysql \
+        /usr/share/doc/zabbix-server-mysql \
+        /usr/share/zabbix/sql/mysql \
+        /usr/share/zabbix-server; do
+        if [ -f "$d/schema.sql" ] || [ -f "$d/schema.sql.gz" ]; then
+            echo "$d"
+            return 0
+        fi
+    done
+
+    find /usr/share -name "schema.sql*" 2>/dev/null \
+        | grep '/mysql/' \
+        | head -1 \
+        | xargs dirname 2>/dev/null
+}
+
+zabbix_table_count() {
+    mysql -u zabbix -pzabbix-lab-pass \
+          --socket=/run/mysqld/mysqld.sock \
+          -N -e "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='zabbix';" \
+          zabbix 2>/dev/null || echo 0
+}
+
+import_zabbix_schema() {
+    log "importing Zabbix schema..."
+    SCHEMA_DIR="$(find_schema_dir)"
+
+    if [ -n "$SCHEMA_DIR" ]; then
+        log "schema dir: $SCHEMA_DIR"
+        for f in schema images data; do
+            if [ -f "$SCHEMA_DIR/${f}.sql.gz" ]; then
+                zcat "$SCHEMA_DIR/${f}.sql.gz" \
+                    | mysql -u zabbix -pzabbix-lab-pass \
+                            --socket=/run/mysqld/mysqld.sock zabbix \
+                            2>/dev/null || true
+                log "loaded ${f}.sql.gz"
+            elif [ -f "$SCHEMA_DIR/${f}.sql" ]; then
+                mysql -u zabbix -pzabbix-lab-pass \
+                      --socket=/run/mysqld/mysqld.sock zabbix \
+                      < "$SCHEMA_DIR/${f}.sql" 2>/dev/null || true
+                log "loaded ${f}.sql"
+            fi
+        done
+        log "schema import done"
+    else
+        log "WARNING: cannot find Zabbix SQL schema files — DB will be empty"
+    fi
+}
+
+find_zabbix_web_dir() {
+    for d in \
+        /usr/share/webapps/zabbix \
+        /usr/share/zabbix; do
+        if [ -f "$d/index.php" ]; then
+            echo "$d"
+            return 0
+        fi
+    done
+
+    find /usr/share -name "index.php" 2>/dev/null \
+        | grep '/zabbix' \
+        | head -1 \
+        | xargs dirname 2>/dev/null
+}
+
+ensure_zabbix_db_grants() {
+    mysql -u root --socket=/run/mysqld/mysqld.sock << 'SQL' >/dev/null 2>&1
+CREATE USER IF NOT EXISTS 'zabbix'@'localhost' IDENTIFIED BY 'zabbix-lab-pass';
+CREATE USER IF NOT EXISTS 'zabbix'@'127.0.0.1' IDENTIFIED BY 'zabbix-lab-pass';
+GRANT ALL PRIVILEGES ON zabbix.* TO 'zabbix'@'localhost';
+GRANT ALL PRIVILEGES ON zabbix.* TO 'zabbix'@'127.0.0.1';
+FLUSH PRIVILEGES;
+SQL
+}
+
+configure_zabbix_frontend() {
+    ZABBIX_WEB_DIR="$(find_zabbix_web_dir)"
+    if [ -z "$ZABBIX_WEB_DIR" ]; then
+        log "WARNING: zabbix-webif files not found; web UI will not start"
+        return 1
+    fi
+
+    ZABBIX_CONF_DIR="$ZABBIX_WEB_DIR/conf"
+    if [ -d /etc/zabbix/web ]; then
+        ZABBIX_CONF_DIR="/etc/zabbix/web"
+    fi
+
+    mkdir -p \
+        "$ZABBIX_WEB_DIR/conf" \
+        "$ZABBIX_CONF_DIR" \
+        /etc/nginx/http.d \
+        /etc/php82/conf.d \
+        /run/nginx \
+        /run/php-fpm82 \
+        /var/log/nginx
+
+    cat > "$ZABBIX_CONF_DIR/zabbix.conf.php" << 'EOF'
+<?php
+global $DB, $HISTORY, $SSO;
+
+$DB['TYPE'] = 'MYSQL';
+$DB['SERVER'] = '127.0.0.1';
+$DB['PORT'] = '3306';
+$DB['DATABASE'] = 'zabbix';
+$DB['USER'] = 'zabbix';
+$DB['PASSWORD'] = 'zabbix-lab-pass';
+$DB['SCHEMA'] = '';
+$DB['ENCRYPTION'] = false;
+$DB['KEY_FILE'] = '';
+$DB['CERT_FILE'] = '';
+$DB['CA_FILE'] = '';
+$DB['VERIFY_HOST'] = false;
+$DB['CIPHER_LIST'] = '';
+$DB['VAULT'] = '';
+
+$HISTORY['url'] = '';
+$HISTORY['types'] = [
+    'uint' => 0,
+    'text' => 0,
+    'log' => 0,
+    'str' => 0,
+    'dbl' => 0
+];
+
+$SSO['SP_KEY'] = '';
+$SSO['SP_CERT'] = '';
+$SSO['IDP_CERT'] = '';
+$SSO['SETTINGS'] = [];
+
+$ZBX_SERVER = '127.0.0.1';
+$ZBX_SERVER_PORT = '10051';
+$ZBX_SERVER_NAME = 'ESI Datacenter Lab';
+$IMAGE_FORMAT_DEFAULT = IMAGE_FORMAT_PNG;
+EOF
+
+    if [ "$ZABBIX_CONF_DIR" != "$ZABBIX_WEB_DIR/conf" ]; then
+        ln -sf "$ZABBIX_CONF_DIR/zabbix.conf.php" \
+            "$ZABBIX_WEB_DIR/conf/zabbix.conf.php"
+    fi
+
+    cat > /etc/php82/conf.d/99-zabbix.ini << 'EOF'
+date.timezone = Africa/Algiers
+max_execution_time = 300
+max_input_time = 300
+memory_limit = 256M
+post_max_size = 32M
+upload_max_filesize = 16M
+session.cookie_httponly = 1
+EOF
+
+    if [ -f /etc/php82/php-fpm.d/www.conf ]; then
+        sed -i \
+            -e 's|^listen = .*|listen = 127.0.0.1:9000|' \
+            -e 's|^;clear_env = no|clear_env = no|' \
+            /etc/php82/php-fpm.d/www.conf
+    fi
+
+    cat > /etc/nginx/http.d/default.conf << EOF
+server {
+    listen 0.0.0.0:8080 default_server;
+    server_name _;
+    root $ZABBIX_WEB_DIR;
+    index index.php index.html;
+    client_max_body_size 16m;
+
+    access_log /var/log/nginx/zabbix-access.log;
+    error_log /var/log/nginx/zabbix-error.log warn;
+
+    location = /favicon.ico {
+        log_not_found off;
+    }
+
+    location / {
+        try_files \$uri \$uri/ /index.php?\$args;
+    }
+
+    location ~ [^/]\.php(/|\$) {
+        fastcgi_split_path_info ^(.+\.php)(/.+)\$;
+        fastcgi_pass 127.0.0.1:9000;
+        fastcgi_index index.php;
+        include fastcgi_params;
+        fastcgi_param SCRIPT_FILENAME \$document_root\$fastcgi_script_name;
+        fastcgi_param PATH_INFO \$fastcgi_path_info;
+    }
+
+    location ~ /\.(?!well-known) {
+        deny all;
+    }
+}
+EOF
+
+    log "Zabbix frontend configured at $ZABBIX_WEB_DIR"
+    return 0
+}
+
+start_zabbix_frontend() {
+    configure_zabbix_frontend || return 1
+
+    if command -v php-fpm82 >/dev/null 2>&1; then
+        php-fpm82 -F > /var/log/zabbix/php-fpm.log 2>&1 &
+    else
+        log "WARNING: php-fpm82 missing; web UI cannot start"
+        return 1
+    fi
+
+    sleep 1
+    if command -v nginx >/dev/null 2>&1; then
+        nginx -t >/var/log/nginx/nginx-test.log 2>&1
+        if [ $? -eq 0 ]; then
+            nginx -g 'daemon off;' > /var/log/nginx/zabbix-frontend.log 2>&1 &
+        else
+            log "WARNING: nginx config test failed"
+            cat /var/log/nginx/nginx-test.log 2>/dev/null | tail -20
+            return 1
+        fi
+    else
+        log "WARNING: nginx missing; web UI cannot start"
+        return 1
+    fi
+
+    RETRIES=30
+    while [ $RETRIES -gt 0 ]; do
+        curl -fsS http://127.0.0.1:8080/index.php >/dev/null 2>&1 && break
+        sleep 2
+        RETRIES=$((RETRIES - 1))
+    done
+
+    if [ $RETRIES -eq 0 ]; then
+        log "WARNING: Zabbix frontend did not answer on 127.0.0.1:8080"
+        tail -20 /var/log/nginx/zabbix-error.log 2>/dev/null || true
+        return 1
+    fi
+
+    log "Zabbix web UI is UP on container port 8080"
+    return 0
+}
+
 if [ ! -d /var/lib/mysql/zabbix ]; then
     log "initializing MariaDB data directory..."
     if [ -d /var/lib/mysql/mysql ] && [ ! -d /var/lib/mysql/zabbix ]; then
@@ -96,50 +336,13 @@ if [ ! -d /var/lib/mysql/zabbix ]; then
     mysql -u root --socket=/run/mysqld/mysqld.sock << 'SQL'
 CREATE DATABASE IF NOT EXISTS zabbix CHARACTER SET utf8mb4 COLLATE utf8mb4_bin;
 CREATE USER IF NOT EXISTS 'zabbix'@'localhost' IDENTIFIED BY 'zabbix-lab-pass';
+CREATE USER IF NOT EXISTS 'zabbix'@'127.0.0.1' IDENTIFIED BY 'zabbix-lab-pass';
 GRANT ALL PRIVILEGES ON zabbix.* TO 'zabbix'@'localhost';
+GRANT ALL PRIVILEGES ON zabbix.* TO 'zabbix'@'127.0.0.1';
 FLUSH PRIVILEGES;
 SQL
 
-    log "importing Zabbix schema..."
-    # Alpine's zabbix-server-mysql puts SQL files in one of these locations:
-    SCHEMA_DIR=""
-    for d in \
-        /usr/share/zabbix-server-mysql \
-        /usr/share/doc/zabbix-server-mysql \
-        /usr/share/zabbix/sql/mysql \
-        /usr/share/zabbix-server; do
-        if [ -f "$d/schema.sql" ] || [ -f "$d/schema.sql.gz" ]; then
-            SCHEMA_DIR="$d"
-            break
-        fi
-    done
-
-    if [ -z "$SCHEMA_DIR" ]; then
-        # Last resort: search everywhere
-        SCHEMA_DIR=$(find /usr/share -name "schema.sql*" 2>/dev/null \
-            | head -1 | xargs dirname 2>/dev/null)
-    fi
-
-    if [ -n "$SCHEMA_DIR" ]; then
-        log "schema dir: $SCHEMA_DIR"
-        for f in schema images data; do
-            if [ -f "$SCHEMA_DIR/${f}.sql.gz" ]; then
-                zcat "$SCHEMA_DIR/${f}.sql.gz" \
-                    | mysql -u zabbix -pzabbix-lab-pass \
-                            --socket=/run/mysqld/mysqld.sock zabbix \
-                            2>/dev/null || true
-                log "loaded ${f}.sql.gz"
-            elif [ -f "$SCHEMA_DIR/${f}.sql" ]; then
-                mysql -u zabbix -pzabbix-lab-pass \
-                      --socket=/run/mysqld/mysqld.sock zabbix \
-                      < "$SCHEMA_DIR/${f}.sql" 2>/dev/null || true
-                log "loaded ${f}.sql"
-            fi
-        done
-        log "schema import done"
-    else
-        log "WARNING: cannot find Zabbix SQL schema files — DB will be empty"
-    fi
+    import_zabbix_schema
 
     # Shut down bootstrap instance cleanly
     mysqladmin -u root --socket=/run/mysqld/mysqld.sock shutdown 2>/dev/null || true
@@ -151,6 +354,7 @@ log "starting MariaDB (production)..."
 mysqld_safe \
     --user=mysql \
     --socket=/run/mysqld/mysqld.sock \
+    --skip-networking=0 \
     --bind-address=127.0.0.1 \
     --port=3306 \
     > /var/log/mysql/mysqld.log 2>&1 &
@@ -172,6 +376,14 @@ while [ $RETRIES -gt 0 ]; do
     RETRIES=$((RETRIES - 1))
 done
 [ $RETRIES -eq 0 ] && log "WARNING: MariaDB TCP not responding" || log "MariaDB ready"
+
+ensure_zabbix_db_grants
+
+TABLE_COUNT="$(zabbix_table_count)"
+if [ "$TABLE_COUNT" = "0" ]; then
+    log "Zabbix database has no tables; importing schema again"
+    import_zabbix_schema
+fi
 
 # ─────────────────────────────────────────────────────────────────────────────
 # PHASE 4 — ZABBIX SERVER CONFIG
@@ -200,6 +412,8 @@ StartPollers=5
 StartPingers=2
 StartTrappers=2
 StartDiscoverers=1
+FpingLocation=/usr/sbin/fping
+Fping6Location=/usr/sbin/fping6
 CacheSize=16M
 HistoryCacheSize=8M
 TrendCacheSize=4M
@@ -214,8 +428,8 @@ mkdir -p /etc/snmp
 cat > /etc/snmp/snmp.conf << 'EOF'
 defCommunity esi-read
 defVersion   2c
-defTimeout   3
-defRetries   1
+timeout      3
+retries      1
 EOF
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -237,9 +451,37 @@ command -v zabbix_agentd > /dev/null 2>&1 && \
     zabbix_agentd 2>/dev/null || true
 
 # ─────────────────────────────────────────────────────────────────────────────
-# PHASE 7 — SNMP PRE-FLIGHT (informational, not fatal)
+# PHASE 7 — ZABBIX WEB FRONTEND
 # ─────────────────────────────────────────────────────────────────────────────
-log "=== PHASE 7: SNMP reachability check (waiting 15s for BGP convergence) ==="
+log "=== PHASE 7: Zabbix web frontend ==="
+if start_zabbix_frontend; then
+    log "Web URL       : http://localhost:4000"
+    log "Web login     : Admin / zabbix"
+else
+    log "WARNING: web frontend is not ready; server daemon continues"
+fi
+
+# ─────────────────────────────────────────────────────────────────────────────
+# PHASE 8 — TOPOLOGY PROVISIONING
+# ─────────────────────────────────────────────────────────────────────────────
+log "=== PHASE 8: Zabbix topology provisioning ==="
+if [ -f /opt/zabbix/provision_topology.py ] && command -v python3 >/dev/null 2>&1; then
+    python3 /opt/zabbix/provision_topology.py \
+        > /var/log/zabbix/provision_topology.log 2>&1
+    if [ $? -eq 0 ]; then
+        tail -20 /var/log/zabbix/provision_topology.log
+    else
+        log "WARNING: topology provisioning failed"
+        tail -30 /var/log/zabbix/provision_topology.log 2>/dev/null || true
+    fi
+else
+    log "WARNING: topology provisioning script or python3 missing"
+fi
+
+# ─────────────────────────────────────────────────────────────────────────────
+# PHASE 9 — SNMP PRE-FLIGHT (informational, not fatal)
+# ─────────────────────────────────────────────────────────────────────────────
+log "=== PHASE 9: SNMP reachability check (waiting 15s for BGP convergence) ==="
 sleep 15
 
 SWITCH_LOOPBACKS="
@@ -273,7 +515,8 @@ printf '%s\n' "$SWITCH_LOOPBACKS" | while IFS= read -r line; do
 done
 
 log "=== READY ==="
-log "  zabbix-server : 192.168.50.50 | VRF-STAFF | eth1 -> leaf-03:eth10"
+log "  zabbix-server : 192.168.50.50 | VRF-STAFF | eth1 -> leaf-03:eth11"
+log "  Zabbix UI     : http://localhost:4000 | login Admin / zabbix"
 log "  MariaDB       : 127.0.0.1:3306 / db=zabbix"
 log "  SNMP community: esi-read (v2c)"
 log "  Targets       : spine-01/02, leaf-01..10 via loopbacks 10.1.0.x/32"

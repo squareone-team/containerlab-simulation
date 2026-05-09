@@ -9,6 +9,7 @@ topology:
         - configs/spine-01/daemons:/etc/frr/daemons
         - configs/spine-01/frr.conf:/etc/frr/frr.conf
         - configs/spine-01/startup.sh:/startup.sh
+        - images/frr-node/frr-bgp-peer-mib.py:/usr/local/bin/frr-bgp-peer-mib.py:ro
       exec:
         - sh /startup.sh
 
@@ -19,6 +20,7 @@ topology:
         - configs/spine-02/daemons:/etc/frr/daemons
         - configs/spine-02/frr.conf:/etc/frr/frr.conf
         - configs/spine-02/startup.sh:/startup.sh
+        - images/frr-node/frr-bgp-peer-mib.py:/usr/local/bin/frr-bgp-peer-mib.py:ro
       exec:
         - sh /startup.sh
 
@@ -29,6 +31,7 @@ topology:
         - configs/leaf-01/daemons:/etc/frr/daemons
         - configs/leaf-01/frr.conf:/etc/frr/frr.conf
         - configs/leaf-01/startup.sh:/startup.sh
+        - images/frr-node/frr-bgp-peer-mib.py:/usr/local/bin/frr-bgp-peer-mib.py:ro
       exec:
         - sh /startup.sh
 
@@ -39,6 +42,7 @@ topology:
         - configs/leaf-02/daemons:/etc/frr/daemons
         - configs/leaf-02/frr.conf:/etc/frr/frr.conf
         - configs/leaf-02/startup.sh:/startup.sh
+        - images/frr-node/frr-bgp-peer-mib.py:/usr/local/bin/frr-bgp-peer-mib.py:ro
       exec:
         - sh /startup.sh
 
@@ -49,6 +53,7 @@ topology:
         - configs/leaf-03/daemons:/etc/frr/daemons
         - configs/leaf-03/frr.conf:/etc/frr/frr.conf
         - configs/leaf-03/startup.sh:/startup.sh
+        - images/frr-node/frr-bgp-peer-mib.py:/usr/local/bin/frr-bgp-peer-mib.py:ro
         - configs/common/esi-dhcp-relay.py:/usr/local/bin/esi-dhcp-relay.py:ro
       exec:
         - sh /startup.sh
@@ -60,6 +65,7 @@ topology:
         - configs/leaf-04/daemons:/etc/frr/daemons
         - configs/leaf-04/frr.conf:/etc/frr/frr.conf
         - configs/leaf-04/startup.sh:/startup.sh
+        - images/frr-node/frr-bgp-peer-mib.py:/usr/local/bin/frr-bgp-peer-mib.py:ro
         - configs/common/esi-dhcp-relay.py:/usr/local/bin/esi-dhcp-relay.py:ro
       exec:
         - sh /startup.sh
@@ -71,6 +77,7 @@ topology:
         - configs/leaf-05/daemons:/etc/frr/daemons
         - configs/leaf-05/frr.conf:/etc/frr/frr.conf
         - configs/leaf-05/startup.sh:/startup.sh
+        - images/frr-node/frr-bgp-peer-mib.py:/usr/local/bin/frr-bgp-peer-mib.py:ro
         - configs/common/esi-dhcp-relay.py:/usr/local/bin/esi-dhcp-relay.py:ro
       exec:
         - sh /startup.sh
@@ -82,6 +89,7 @@ topology:
         - configs/leaf-06/daemons:/etc/frr/daemons
         - configs/leaf-06/frr.conf:/etc/frr/frr.conf
         - configs/leaf-06/startup.sh:/startup.sh
+        - images/frr-node/frr-bgp-peer-mib.py:/usr/local/bin/frr-bgp-peer-mib.py:ro
         - configs/common/esi-dhcp-relay.py:/usr/local/bin/esi-dhcp-relay.py:ro
       exec:
         - sh /startup.sh
@@ -93,6 +101,7 @@ topology:
         - configs/leaf-07/daemons:/etc/frr/daemons
         - configs/leaf-07/frr.conf:/etc/frr/frr.conf
         - configs/leaf-07/startup.sh:/startup.sh
+        - images/frr-node/frr-bgp-peer-mib.py:/usr/local/bin/frr-bgp-peer-mib.py:ro
         - configs/common/esi-dhcp-relay.py:/usr/local/bin/esi-dhcp-relay.py:ro
       exec:
         - sh /startup.sh
@@ -104,6 +113,7 @@ topology:
         - configs/leaf-08/daemons:/etc/frr/daemons
         - configs/leaf-08/frr.conf:/etc/frr/frr.conf
         - configs/leaf-08/startup.sh:/startup.sh
+        - images/frr-node/frr-bgp-peer-mib.py:/usr/local/bin/frr-bgp-peer-mib.py:ro
         - configs/common/esi-dhcp-relay.py:/usr/local/bin/esi-dhcp-relay.py:ro
       exec:
         - sh /startup.sh
@@ -115,6 +125,7 @@ topology:
         - configs/leaf-09/daemons:/etc/frr/daemons
         - configs/leaf-09/frr.conf:/etc/frr/frr.conf
         - configs/leaf-09/startup.sh:/startup.sh
+        - images/frr-node/frr-bgp-peer-mib.py:/usr/local/bin/frr-bgp-peer-mib.py:ro
         - configs/common/esi-dhcp-relay.py:/usr/local/bin/esi-dhcp-relay.py:ro
       exec:
         - sh /startup.sh
@@ -126,6 +137,7 @@ topology:
         - configs/leaf-10/daemons:/etc/frr/daemons
         - configs/leaf-10/frr.conf:/etc/frr/frr.conf
         - configs/leaf-10/startup.sh:/startup.sh
+        - images/frr-node/frr-bgp-peer-mib.py:/usr/local/bin/frr-bgp-peer-mib.py:ro
         - configs/common/esi-dhcp-relay.py:/usr/local/bin/esi-dhcp-relay.py:ro
       exec:
         - sh /startup.sh
@@ -210,6 +222,31 @@ topology:
         - ip route del default
         - ip route add default via 198.18.3.1 dev eth1
 
+    vpn-gateway:
+      kind: linux
+      image: esi/vpn-node:3.20
+      cap-add:
+        - NET_ADMIN
+        - NET_RAW
+        - SYS_MODULE
+      binds:
+        - configs/vpn-gateway/startup.sh:/startup.sh
+        - configs/vpn-gateway/esi-vpn-enroll.py:/usr/local/bin/esi-vpn-enroll.py:ro
+      exec:
+        - sh /startup.sh
+
+    vpn-client-01:
+      kind: linux
+      image: esi/vpn-node:3.20
+      cap-add:
+        - NET_ADMIN
+        - NET_RAW
+        - SYS_MODULE
+      binds:
+        - configs/vpn-client-01/startup.sh:/startup.sh
+      exec:
+        - sh /startup.sh
+
     server-student-01:
       kind: linux
       image: esi/alpine-host:3.20
@@ -220,6 +257,8 @@ topology:
       binds:
         - configs/server-student-01/startup.sh:/startup.sh
         - configs/ntp-server/server-client-ntp.sh:/ntp-client.sh
+        - configs/common/esi-ssh-auth.sh:/usr/local/bin/esi-ssh-auth.sh:ro
+        - configs/common/esi-pam-auth-client.py:/usr/local/bin/esi-pam-auth-client.py:ro
       exec:
         - sh /startup.sh
         - sh /ntp-client.sh
@@ -248,6 +287,8 @@ topology:
       binds:
         - configs/server-admin-01/startup.sh:/startup.sh
         - configs/ntp-server/server-client-ntp.sh:/ntp-client.sh
+        - configs/common/esi-ssh-auth.sh:/usr/local/bin/esi-ssh-auth.sh:ro
+        - configs/common/esi-pam-auth-client.py:/usr/local/bin/esi-pam-auth-client.py:ro
       exec:
         - sh /startup.sh
         - sh /ntp-client.sh
@@ -276,6 +317,8 @@ topology:
       binds:
         - configs/server-hpc-01/startup.sh:/startup.sh
         - configs/ntp-server/server-client-ntp.sh:/ntp-client.sh
+        - configs/common/esi-ssh-auth.sh:/usr/local/bin/esi-ssh-auth.sh:ro
+        - configs/common/esi-pam-auth-client.py:/usr/local/bin/esi-pam-auth-client.py:ro
       exec:
         - sh /startup.sh # <--- Utilise "exec" pour que le serveur reste UP
         - sh /ntp-client.sh
@@ -347,6 +390,8 @@ topology:
       mgmt-ipv4: 172.20.20.101
       binds:
         - configs/firewall-common/startup-common.sh:/opt/firewall-common/startup-common.sh
+        - configs/firewall-common/fw-live-watch.sh:/usr/local/bin/fw-live-watch.sh:ro
+        - configs/firewall-common/fw-summary.sh:/usr/local/bin/fw-summary.sh:ro
         - configs/firewall-01/keepalived.conf:/etc/keepalived/keepalived.conf
         - configs/firewall-01/nftables.conf:/etc/nftables.conf
         - configs/firewall-01/startup.sh:/startup.sh
@@ -359,6 +404,8 @@ topology:
       mgmt-ipv4: 172.20.20.102
       binds:
         - configs/firewall-common/startup-common.sh:/opt/firewall-common/startup-common.sh
+        - configs/firewall-common/fw-live-watch.sh:/usr/local/bin/fw-live-watch.sh:ro
+        - configs/firewall-common/fw-summary.sh:/usr/local/bin/fw-summary.sh:ro
         - configs/firewall-02/keepalived.conf:/etc/keepalived/keepalived.conf
         - configs/firewall-02/nftables.conf:/etc/nftables.conf
         - configs/firewall-02/startup.sh:/startup.sh
@@ -374,7 +421,14 @@ topology:
         - sh /startup.sh
     ids-01:
       kind: linux
-      image: alpine:3.20
+      image: esi/alpine-firewall:3.20
+      binds:
+        - configs/ids-01/startup.sh:/startup.sh
+      exec:
+        - sh /startup.sh
+      cap-add:
+        - NET_ADMIN
+        - NET_RAW
     ntp-server:
       kind: linux
       image: esi/alpine-host:3.20
@@ -414,7 +468,10 @@ topology:
       startup-delay: 60
       binds:
         - configs/zabbix-server/startup.sh:/startup.sh
+        - configs/zabbix-server/provision_topology.py:/opt/zabbix/provision_topology.py:ro
       cmd: sh /startup.sh
+      ports:
+        - 4000:8080
       cap-add:
         - NET_ADMIN
         - NET_RAW
@@ -474,6 +531,8 @@ topology:
       image: esi/alpine-host:3.20
       binds:
         - configs/campus-bp/startup.sh:/startup.sh
+        - configs/campus-bp/nftables.conf:/etc/nftables.conf:ro
+        - configs/campus-bp/esi-nac-server.py:/usr/local/bin/esi-nac-server.py:ro
       exec:
         - sh /startup.sh
 
@@ -485,11 +544,39 @@ topology:
       cmd: sleep infinity
       exec:
         - sh /startup.sh
+
+    campus-student-01:
+      kind: linux
+      image: esi/alpine-host:3.20
+      binds:
+        - configs/campus-student-01/startup.sh:/startup.sh
+        - configs/common/esi-nac-client.py:/usr/local/bin/esi-nac-client.py:ro
+      exec:
+        - sh /startup.sh
+
+    campus-admin-01:
+      kind: linux
+      image: esi/alpine-host:3.20
+      binds:
+        - configs/campus-admin-01/startup.sh:/startup.sh
+        - configs/common/esi-nac-client.py:/usr/local/bin/esi-nac-client.py:ro
+      exec:
+        - sh /startup.sh
+
     oob-sw:
       kind: linux
       image: alpine:3.20
       binds:
         - configs/oob-sw/startup.sh:/startup.sh
+      exec:
+        - sh /startup.sh
+
+    auth-server:
+      kind: linux
+      image: esi/auth-server:3.20
+      cmd: sleep infinity
+      binds:
+        - configs/auth-server/startup.sh:/startup.sh
       exec:
         - sh /startup.sh
 
@@ -516,7 +603,8 @@ topology:
     - endpoints: [ "spine-02:eth9", "leaf-09:eth2" ]
     - endpoints: [ "spine-02:eth10", "leaf-10:eth2" ]
 
-    - endpoints: [ "leaf-01:eth3", "isp-router-01:eth1" ]
+    - endpoints: [ "leaf-01:eth3", "ids-01:eth1" ]
+    - endpoints: [ "ids-01:eth2", "isp-router-01:eth1" ]
     - endpoints: [ "leaf-02:eth3", "isp-router-02:eth1" ]
     - endpoints: [ "leaf-01:eth4", "isp-router-03:eth1" ]
     - endpoints: [ "isp-router-01:eth2", "isp-router-04:eth3" ]
@@ -526,12 +614,12 @@ topology:
     - endpoints: [ "internet-client-01:eth1", "internet-router-01:eth1" ]
     - endpoints: [ "internet-client-02:eth1", "internet-router-02:eth1" ]
     - endpoints: [ "internet-router-01:eth3", "internet-web-01:eth1" ]
+    - endpoints: [ "internet-router-01:eth4", "vpn-client-01:eth1" ]
     - endpoints: [ "isp-router-01:eth3", "campus-bp:eth1" ]
 
     - endpoints: [ "leaf-01:eth5", "firewall-01:eth1" ]
     - endpoints: [ "leaf-02:eth5", "firewall-02:eth1" ]
     - endpoints: [ "leaf-01:eth9", "leaf-02:eth9" ]
-    - endpoints: [ "leaf-01:eth6", "ids-01:eth1" ]
 
     - endpoints: [ "leaf-09:eth3", "server-student-01:eth1" ]
     - endpoints: [ "leaf-09:eth4", "server-student-02:eth1" ]
@@ -548,6 +636,7 @@ topology:
     - endpoints: [ "leaf-07:eth3", "server-storage-01:eth1" ]
     - endpoints: [ "leaf-08:eth3", "server-storage-01:eth2" ]
     - endpoints: [ "leaf-01:eth7", "server-dmz-01:eth1" ]
+    - endpoints: [ "leaf-01:eth6", "vpn-gateway:eth1" ]
     - endpoints: [ "leaf-03:eth5", "lms-staff:eth1" ]
     - endpoints: [ "leaf-04:eth4", "services-web:eth1" ]
     - endpoints: [ "leaf-04:eth6", "syslog-server:eth1" ]
@@ -555,6 +644,8 @@ topology:
     - endpoints: [ "campus-bp:eth3", "leaf-01:eth8" ]
     - endpoints: [ "wifi-controller:eth1", "leaf-01:eth14" ]
     - endpoints: [ "campus-bp:eth4", "student-bp-01:eth1" ]
+    - endpoints: [ "campus-bp:eth5", "campus-student-01:eth1" ]
+    - endpoints: [ "campus-bp:eth6", "campus-admin-01:eth1" ]
     - endpoints: [ "firewall-01:eth3", "firewall-02:eth3" ]
     - endpoints: [ "bastion-01:eth1", "oob-sw:eth1" ]
     - endpoints: [ "prometheus:eth1", "frr-exporter:eth1" ]
@@ -571,6 +662,7 @@ topology:
     - endpoints: [ "oob-sw:eth12", "leaf-09:eth10" ]
     - endpoints: [ "oob-sw:eth13", "leaf-10:eth10" ]
     - endpoints: [ "oob-sw:eth14", "ftp-server:eth2" ]
+    - endpoints: [ "oob-sw:eth16", "ids-01:eth3" ]
 
     - endpoints: [ "leaf-03:eth9", "ntp-server:eth1" ] # changing eth6 to eth9 to avoid conflict with server-admin-02
     - endpoints: [ "oob-sw:eth15", "ntp-server:eth2" ] # changing eth2 to eth15 to avoid conflict with spine-01
@@ -580,3 +672,5 @@ topology:
     - endpoints: [ "leaf-03:eth8", "dhcp-server:eth1" ]
     - endpoints: [ "leaf-04:eth8", "dhcp-server:eth2" ] # ring1 multihoming for dhcp-server data-plane
     - endpoints: [ "leaf-03:eth11", "zabbix-server:eth1" ] # changing eth10 to eth11 to avoid conflict with oob-sw
+    - endpoints: [ "leaf-03:eth12", "auth-server:eth1" ]
+    - endpoints: [ "leaf-04:eth11", "auth-server:eth2" ]

@@ -40,6 +40,14 @@ This page explains how traffic is supposed to move so the practical runbooks mak
 | Ring 5 | host `nftables` | per-node input policy blocks lateral movement even inside reachable segments |
 | Ring 6 | `rsyslog` to `syslog-server` | reachable nodes forward logs over TCP/514 |
 
+## Identity And Access Plane
+
+- `auth-server` runs OpenLDAP on loopback only and serves TACACS+ and RADIUS.
+- TACACS+ enforces SSH identity on protected servers via PAM and LDAP-backed authorization rules.
+- `campus-bp` acts as a NAC enforcement point: campus devices authenticate via RADIUS, then their IPs are placed into dynamic role sets.
+- `vpn-gateway` accepts only RADIUS-authenticated students, adds them to WireGuard, and NATs to Ring 1 so VRF-PUBLIC stays clean.
+- The firewall still limits campus and VPN traffic to approved destinations; role separation is enforced at `campus-bp`.
+
 ## Important Isolation Rules
 
 - `VRF-PUBLIC` should not carry internal route leaks. The only `192.168.x.x` space that belongs there is the DMZ segment.

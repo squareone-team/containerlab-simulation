@@ -26,7 +26,8 @@ not spend time running `apk update` and `apk add` during every deploy.
     `unbound`, `kea`, `bind-tools`.
 
 - `esi/alpine-zabbix:3.20`
-  - Packages the Zabbix/MariaDB/SNMP stack used by `zabbix-server`.
+  - Packages the Zabbix server, MariaDB, official Zabbix web frontend, nginx/PHP-FPM, and SNMP tooling used by `zabbix-server`.
+  - The topology publishes the frontend on `http://localhost:4000` and provisions the `ESI Fabric NOC` dashboard during startup.
 
 - `esi/alpine-firewall:3.20`
   - Packages the firewall runtime used by Ring 1:

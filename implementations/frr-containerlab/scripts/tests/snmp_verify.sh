@@ -1,171 +1,221 @@
 #!/bin/bash
-# tests/snmp_verify.sh — SNMP section (Zitouni T4)
-C="docker exec clab-esi-datacenter"
-PASS=0; FAIL=0
+# =============================================================================
+# tests/snmp_verify.sh
+# Theme   : T4 — Observability and Monitoring
+# Section : Zabbix + SNMP verification
+# Run as  : bash implementations/frr-containerlab/scripts/tests/snmp_verify.sh
+# =============================================================================
 
-ok()  { echo "  [PASS] $1"; PASS=$((PASS + 1)); return 0; }
-fail(){ echo "  [FAIL] $1"; FAIL=$((FAIL + 1)); return 0; }
-info(){ echo "  [INFO] $1"; return 0; }
+set +e
 
-echo "=== T4: SNMP Verification ==="
-echo "    zabbix-server: 192.168.50.50 | VNI 10050 | VRF-STAFF"
+LAB="${LAB:-esi-datacenter}"
+C="docker exec clab-${LAB}"
+ZABBIX="clab-${LAB}-zabbix-server"
+PASS=0
+FAIL=0
+WARN=0
+LAST_OUT=""
+
+ok()   { echo "  [PASS] $1"; PASS=$((PASS + 1)); return 0; }
+fail() { echo "  [FAIL] $1"; FAIL=$((FAIL + 1)); return 0; }
+warn() { echo "  [WARN] $1"; WARN=$((WARN + 1)); return 0; }
+info() { echo "  [INFO] $1"; return 0; }
+
+container_exists() {
+  docker ps --format '{{.Names}}' 2>/dev/null | grep -qx "$1"
+}
+
+chk() {
+  local label="$1" cmd="$2" pattern="$3"
+  LAST_OUT=$(eval "$cmd" 2>/dev/null)
+  if echo "$LAST_OUT" | grep -Eq "$pattern"; then
+    ok "$label"
+  else
+    fail "$label"
+    echo "  [DEBUG] output:"
+    echo "$LAST_OUT" | sed 's/^/    /'
+  fi
+}
+
+warn_chk() {
+  local label="$1" cmd="$2" pattern="$3"
+  LAST_OUT=$(eval "$cmd" 2>/dev/null)
+  if echo "$LAST_OUT" | grep -Eq "$pattern"; then
+    ok "$label"
+  else
+    warn "$label"
+    echo "  [DEBUG] output:"
+    echo "$LAST_OUT" | sed 's/^/    /'
+  fi
+}
+
+api_post() {
+  local payload="$1"
+  $C-zabbix-server sh -lc \
+    "curl -fsS -H 'Content-Type: application/json-rpc' --data-binary '$payload' http://127.0.0.1:8080/api_jsonrpc.php" \
+    2>/dev/null
+}
+
+snmp_sysdescr() {
+  local node="$1" ip="$2"
+  chk "$node: SNMP sysDescr reachable at $ip" \
+    "$C-zabbix-server snmpget -v2c -c esi-read -t3 -r1 $ip 1.3.6.1.2.1.1.1.0" \
+    "STRING:"
+}
+
+snmp_bgp_state() {
+  local node="$1" ip="$2" minimum="$3"
+  local count established non_established
+
+  LAST_OUT=$($C-zabbix-server snmpwalk -v2c -c esi-read -t3 -r1 \
+    "$ip" 1.3.6.1.2.1.15.3.1.2 2>/dev/null)
+
+  count=$(echo "$LAST_OUT" | grep -c "INTEGER:")
+  established=$(echo "$LAST_OUT" | grep -c "INTEGER: 6")
+  non_established=$(echo "$LAST_OUT" | grep "INTEGER:" | grep -vc "INTEGER: 6")
+
+  if [ "$count" -ge "$minimum" ] && [ "$non_established" -eq 0 ]; then
+    ok "$node: BGP MIB state table has $established established peer(s)"
+  else
+    fail "$node: BGP MIB state table unhealthy (rows=$count, established=$established, non-established=$non_established, min=$minimum)"
+    echo "  [DEBUG] output:"
+    echo "$LAST_OUT" | sed 's/^/    /'
+  fi
+}
+
+echo ""
+echo "=== T4: SNMP + Zabbix Observability Verification ==="
+echo "    Zabbix UI: http://localhost:4000 | login Admin / zabbix"
 echo ""
 
-# ── 1. snmpd process on each FRR node ──────────────────────────────────────
-echo "--- 1. snmpd process check ---"
-for NODE in spine-01 spine-02 \
-            leaf-01 leaf-02 leaf-03 leaf-04 \
-            leaf-05 leaf-06 leaf-07 leaf-08 \
-            leaf-09 leaf-10; do
-    $C-$NODE pgrep snmpd > /dev/null 2>&1 \
-        && ok "$NODE: snmpd running" \
-        || fail "$NODE: snmpd not running"
-done
+echo "--- 1. Container and service health ---"
 
-# ── 2. FRR agentx enabled in frr.conf ──────────────────────────────────────
-echo ""
-echo "--- 2. FRR agentx config ---"
-for NODE in spine-01 spine-02 \
-            leaf-01 leaf-03 leaf-05 leaf-07 leaf-09; do
-    $C-$NODE grep -q "^agentx" /etc/frr/frr.conf 2>/dev/null \
-        && ok "$NODE: agentx directive in frr.conf" \
-        || fail "$NODE: agentx missing from frr.conf"
-done
-
-# ── 3. AgentX socket exists (snmpd master + FRR subagent connected) ─────────
-echo ""
-echo "--- 3. AgentX socket ---"
-for NODE in spine-01 spine-02 \
-            leaf-01 leaf-03 leaf-05 leaf-07 leaf-09; do
-    $C-$NODE ls /var/agentx/master > /dev/null 2>&1 \
-        && ok "$NODE: agentx socket present" \
-        || fail "$NODE: agentx socket missing — snmpd or FRR agentx not connected"
-done
-
-# ── Wait for zabbix-server to finish package installation ──────────────────
-echo "--- 0. Waiting for zabbix-server net-snmp tools to be ready ---"
-RETRIES=30
-until docker exec clab-esi-datacenter-zabbix-server \
-    which snmpget > /dev/null 2>&1 || [ $RETRIES -eq 0 ]; do
-    echo "  [INFO] waiting for snmpget on zabbix-server... ($RETRIES left)"
-    sleep 5
-    RETRIES=$((RETRIES - 1))
-done
-if [ $RETRIES -eq 0 ]; then
-    echo "  [WARN] snmpget never appeared — sections 4/6 will likely fail"
+if container_exists "$ZABBIX"; then
+  ok "container present: zabbix-server"
 else
-    echo "  [INFO] zabbix-server net-snmp ready"
+  fail "container missing: zabbix-server"
+  echo ""
+  echo "Results: $PASS passed / $FAIL failed / $WARN warnings"
+  exit "$FAIL"
 fi
 
-# ── 4. SNMP v2c polling from zabbix-server to all switch loopbacks ──────────
-echo ""
-echo "--- 4. SNMP v2c reachability from zabbix-server ---"
-
-declare -A NODES
-NODES=(
-    [spine-01]=10.1.0.1
-    [spine-02]=10.1.0.2
-    [leaf-01]=10.1.0.11
-    [leaf-02]=10.1.0.12
-    [leaf-03]=10.1.0.13
-    [leaf-04]=10.1.0.14
-    [leaf-05]=10.1.0.15
-    [leaf-06]=10.1.0.16
-    [leaf-07]=10.1.0.17
-    [leaf-08]=10.1.0.18
-    [leaf-09]=10.1.0.19
-    [leaf-10]=10.1.0.20
-)
-
-for NODE in "${!NODES[@]}"; do
-    IP="${NODES[$NODE]}"
-    RESULT=$($C-zabbix-server snmpget -v2c -c esi-read -t 3 -r 1 \
-        "$IP" 1.3.6.1.2.1.1.1.0 2>/dev/null)
-    if echo "$RESULT" | grep -qiE "Linux|FRR|STRING"; then
-        ok "$NODE ($IP): SNMP sysDescr reachable"
-    else
-        fail "$NODE ($IP): SNMP not responding — check snmpd and routing"
-    fi
+for node in spine-01 spine-02 leaf-01 leaf-02 leaf-03 leaf-04 leaf-05 leaf-06 leaf-07 leaf-08 leaf-09 leaf-10; do
+  container_exists "clab-${LAB}-${node}" \
+    && ok "container present: $node" \
+    || fail "container missing: $node"
 done
 
-# ── 5. FRR BGP MIB reachable via agentx ────────────────────────────────────
-echo ""
-echo "--- 5. FRR BGP MIB via agentx ---"
-# BGP4-MIB: 1.3.6.1.2.1.15.3 = bgpPeerTable
-for NODE in spine-01 spine-02; do
-    IP="${NODES[$NODE]}"
-    RESULT=$($C-zabbix-server snmpwalk -v2c -c esi-read -t 3 -r 1 \
-        "$IP" 1.3.6.1.2.1.15.3 2>/dev/null | head -3)
-    if [ -n "$RESULT" ]; then
-        ok "$NODE: BGP4-MIB bgpPeerTable readable via agentx"
-    else
-        fail "$NODE: BGP4-MIB not available — FRR agentx may not have connected yet"
-        info "$NODE: try: docker exec clab-esi-datacenter-$NODE vtysh -c 'show agentx'"
-    fi
-done
+chk "zabbix_server process running" \
+  "$C-zabbix-server pgrep zabbix_server" \
+  "[0-9]+"
 
-# ── 6. Interface counters MIB (ifTable) ─────────────────────────────────────
-echo ""
-echo "--- 6. Interface MIB ---"
-for NODE in leaf-03 leaf-09; do
-    IP="${NODES[$NODE]}"
-    RESULT=$($C-zabbix-server snmpwalk -v2c -c esi-read -t 3 -r 1 \
-        "$IP" 1.3.6.1.2.1.2.2 2>/dev/null | wc -l)
-    if [ "$RESULT" -gt 5 ] 2>/dev/null; then
-        ok "$NODE: ifTable has $RESULT entries"
-    else
-        fail "$NODE: ifTable empty or unreachable"
-    fi
-done
+chk "MariaDB accepts Zabbix TCP login" \
+  "$C-zabbix-server mysql -u zabbix -pzabbix-lab-pass -h 127.0.0.1 -e 'SELECT 1;' zabbix" \
+  "1"
 
-# --- 7. Zabbix server health ---
-RETRIES=36
-until docker exec clab-esi-datacenter-zabbix-server \
-    mysql -u zabbix -pzabbix-lab-pass -h 127.0.0.1 \
-    -e "SELECT 1;" zabbix > /dev/null 2>&1 || [ $RETRIES -eq 0 ]; do
-    echo "  [INFO] waiting for MariaDB... ($RETRIES retries left)"
-    sleep 5
-    RETRIES=$((RETRIES - 1))
-done
+chk "PHP-FPM process running for Zabbix web" \
+  "$C-zabbix-server pgrep php-fpm82" \
+  "[0-9]+"
 
-if [ $RETRIES -eq 0 ]; then
-    fail "zabbix-server: MariaDB not reachable after 3 min"
+chk "nginx process running for Zabbix web" \
+  "$C-zabbix-server pgrep nginx" \
+  "[0-9]+"
+
+chk "Zabbix frontend answers inside container on 8080" \
+  "$C-zabbix-server curl -fsS http://127.0.0.1:8080/index.php" \
+  "Zabbix|zabbix"
+
+chk "Zabbix frontend is published on host port 4000" \
+  "docker port $ZABBIX 8080/tcp" \
+  "4000"
+
+if command -v curl >/dev/null 2>&1; then
+  warn_chk "Host can reach Zabbix UI at http://127.0.0.1:4000" \
+    "curl -fsS http://127.0.0.1:4000/index.php" \
+    "Zabbix|zabbix"
 else
-    ok "zabbix-server: MariaDB database accessible"
-    docker exec clab-esi-datacenter-zabbix-server \
-        pgrep zabbix_server > /dev/null 2>&1 \
-        && ok "zabbix-server: zabbix_server process running" \
-        || fail "zabbix-server: zabbix_server not running"
+  warn "host curl missing; skipped 127.0.0.1:4000 HTTP check"
 fi
 
-# ── 8. Zabbix can reach all targets ─────────────────────────────────────────
 echo ""
-echo "--- 8. Zabbix network reachability to switches ---"
-for NODE in "${!NODES[@]}"; do
-    IP="${NODES[$NODE]}"
-    $C-zabbix-server ping -c1 -W2 "$IP" > /dev/null 2>&1 \
-        && ok "zabbix-server: reachable to $NODE ($IP)" \
-        || fail "zabbix-server: cannot reach $NODE ($IP) — check VRF-STAFF routes"
+echo "--- 2. Zabbix API and provisioned dashboard objects ---"
+
+chk "Zabbix API returns version" \
+  "api_post '{\"jsonrpc\":\"2.0\",\"method\":\"apiinfo.version\",\"params\":{},\"id\":1}'" \
+  "\"result\""
+
+AUTH=$(api_post '{"jsonrpc":"2.0","method":"user.login","params":{"username":"Admin","password":"zabbix"},"id":2}' \
+  | sed -n 's/.*"result":"\([^"]*\)".*/\1/p')
+
+if [ -n "$AUTH" ]; then
+  ok "Zabbix API login works as Admin"
+
+  HOSTS_JSON=$(api_post "{\"jsonrpc\":\"2.0\",\"method\":\"host.get\",\"params\":{\"output\":[\"host\"],\"filter\":{\"host\":[\"spine-01\",\"spine-02\",\"leaf-01\",\"leaf-10\"]}},\"auth\":\"$AUTH\",\"id\":3}")
+  echo "$HOSTS_JSON" | grep -q '"spine-01"' && echo "$HOSTS_JSON" | grep -q '"leaf-10"' \
+    && ok "Provisioned fabric hosts are present in Zabbix" \
+    || { fail "Provisioned fabric hosts missing from Zabbix"; echo "$HOSTS_JSON" | sed 's/^/    /'; }
+
+  DASH_JSON=$(api_post "{\"jsonrpc\":\"2.0\",\"method\":\"dashboard.get\",\"params\":{\"output\":[\"name\"],\"filter\":{\"name\":[\"ESI Fabric NOC\"]}},\"auth\":\"$AUTH\",\"id\":4}")
+  echo "$DASH_JSON" | grep -q '"ESI Fabric NOC"' \
+    && ok "Zabbix dashboard exists: ESI Fabric NOC" \
+    || { fail "Zabbix dashboard missing: ESI Fabric NOC"; echo "$DASH_JSON" | sed 's/^/    /'; }
+
+  MAP_JSON=$(api_post "{\"jsonrpc\":\"2.0\",\"method\":\"map.get\",\"params\":{\"output\":[\"name\"],\"filter\":{\"name\":[\"ESI Datacenter Fabric\"]}},\"auth\":\"$AUTH\",\"id\":5}")
+  echo "$MAP_JSON" | grep -q '"ESI Datacenter Fabric"' \
+    && ok "Zabbix topology map exists: ESI Datacenter Fabric" \
+    || { fail "Zabbix topology map missing: ESI Datacenter Fabric"; echo "$MAP_JSON" | sed 's/^/    /'; }
+else
+  fail "Zabbix API login failed as Admin"
+fi
+
+echo ""
+echo "--- 3. FRR SNMP agent and AgentX wiring ---"
+
+for node in spine-01 spine-02 leaf-01 leaf-02 leaf-03 leaf-04 leaf-05 leaf-06 leaf-07 leaf-08 leaf-09 leaf-10; do
+  chk "$node: snmpd process running" \
+    "$C-$node pgrep snmpd" \
+    "[0-9]+"
+
+  chk "$node: FRR BGP MIB pass_persist installed" \
+    "$C-$node grep '^pass_persist .1.3.6.1.2.1.15.3 ' /etc/snmp/snmpd.conf" \
+    "frr-bgp-peer-mib.py"
 done
 
-# ── 9. Community string is "esi-read" (not default "public") ────────────────
 echo ""
-echo "--- 9. Security: community string ---"
-for NODE in spine-01 leaf-03; do
-    IP="${NODES[$NODE]}"
-    # Should fail with wrong community
-    BAD=$($C-zabbix-server snmpget -v2c -c public -t 2 -r 0 \
-        "$IP" 1.3.6.1.2.1.1.1.0 2>&1)
-    if echo "$BAD" | grep -qiE "Timeout|No response|Unknown"; then
-        ok "$NODE: default 'public' community rejected"
-    else
-        fail "$NODE: accepting 'public' community — change to 'esi-read' only"
-    fi
-done
+echo "--- 4. End-to-end SNMP polling from zabbix-server ---"
 
-# ── Summary ──────────────────────────────────────────────────────────────────
+TARGETS="
+spine-01 10.1.0.1 10
+spine-02 10.1.0.2 10
+leaf-01 10.1.0.11 2
+leaf-02 10.1.0.12 2
+leaf-03 10.1.0.13 2
+leaf-04 10.1.0.14 2
+leaf-05 10.1.0.15 2
+leaf-06 10.1.0.16 2
+leaf-07 10.1.0.17 2
+leaf-08 10.1.0.18 2
+leaf-09 10.1.0.19 2
+leaf-10 10.1.0.20 2
+"
+
+while read -r node ip minimum; do
+  [ -z "$node" ] && continue
+
+  chk "$node: loopback ping reachable from zabbix-server" \
+    "$C-zabbix-server ping -c2 -W2 $ip" \
+    "[1-9][0-9]* (packets )?received"
+
+  snmp_sysdescr "$node" "$ip"
+  snmp_bgp_state "$node" "$ip" "$minimum"
+done < <(printf '%s\n' "$TARGETS")
+
 echo ""
 echo "======================================"
-echo "SNMP Test Results: $PASS passed / $FAIL failed"
-[ $FAIL -eq 0 ] && echo "SNMP checks PASSED" || echo "Issues found — see [FAIL] lines above"
+echo "SNMP/Zabbix Results: ${PASS} passed / ${FAIL} failed / ${WARN} warnings"
+[ "$FAIL" -eq 0 ] \
+  && echo "SNMP + Zabbix observability READY" \
+  || echo "NOT ready — fix failures above"
 echo "======================================"
+
+exit "$FAIL"

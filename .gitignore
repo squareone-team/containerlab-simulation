@@ -8,6 +8,8 @@ clab-*/
 *.pcap
 *.pid
 .codex
+__pycache__/
+*.pyc
 
 # OS
 .DS_Store

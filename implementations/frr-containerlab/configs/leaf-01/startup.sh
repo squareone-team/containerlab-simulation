@@ -66,8 +66,11 @@ ip rule add iif br-fw-ha to 192.168.10.0/24 lookup 30 prio 10000 || true
 ip rule add iif br-fw-ha to 192.168.20.0/24 lookup 30 prio 10001 || true
 ip rule add iif br-fw-ha to 192.168.50.0/24 lookup 20 prio 10002 || true
 ip rule add iif br-fw-ha to 192.168.60.0/24 lookup 20 prio 10003 || true
-ip rule add iif br-fw-ha to 10.200.0.0/30 lookup 60 prio 10004 || true
-ip rule add iif br-fw-ha to 192.168.110.0/24 lookup 60 prio 10005 || true
+ip rule add iif br-fw-ha to 192.168.70.0/24 lookup 20 prio 10004 || true
+ip rule add iif br-fw-ha to 192.168.80.0/24 lookup 20 prio 10005 || true
+ip rule add iif br-fw-ha to 10.200.0.0/30 lookup 60 prio 10006 || true
+ip rule add iif br-fw-ha to 192.168.110.0/24 lookup 60 prio 10007 || true
+ip rule add iif br-fw-ha to 198.51.100.0/24 lookup 40 prio 10008 || true
 ip rule add iif br-fw-ha from 192.168.50.0/24 lookup 30 prio 10010 || true
 ip rule add iif br-fw-ha from 192.168.60.0/24 lookup 30 prio 10011 || true
 ip rule add iif br-fw-ha from 192.168.10.0/24 lookup 20 prio 10012 || true
@@ -121,6 +124,97 @@ ip link add vlan4030 link br0 type vlan id 4030
 ip link set vlan4030 master VRF-PEDAGOGY
 ip link set vlan4030 up
 
+seed_l3vni_rmacs() {
+  local rt="$1" vlan="$2" vxlan="$3" svi="$4"
+
+  [ -e "/sys/class/net/$vxlan" ] && [ -e "/sys/class/net/$svi" ] || return 0
+
+  vtysh -c "show bgp l2vpn evpn route type prefix" 2>/dev/null \
+    | awk -v rt="RT:65000:${rt}" -v self="$VTEP_IP" '
+        /^[[:space:]]*[*> ]*\[5\]/ { in_route=1; nh=""; next }
+        in_route && $1 ~ /^([0-9]{1,3}\.){3}[0-9]{1,3}$/ { nh=$1; next }
+        in_route && /Rmac:/ {
+          rmac=""
+          for (i = 1; i <= NF; i++) {
+            if ($i ~ /^Rmac:/) {
+              rmac = substr($i, 6)
+            }
+          }
+          if (index($0, rt) && nh != "" && nh != self && rmac != "") {
+            print nh, rmac
+          }
+          in_route=0
+        }
+      ' \
+    | while read -r nh rmac; do
+        bridge fdb replace "$rmac" dev "$vxlan" dst "$nh" self 2>/dev/null || true
+        bridge fdb replace "$rmac" dev "$vxlan" vlan "$vlan" master 2>/dev/null || true
+        ip neigh replace "$nh" lladdr "$rmac" dev "$svi" nud permanent 2>/dev/null || true
+      done
+}
+
+seed_l2vni_macs() {
+  local vni="$1" vlan="$2" vxlan="$3" svi="$4"
+
+  [ -e "/sys/class/net/$vxlan" ] || return 0
+
+  bridge fdb del "$ANYCAST_MAC" dev "$vxlan" vlan "$vlan" master 2>/dev/null || true
+  bridge fdb del "$ANYCAST_MAC" dev "$vxlan" self 2>/dev/null || true
+
+  vtysh -c "show bgp l2vpn evpn route type multicast" 2>/dev/null \
+    | awk -v vni="$vni" -v self="$VTEP_IP" '
+        BEGIN {
+          ipv4 = "^([0-9]{1,3}\.){3}[0-9]{1,3}$"
+          rt_re = "RT:[0-9]+:" vni "([^0-9]|$)"
+        }
+        function reset_route() {
+          in_route = 0
+          nh = ""
+        }
+        /\[3\]:/ {
+          in_route = 1
+          nh = ""
+          next
+        }
+        in_route && $1 ~ ipv4 { nh = $1; next }
+        in_route && /RT:/ {
+          if ($0 ~ rt_re && nh != "" && nh != self) {
+            print nh
+          }
+          reset_route()
+          next
+        }
+      ' \
+    | while read -r nh; do
+        bridge fdb del 00:00:00:00:00:00 dev "$vxlan" dst "$nh" self 2>/dev/null || true
+        bridge fdb append 00:00:00:00:00:00 dev "$vxlan" dst "$nh" self 2>/dev/null || true
+      done
+}
+
+start_l3vni_rmac_seed_loop() {
+  local pidfile="/run/l3vni-rmac-seed.pid"
+
+  if [ -f "$pidfile" ] && kill -0 "$(cat "$pidfile" 2>/dev/null)" 2>/dev/null; then
+    return 0
+  fi
+
+  (
+    sleep 8
+    while true; do
+      seed_l2vni_macs 10090 90 vxlan10090 vlan90
+      seed_l2vni_macs 10100 100 vxlan10100 vlan100
+      seed_l2vni_macs 10120 120 vxlan10120 vlan120
+      seed_l3vni_rmacs 50020 4020 vxlan50020 vlan4020
+      seed_l3vni_rmacs 50030 4030 vxlan50030 vlan4030
+      seed_l3vni_rmacs 50060 4060 vxlan50060 vlan4060
+      sleep 30
+    done
+  ) >/var/log/l3vni-rmac-seed.log 2>&1 &
+  echo $! > "$pidfile"
+}
+
+start_l3vni_rmac_seed_loop
+
 ip link add vlan120 link br0 type vlan id 120
 ip link set vlan120 master VRF-WIFI-CTRL
 ip link set vlan120 address $ANYCAST_MAC || true
@@ -137,6 +231,11 @@ fi
 if ip link show eth7 >/dev/null 2>&1; then
   ip link set eth7 master br0
   bridge vlan add vid 100 dev eth7 pvid untagged
+fi
+
+if ip link show eth6 >/dev/null 2>&1; then
+  ip link set eth6 master br0
+  bridge vlan add vid 100 dev eth6 pvid untagged
 fi
 
 ip link add vlan100 link br0 type vlan id 100
@@ -166,6 +265,12 @@ for SUBNET in $FW_INTERNAL_SUBNETS; do
   ip route replace table "$FW_DMZ_TABLE" "$SUBNET" via 192.168.1.254 dev br-fw-ha
 done
 
+PREF=70
+for SUBNET in $FW_INTERNAL_SUBNETS; do
+  ip rule add pref "$PREF" iif VRF-PUBLIC to "$SUBNET" lookup "$FW_DMZ_TABLE" 2>/dev/null || true
+  PREF=$((PREF + 1))
+done
+
 PREF=91
 for SUBNET in $FW_INTERNAL_SUBNETS; do
     ip rule add pref "$PREF" iif vlan100 to "$SUBNET" lookup "$FW_DMZ_TABLE" 2>/dev/null || true
@@ -173,18 +278,29 @@ for SUBNET in $FW_INTERNAL_SUBNETS; do
 done
 
 # Campus traffic keeps its dedicated micro-VRF uplink, but only the shared
-# service IPs and the explicit DMZ test subnet are steered through Ring 1.
+# service IPs, auth proof targets, and the explicit DMZ test subnet are steered through Ring 1.
 # No broader internal prefixes leak.
 FW_CAMPUS_TABLE=160
 FW_CAMPUS_SERVICE_IPS="
 192.168.50.20/32
 192.168.50.30/32
 192.168.50.40/32
+192.168.50.70/32
+192.168.50.80/32
+192.168.10.10/32
+192.168.50.10/32
+192.168.70.10/32
 198.51.100.0/24
 "
 
 for SUBNET in $FW_CAMPUS_SERVICE_IPS; do
   ip route replace table "$FW_CAMPUS_TABLE" "$SUBNET" via 192.168.1.254 dev br-fw-ha
+done
+
+PREF=80
+for SUBNET in $FW_CAMPUS_SERVICE_IPS; do
+  ip rule add pref "$PREF" iif VRF-WIFI-CTRL to "$SUBNET" lookup "$FW_CAMPUS_TABLE" 2>/dev/null || true
+  PREF=$((PREF + 1))
 done
 
 PREF=86
@@ -335,6 +451,7 @@ sysServices 72
 # AgentX — FRR subagent connects here to expose BGP/routing MIBs
 master agentx
 agentXSocket /var/agentx/master
+pass_persist .1.3.6.1.2.1.15.3 /usr/local/bin/frr-bgp-peer-mib.py
  
 # MIB views — expose standard MIBs that Zabbix polls
 view systemview included .1.3.6.1.2.1.1

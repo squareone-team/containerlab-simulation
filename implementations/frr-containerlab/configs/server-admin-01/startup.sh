@@ -27,6 +27,7 @@ table inet filter {
 		ct state established,related accept
 		ip protocol icmp accept
 		ip saddr 192.168.50.0/24 accept
+		ip saddr 192.168.110.0/24 tcp dport 22 accept
 		ip saddr 172.16.0.50 tcp dport 22 accept
 	}
 
@@ -62,3 +63,5 @@ elif command -v syslogd >/dev/null 2>&1; then
 else
 	echo "WARN: no syslog daemon found, skipping remote syslog forwarding" >&2
 fi
+
+sh /usr/local/bin/esi-ssh-auth.sh admin

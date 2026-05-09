@@ -255,7 +255,7 @@ The three controls below complement the five rings. They are detection or archit
 
 | Control | Enforced At | Mechanism & Justification |
 |---|---|---|
-| Passive IDS (Suricata) | Dedicated IDS node — border traffic mirror | A tc (traffic control) mirror copies all inbound and outbound packets on the Border Leaf external interface to a dedicated Suricata node. The IDS operates in detection-only mode and is never in the traffic path — a false positive cannot disrupt forwarding. Alerts are written to a log file with timestamp, signature name, and source/destination. The mirror is placed on the Border Leaf because it sees all external traffic in both directions. |
+| Inline IDS/IPS Wall | ids-01 — transparent bridge between ISP and Border Leaf | The lab places ids-01 directly between isp-router-01 and leaf-01 as a Layer-2 bridge. tc ingress policing preserves ARP, BGP, ICMP, and normal HTTP while dropping excessive TCP SYNs to the DMZ web server. This gives a deterministic DDoS-prevention proof without adding a Suricata/EveBox stack. Suricata remains a future detection enhancement when full signature inspection and alert review are required. |
 | Management Bastion | bastion-01 — single SSH jump host | SSH is accepted on all switches and servers exclusively from the Bastion IP. Ring 3 enforces this at the packet level. Without a Bastion, every switch requires its own allow-list of administrator workstations — these lists drift as staff change. With a Bastion, each switch has exactly one SSH rule that never changes. |
 | DMZ Structural Isolation | All Leafs — VRF routing table | VRF-PUBLIC contains no routes to any internal VRF. This is enforced at the routing table level, not the firewall level. A missing route cannot be accidentally omitted from a policy — it simply does not exist. |
 
@@ -302,7 +302,7 @@ The architecture is considered production-ready only when every vector in this m
 | ESI Multihoming | Pull one Leaf in a pair; verify server traffic continues | Server bond fails over to surviving Leaf. Zero packet loss beyond BFD convergence window. |
 | TCP MD5 Enforcement | Set wrong MD5 password on one BGP peer side; wait 30 s | BGP session drops to Active state. Restore correct password → session recovers to Established. |
 | VXLAN Injection Block | Send crafted UDP/4789 packet from a server container to a switch loopback | Packet is silently dropped (timeout, not refused). Ring 3 ACL confirms VTEP-only restriction. |
-| IDS Alerting | Run port scan (nmap -sS) against DMZ subnet from external test node | ET SCAN alert appears in Suricata fast.log within seconds. Confirms tc mirror is delivering traffic to IDS node. |
+| IPS DDoS Prevention | Run a controlled HTTP flood against the DMZ web server from external test nodes | Normal DMZ HTTP succeeds before and after the test, the ids-01 DDoS drop counter increases, and BGP between leaf-01 and isp-router-01 remains established across the transparent bridge. |
 | OOB Access | Shut down all production BGP sessions; attempt OOB SSH to Spine | Full SSH access to all devices via OOB switch. Production fabric state is inaccessible from OOB (no cross-routing). |
 
 ---
@@ -332,7 +332,7 @@ The following mechanisms were considered and explicitly rejected. They are docum
 | 2 | Border Routers | 10G/25G | Interface with ISP. Terminate external BGP sessions and advertise aggregate prefixes only. |
 | 2 | HA Next-Gen Firewalls | 10G/25G | Active/Active pair. L7 inspection. Policy gateway for all inter-VRF traffic. One per Border Leaf — independent conntrack tables. |
 | 1 | Bastion Host | 1G | Hardened Linux node. ed25519 key-only SSH. Single authorized entry point for all admin SSH. PasswordAuthentication disabled globally. |
-| 1 | Passive IDS Node | 1G (mirror tap) | Receives tc-mirrored copy of all Border Leaf external traffic. Runs Suricata in detection-only mode. Never in the traffic path. |
+| 1 | Inline IDS/IPS Node | 1G transparent bridge + OOB | Sits between isp-router-01 and leaf-01. Runs tc ingress policing for the lab DDoS prevention proof. Suricata and EveBox can be layered later for signature-based detection and alert review. |
 
 ---
 
@@ -467,7 +467,7 @@ Two complementary tools are deployed rather than one. Each addresses a distinct 
 |---|---|---|
 | Zabbix | Infrastructure monitoring, alerting | SNMP polling of all switches (interface counters, BGP peer state, CPU/memory). Threshold-based alerting for link down, BGP session drop, disk utilization. Zabbix has native network device templates and is already familiar to ESI staff (previously used Cacti for the same role). Replaces Cacti. |
 | Prometheus + Grafana | Metrics collection, dashboards | Time-series metrics scraped from OpenStack, Ceph, SLURM, Kubernetes, and server-level exporters (node_exporter). Grafana provides live dashboards for fabric utilization, cluster health, and storage capacity. Operates alongside Zabbix — does not replace it. |
-| Centralized Syslog | Log aggregation | All switch and server syslog streams are forwarded to a central collector (rsyslog or Loki). Forensic analysis and incident correlation require all logs in one place with synchronized timestamps. Without central syslog, reconstructing a BGP event across 12 switches requires logging into each device individually. |
+| Centralized Syslog | Log aggregation | All switch and server syslog streams are forwarded to a central collector (rsyslog or Loki). Forensic analysis and incident correlation require all logs in one place with synchronized timestamps. In the lab, TCP/514 is explicitly permitted to the collector while unrelated inter-zone traffic remains denied by policy. Without central syslog, reconstructing a BGP event across 12 switches requires logging into each device individually. |
 
 > **Replacing Cacti:** ESI currently uses Cacti for bandwidth monitoring. Zabbix is a strict superset: it covers all of Cacti's SNMP graphing capability plus threshold alerting, service checks, and a maintained codebase. The migration path is low-risk — Zabbix can import Cacti-style SNMP configurations.
 

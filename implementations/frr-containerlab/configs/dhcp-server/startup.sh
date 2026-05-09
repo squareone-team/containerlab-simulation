@@ -170,6 +170,7 @@ cat > /etc/kea/kea-dhcp4.conf << 'EOF'
       {
         "id": 70,
         "subnet": "192.168.70.0/24",
+        "relay": { "ip-addresses": [ "10.1.0.15", "10.1.0.16" ] },
         "pools": [{ "pool": "192.168.70.100 - 192.168.70.200" }],
         "option-data": [
           { "name": "routers", "data": "192.168.70.1" }

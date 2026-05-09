@@ -21,6 +21,8 @@ ip link set eth1 up
 
 # Route datacenter subnets via local border-leaf transit IP.
 ip route replace 192.168.0.0/16 via "${FW_TRANSIT_GW}" dev eth1
+ip route replace 10.200.0.0/30 via "${FW_TRANSIT_GW}" dev eth1
+ip route replace 198.51.100.0/24 via "${FW_TRANSIT_GW}" dev eth1
 
 echo "[*] Bringing up additional interfaces..."
 for i in 2 3 4 5 6 7 8 9; do
@@ -96,6 +98,13 @@ echo "Ring 1 IP (eth1): $(ip addr show eth1 | grep 'inet ' | awk '{print $2}')"
 echo "VIP (when MASTER): 192.168.1.254/24"
 echo "nftables rules: $(nft list ruleset 2>/dev/null | grep -c 'rule ' || echo 'Not loaded')"
 echo "Keepalived: $(ps aux | grep -q '[k]eepalived' && echo 'Running' || echo 'Not running')"
+if [ -x /usr/local/bin/fw-live-watch.sh ]; then
+    echo "Live packet watcher: /usr/local/bin/fw-live-watch.sh"
+    echo "Capture log path: /var/log/fw-live-watch.log (overwritten on each run)"
+fi
+if [ -x /usr/local/bin/fw-summary.sh ]; then
+    echo "Traffic summary: /usr/local/bin/fw-summary.sh"
+fi
 echo "=========================================="
 
 exit 0

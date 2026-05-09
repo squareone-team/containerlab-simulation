@@ -59,6 +59,93 @@ ip link add vlan4030 link br0 type vlan id 4030
 ip link set vlan4030 master VRF-PEDAGOGY
 ip link set vlan4030 up
 
+seed_l3vni_rmacs() {
+  local rt="$1" vlan="$2" vxlan="$3" svi="$4"
+
+  [ -e "/sys/class/net/$vxlan" ] && [ -e "/sys/class/net/$svi" ] || return 0
+
+  vtysh -c "show bgp l2vpn evpn route type prefix" 2>/dev/null \
+    | awk -v rt="RT:65000:${rt}" -v self="$VTEP_IP" '
+        /^[[:space:]]*[*> ]*\[5\]/ { in_route=1; nh=""; next }
+        in_route && $1 ~ /^([0-9]{1,3}\.){3}[0-9]{1,3}$/ { nh=$1; next }
+        in_route && /Rmac:/ {
+          rmac=""
+          for (i = 1; i <= NF; i++) {
+            if ($i ~ /^Rmac:/) {
+              rmac = substr($i, 6)
+            }
+          }
+          if (index($0, rt) && nh != "" && nh != self && rmac != "") {
+            print nh, rmac
+          }
+          in_route=0
+        }
+      ' \
+    | while read -r nh rmac; do
+        bridge fdb replace "$rmac" dev "$vxlan" dst "$nh" self 2>/dev/null || true
+        bridge fdb replace "$rmac" dev "$vxlan" vlan "$vlan" master 2>/dev/null || true
+        ip neigh replace "$nh" lladdr "$rmac" dev "$svi" nud permanent 2>/dev/null || true
+      done
+}
+
+seed_l2vni_macs() {
+  local vni="$1" vlan="$2" vxlan="$3" svi="$4"
+
+  [ -e "/sys/class/net/$vxlan" ] || return 0
+
+  bridge fdb del "$ANYCAST_MAC" dev "$vxlan" vlan "$vlan" master 2>/dev/null || true
+  bridge fdb del "$ANYCAST_MAC" dev "$vxlan" self 2>/dev/null || true
+
+  vtysh -c "show bgp l2vpn evpn route type multicast" 2>/dev/null \
+    | awk -v vni="$vni" -v self="$VTEP_IP" '
+        BEGIN {
+          ipv4 = "^([0-9]{1,3}\.){3}[0-9]{1,3}$"
+          rt_re = "RT:[0-9]+:" vni "([^0-9]|$)"
+        }
+        function reset_route() {
+          in_route = 0
+          nh = ""
+        }
+        /\[3\]:/ {
+          in_route = 1
+          nh = ""
+          next
+        }
+        in_route && $1 ~ ipv4 { nh = $1; next }
+        in_route && /RT:/ {
+          if ($0 ~ rt_re && nh != "" && nh != self) {
+            print nh
+          }
+          reset_route()
+          next
+        }
+      ' \
+    | while read -r nh; do
+        bridge fdb del 00:00:00:00:00:00 dev "$vxlan" dst "$nh" self 2>/dev/null || true
+        bridge fdb append 00:00:00:00:00:00 dev "$vxlan" dst "$nh" self 2>/dev/null || true
+      done
+}
+
+start_l3vni_rmac_seed_loop() {
+  local pidfile="/run/l3vni-rmac-seed.pid"
+
+  if [ -f "$pidfile" ] && kill -0 "$(cat "$pidfile" 2>/dev/null)" 2>/dev/null; then
+    return 0
+  fi
+
+  (
+    sleep 8
+    while true; do
+      seed_l2vni_macs 10010 10 vxlan10010 vlan10
+      seed_l3vni_rmacs 50030 4030 vxlan50030 vlan4030
+      sleep 30
+    done
+  ) >/var/log/l3vni-rmac-seed.log 2>&1 &
+  echo $! > "$pidfile"
+}
+
+start_l3vni_rmac_seed_loop
+
 # === END PHASE 1 — Phase 2 appends below ===
 ip link set eth3 up
 
@@ -128,9 +215,9 @@ mkdir -p /var/log/chrony
 chronyd -f /etc/chrony.conf &
 
 # === DHCP RELAY ===
-nohup python3 /usr/local/bin/esi-dhcp-relay.py \
+nohup ip vrf exec VRF-PEDAGOGY python3 /usr/local/bin/esi-dhcp-relay.py \
   --server 192.168.50.40 \
-  --relay-ip "$VTEP_IP" \
+  --relay-ip 192.168.10.1 \
   --interface vlan10=192.168.10.1 >/var/log/esi-dhcp-relay.log 2>&1 &
 
 
@@ -188,6 +275,7 @@ sysServices 72
 # AgentX — FRR subagent connects here to expose BGP/routing MIBs
 master agentx
 agentXSocket /var/agentx/master
+pass_persist .1.3.6.1.2.1.15.3 /usr/local/bin/frr-bgp-peer-mib.py
  
 # MIB views — expose standard MIBs that Zabbix polls
 view systemview included .1.3.6.1.2.1.1
