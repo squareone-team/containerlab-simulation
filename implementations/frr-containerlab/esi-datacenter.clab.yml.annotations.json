@@ -261,8 +261,8 @@
       "id": "pod3-line1",
       "text": "VRF: VRF-STAFF(50020)",
       "position": {
-        "x": 575.880222765754,
-        "y": 710.037886434773
+        "x": 584.1336500382324,
+        "y": 722.4180273434905
       },
       "fontSize": 12,
       "fontColor": "#99f6e4",
@@ -276,8 +276,8 @@
       "id": "pod3-line2",
       "text": "VNI 10070 | RoCEv2 + PFC + ECN",
       "position": {
-        "x": 575.880222765754,
-        "y": 730.037886434773
+        "x": 581.3825076140729,
+        "y": 746.5447409797297
       },
       "fontSize": 12,
       "fontColor": "#99f6e4",
@@ -818,8 +818,8 @@
       "id": "shape-pod1",
       "shapeType": "rectangle",
       "position": {
-        "x": 420,
-        "y": -520
+        "x": 418.31135724185424,
+        "y": -515.1601297371592
       },
       "width": 360,
       "height": 470,
@@ -1286,7 +1286,7 @@
       "id": "server-hpc-jupyter",
       "position": {
         "x": 660,
-        "y": 720
+        "y": 640
       },
       "icon": "server",
       "iconColor": "#000000",
@@ -1489,7 +1489,8 @@
         "y": 120
       },
       "icon": "client",
-      "iconCornerRadius": 0
+      "iconCornerRadius": 7,
+      "iconColor": "#e91c1c"
     },
     {
       "id": "internet-web-01",
@@ -1531,15 +1532,21 @@
       "id": "campus-admin-01",
       "position": {
         "x": -240,
-        "y": 40
-      }
+        "y": -20
+      },
+      "icon": "client",
+      "iconColor": "#007069",
+      "iconCornerRadius": 7
     },
     {
       "id": "campus-student-01",
       "position": {
-        "x": -420,
-        "y": 60
-      }
+        "x": -340,
+        "y": 40
+      },
+      "icon": "client",
+      "iconColor": "#1ce9c6",
+      "iconCornerRadius": 19
     },
     {
       "id": "vpn-client-01",
