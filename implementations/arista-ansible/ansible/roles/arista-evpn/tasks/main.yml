@@ -12,16 +12,12 @@
         communication_domains
         | map(attribute='vlans', default=[])
         | flatten
-        | map('combine', {'vrf': item.vrf, 'l3vni': item.l3vni})
         | list
       }}
-  vars:
-    item: "{{ item }}"
-  loop: "{{ communication_domains }}"
   tags: [evpn, facts]
-  when: 
+  when:
     - communication_domains is defined
-    - "'leaves' in group_names" 
+    - "'leaves' in group_names"
 
 - name: EVPN | Derive leaf_active_l2vnis
   ansible.builtin.set_fact:
@@ -33,17 +29,23 @@
       }}
   tags: [evpn, facts]
   when:
-    - "'leaves' in group_names"        
-    - all_l2vnis is defined 
+    - "'leaves' in group_names"
+    - all_l2vnis is defined
 
 - name: EVPN | Derive leaf_active_vrfs and domains
   ansible.builtin.set_fact:
-    leaf_active_vrfs: "{{ leaf_active_l2vnis | map(attribute='vrf') | unique | list }}"
-    leaf_active_domains: "{{ communication_domains | selectattr('vrf', 'in', leaf_active_vrfs) | list }}"
+    leaf_active_vrfs: >-
+      {{
+        communication_domains
+        | selectattr('vlans', 'defined')
+        | map(attribute='vrf')
+        | list
+      }}
+    leaf_active_domains: "{{ communication_domains | list }}"
   tags: [evpn, facts]
   when:
-    - "'leaves' in group_names"       
-    - leaf_active_l2vnis is defined    
+    - "'leaves' in group_names"
+    - all_l2vnis is defined
 
 # ─────────────────────────────────────────────────────────────────────────────
 # 1. Features & Global Settings
