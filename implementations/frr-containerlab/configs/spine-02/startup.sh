@@ -5,6 +5,56 @@ for IFACE in eth1 eth2 eth3 eth4 eth5 eth6 eth7 eth8 eth9 eth10; do
 done
 sysctl -w net.ipv4.fib_multipath_hash_policy=1
 
+QOS_LINK_MBIT=1000
+QOS_CS6_MBIT=10
+QOS_EF_MBIT=50
+QOS_AF41_MBIT=200
+QOS_AF31_MBIT=250
+QOS_AF21_MBIT=200
+QOS_AF11_MBIT=100
+QOS_CS1_MBIT=50
+QOS_DF_MBIT=$((QOS_LINK_MBIT - QOS_CS6_MBIT - QOS_EF_MBIT - QOS_AF41_MBIT - QOS_AF31_MBIT - QOS_AF21_MBIT - QOS_AF11_MBIT - QOS_CS1_MBIT))
+
+apply_spine_qos() {
+  local IFACE=$1
+
+  tc qdisc del dev "$IFACE" root 2>/dev/null || true
+  tc qdisc add dev "$IFACE" root handle 1: htb default 80
+  tc class add dev "$IFACE" parent 1: classid 1:1 htb rate "${QOS_LINK_MBIT}mbit" ceil "${QOS_LINK_MBIT}mbit"
+
+  tc class add dev "$IFACE" parent 1:1 classid 1:10 htb rate "${QOS_CS6_MBIT}mbit" ceil "${QOS_LINK_MBIT}mbit" prio 0
+  tc class add dev "$IFACE" parent 1:1 classid 1:20 htb rate "${QOS_EF_MBIT}mbit" ceil "${QOS_LINK_MBIT}mbit" prio 1
+  tc class add dev "$IFACE" parent 1:1 classid 1:30 htb rate "${QOS_AF41_MBIT}mbit" ceil "${QOS_LINK_MBIT}mbit" prio 2
+  tc class add dev "$IFACE" parent 1:1 classid 1:40 htb rate "${QOS_AF31_MBIT}mbit" ceil "${QOS_LINK_MBIT}mbit" prio 3
+  tc class add dev "$IFACE" parent 1:1 classid 1:50 htb rate "${QOS_AF21_MBIT}mbit" ceil "${QOS_LINK_MBIT}mbit" prio 4
+  tc class add dev "$IFACE" parent 1:1 classid 1:60 htb rate "${QOS_AF11_MBIT}mbit" ceil "${QOS_LINK_MBIT}mbit" prio 5
+  tc class add dev "$IFACE" parent 1:1 classid 1:70 htb rate "${QOS_CS1_MBIT}mbit" ceil "${QOS_LINK_MBIT}mbit" prio 6
+  tc class add dev "$IFACE" parent 1:1 classid 1:80 htb rate "${QOS_DF_MBIT}mbit" ceil "${QOS_LINK_MBIT}mbit" prio 7
+
+  tc qdisc add dev "$IFACE" parent 1:10 handle 10: pfifo limit 64
+  tc qdisc add dev "$IFACE" parent 1:20 handle 20: pfifo limit 64
+  tc qdisc add dev "$IFACE" parent 1:30 handle 30: fq_codel
+  tc qdisc add dev "$IFACE" parent 1:40 handle 40: fq_codel ecn
+  tc qdisc add dev "$IFACE" parent 1:50 handle 50: fq_codel
+  tc qdisc add dev "$IFACE" parent 1:60 handle 60: fq_codel
+  tc qdisc add dev "$IFACE" parent 1:70 handle 70: fq_codel
+  tc qdisc add dev "$IFACE" parent 1:80 handle 80: fq_codel
+
+  tc filter add dev "$IFACE" parent 1: protocol ip prio 10 u32 match ip dsfield 0xc0 0xfc flowid 1:10
+  tc filter add dev "$IFACE" parent 1: protocol ip prio 20 u32 match ip dsfield 0xb8 0xfc flowid 1:20
+  tc filter add dev "$IFACE" parent 1: protocol ip prio 30 u32 match ip dsfield 0x88 0xfc flowid 1:30
+  tc filter add dev "$IFACE" parent 1: protocol ip prio 40 u32 match ip dsfield 0x68 0xfc flowid 1:40
+  tc filter add dev "$IFACE" parent 1: protocol ip prio 50 u32 match ip dsfield 0x48 0xfc flowid 1:50
+  tc filter add dev "$IFACE" parent 1: protocol ip prio 60 u32 match ip dsfield 0x28 0xfc flowid 1:60
+  tc filter add dev "$IFACE" parent 1: protocol ip prio 70 u32 match ip dsfield 0x20 0xfc flowid 1:70
+}
+
+for IFACE in eth1 eth2 eth3 eth4 eth5 eth6 eth7 eth8 eth9 eth10; do
+  if ip link show "$IFACE" >/dev/null 2>&1; then
+    apply_spine_qos "$IFACE"
+  fi
+done
+
 # RING 3: Configure iptables to allow BGP and BFD from the expected sources, and SSH from the management host, while dropping other traffic to these ports.
 iptables -A INPUT -p tcp --dport 179 -s 10.0.0.0/16 -j ACCEPT
 iptables -A INPUT -p tcp --dport 179 -j DROP

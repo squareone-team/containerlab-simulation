@@ -8,6 +8,55 @@ for IFACE in eth1 eth2; do
 done
 sysctl -w net.ipv4.fib_multipath_hash_policy=1
 
+modprobe br_netfilter 2>/dev/null || true
+sysctl -w net.bridge.bridge-nf-call-iptables=1
+sysctl -w net.bridge.bridge-nf-call-ip6tables=1
+sysctl -w net.ipv4.tcp_ecn=2
+
+for IFACE in eth1 eth2; do
+  tc qdisc replace dev "$IFACE" root fq_codel ecn
+done
+
+iptables -t mangle -N ESI_QOS 2>/dev/null || true
+iptables -t mangle -F ESI_QOS
+iptables -t mangle -D PREROUTING -j ESI_QOS 2>/dev/null || true
+iptables -t mangle -A PREROUTING -j ESI_QOS
+
+for PORT in 873 21 2049 445; do
+  iptables -t mangle -A ESI_QOS -p tcp -s 192.168.80.0/24 --dport "$PORT" -j DSCP --set-dscp-class CS1
+  iptables -t mangle -A ESI_QOS -p tcp -d 192.168.80.0/24 --sport "$PORT" -j DSCP --set-dscp-class CS1
+  iptables -t mangle -A ESI_QOS -p udp -s 192.168.80.0/24 --dport "$PORT" -j DSCP --set-dscp-class CS1
+  iptables -t mangle -A ESI_QOS -p udp -d 192.168.80.0/24 --sport "$PORT" -j DSCP --set-dscp-class CS1
+done
+
+for SUBNET in 192.168.70.0/24 192.168.80.0/24; do
+  iptables -t mangle -A ESI_QOS -m dscp --dscp 0x00 -s "$SUBNET" -j DSCP --set-dscp-class AF31
+  iptables -t mangle -A ESI_QOS -m dscp --dscp 0x00 -d "$SUBNET" -j DSCP --set-dscp-class AF31
+done
+
+iptables -t mangle -A ESI_QOS -m dscp --dscp 0x00 -s 192.168.90.0/24 -j DSCP --set-dscp-class AF41
+iptables -t mangle -A ESI_QOS -m dscp --dscp 0x00 -d 192.168.90.0/24 -j DSCP --set-dscp-class AF41
+
+for SUBNET in 192.168.30.0/24 192.168.40.0/24 192.168.50.0/24 192.168.10.0/24; do
+  iptables -t mangle -A ESI_QOS -m dscp --dscp 0x00 -s "$SUBNET" -j DSCP --set-dscp-class AF21
+  iptables -t mangle -A ESI_QOS -m dscp --dscp 0x00 -d "$SUBNET" -j DSCP --set-dscp-class AF21
+done
+
+iptables -t mangle -A ESI_QOS -m dscp --dscp 0x00 -s 192.168.20.0/24 -j DSCP --set-dscp-class AF11
+iptables -t mangle -A ESI_QOS -m dscp --dscp 0x00 -d 192.168.20.0/24 -j DSCP --set-dscp-class AF11
+
+iptables -t mangle -N ESI_QOS_OUT 2>/dev/null || true
+iptables -t mangle -F ESI_QOS_OUT
+iptables -t mangle -D OUTPUT -j ESI_QOS_OUT 2>/dev/null || true
+iptables -t mangle -A OUTPUT -j ESI_QOS_OUT
+
+iptables -t mangle -A ESI_QOS_OUT -p tcp --sport 179 -j DSCP --set-dscp-class CS6
+iptables -t mangle -A ESI_QOS_OUT -p tcp --dport 179 -j DSCP --set-dscp-class CS6
+for BFD_PORT in 3784 3785 4784; do
+  iptables -t mangle -A ESI_QOS_OUT -p udp --sport "$BFD_PORT" -j DSCP --set-dscp-class CS6
+  iptables -t mangle -A ESI_QOS_OUT -p udp --dport "$BFD_PORT" -j DSCP --set-dscp-class CS6
+done
+
 # RING 3: Allow BGP and BFD from known peer subnets, SSH from management subnet, and VTEP control traffic from all leafs. Drop all other attempts to connect to these services on the leaf itself.
 iptables -A INPUT -p tcp --dport 179 -s 10.0.0.0/16 -j ACCEPT
 iptables -A INPUT -p tcp --dport 179 -j DROP
