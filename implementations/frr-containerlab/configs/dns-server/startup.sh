@@ -145,6 +145,7 @@ view:
   local-data: "hpc-leaf-01.esi.internal.    300 IN A 10.1.0.15"
   local-data: "leaf-06.esi.internal.        300 IN A 10.1.0.16"
   local-data: "hpc-leaf-02.esi.internal.    300 IN A 10.1.0.16"
+  local-data: "hpc-jupyter.esi.internal.    300 IN A 192.168.70.30"
   # Storage leafs (leaf-07/08)
   local-data: "leaf-07.esi.internal.        300 IN A 10.1.0.17"
   local-data: "storage-leaf-01.esi.internal. 300 IN A 10.1.0.17"

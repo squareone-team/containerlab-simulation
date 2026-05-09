@@ -167,11 +167,18 @@ fi
 # Start MariaDB
 log "Starting MariaDB..."
 mysqld_safe --user=mysql --datadir=/var/lib/mysql >/dev/null 2>&1 &
-sleep 3
+for i in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15; do
+	if mysqladmin -u root ping >/dev/null 2>&1; then
+		log "MariaDB is ready"
+		break
+	fi
+	[ "$i" -lt 15 ] && sleep 2
+done
+mysqladmin -u root ping >/dev/null 2>&1 || die "MariaDB did not become ready"
 
 # Initialize databases and users
 log "Creating JupyterHub and SLURM databases..."
-mysql -u root << 'MYSQLEOF' || true
+mysql -u root << 'MYSQLEOF'
 FLUSH PRIVILEGES;
 CREATE DATABASE IF NOT EXISTS slurm_acct_db;
 CREATE DATABASE IF NOT EXISTS jupyterhub CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
