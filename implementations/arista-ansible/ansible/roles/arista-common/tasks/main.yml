@@ -61,6 +61,7 @@
     configured_password: "{{ local_password }}"
     state: present
   tags: [users, aaa]
+  no_log: true
 
 # -----------------------------------------------------------------------------
 # 5. NTP

@@ -41,6 +41,27 @@
     - spine_p2p_peers is defined
     - p2p_links | default([]) | length == 0
 
+- name: "UNDERLAY | Normalize leaf p2p_links from spine*_p2p vars"
+  ansible.builtin.set_fact:
+    p2p_links:
+      - interface: "{{ spine01_interface | default('Ethernet1') }}"
+        ip: "{{ spine01_leaf_ip }}/31"
+        description: "FABRIC | P2P → spine-01"
+        mtu: 9214
+        remote_ip: "{{ spine01_ip }}"
+        remote_asn: "{{ spine_asn }}"
+      - interface: "{{ spine02_interface | default('Ethernet2') }}"
+        ip: "{{ spine02_leaf_ip }}/31"
+        description: "FABRIC | P2P → spine-02"
+        mtu: 9214
+        remote_ip: "{{ spine02_ip }}"
+        remote_asn: "{{ spine_asn }}"
+  when:
+    - "'leaves' in group_names"
+    - spine01_leaf_ip is defined
+    - spine02_leaf_ip is defined
+    - p2p_links | default([]) | length == 0
+
 # -----------------------------------------------------------------------------
 # 3. P2P interfaces (without BFD)
 # -----------------------------------------------------------------------------

@@ -5,40 +5,26 @@
 # ─────────────────────────────────────────────────────────────────────────────
 # 0. FACT BUILDING — Clean & Reliable
 # ─────────────────────────────────────────────────────────────────────────────
-- name: EVPN | Build all_l2vnis from communication_domains
+- name: EVPN | Build leaf_active_domains and derived facts
   ansible.builtin.set_fact:
-    all_l2vnis: >-
-      {{
-        communication_domains
-        | map(attribute='vlans', default=[])
-        | flatten
-        | list
-      }}
-  when:
-    - communication_domains is defined
-    - "'leaves' in group_names"
-  tags: [always]
-
-- name: EVPN | Derive leaf_active_l2vnis and domains
-  ansible.builtin.set_fact:
+    leaf_active_domains: "{{ communication_domains | default([]) }}"
     leaf_active_l2vnis: >-
       {{
-        all_l2vnis
-        | selectattr('id', 'in', (pod_vnis | default([])))
+        communication_domains
+        | default([])
+        | map(attribute='vlans', default=[])
+        | flatten
         | list
       }}
     leaf_active_vrfs: >-
       {{
         communication_domains
+        | default([])
         | map(attribute='vrf')
         | list
       }}
-    leaf_active_domains: "{{ communication_domains | list }}"
-  when:
-    - "'leaves' in group_names"
-    - all_l2vnis is defined
+  when: "'leaves' in group_names"
   tags: [always]
-
 # ─────────────────────────────────────────────────────────────────────────────
 # 1. Features & Global Settings
 # ─────────────────────────────────────────────────────────────────────────────

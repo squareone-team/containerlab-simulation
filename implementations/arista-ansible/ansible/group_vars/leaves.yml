@@ -11,6 +11,7 @@
 # -----------------------------------------------------------------------------
 bgp_timers_keepalive: 3
 bgp_timers_hold: 9
+underlay_asn: "{{ bgp_as }}"
 
 bgp_leaf_peer_group_underlay: SPINE-UNDERLAY
 bgp_leaf_peer_group_evpn:     SPINE-EVPN
