@@ -155,7 +155,9 @@
       - "maximum-paths {{ bgp_maximum_paths | default(2) }} ecmp {{ bgp_ecmp_paths | default(2) }}"
       - "bgp log-neighbor-changes"
       - "timers bgp {{ bgp_keepalive | default(3) }} {{ bgp_hold_time | default(9) }}"
-    parents: "router bgp {{ underlay_asn }}"
+    parents:
+      - "router bgp {{ bgp_as }}"
+    before: "end"
     match: line
   tags: [underlay, bgp]
 
@@ -168,6 +170,7 @@
     lines:
       - "10 match as-range {{ leaf_asn_min }}-{{ leaf_asn_max }} result accept"
     parents: "peer-filter {{ spine_bgp_peer_filter }}"
+    before: "end"
     match: line
   when: "'spines' in group_names"
   tags: [underlay, spine]
@@ -180,7 +183,9 @@
       - "neighbor {{ spine_bgp_peer_group }} send-community"
       - "neighbor {{ spine_bgp_peer_group }} bfd"
       - "neighbor {{ spine_bgp_peer_group }} route-map {{ underlay_route_map_out_name | default('RM-OUT') }} out"
-    parents: "router bgp {{ underlay_asn }}"
+    parents:
+      - "router bgp {{ bgp_as }}"
+    before: "end"
     match: line
   when: "'spines' in group_names"
   tags: [underlay, spine]
@@ -189,7 +194,9 @@
   arista.eos.eos_config:
     lines:
       - "bgp listen range 10.0.0.0/8 peer-group {{ spine_bgp_peer_group }} peer-filter {{ spine_bgp_peer_filter }}"
-    parents: "router bgp {{ underlay_asn }}"
+    parents:
+      - "router bgp {{ bgp_as }}"
+    before: "end"
     match: line
   when: "'spines' in group_names"
   tags: [underlay, spine]
@@ -207,7 +214,9 @@
       - "neighbor {{ leaf_bgp_peer_group }} bfd"
       - "neighbor {{ leaf_bgp_peer_group }} route-map {{ underlay_route_map_in_name | default('RM-IN') }} in"
       - "neighbor {{ leaf_bgp_peer_group }} route-map {{ underlay_route_map_out_name | default('RM-OUT') }} out"
-    parents: "router bgp {{ underlay_asn }}"
+    parents:
+      - "router bgp {{ bgp_as }}"
+    before: "end"
     match: line
   when: "'leaves' in group_names"
   tags: [underlay, leaf]
@@ -216,7 +225,9 @@
   arista.eos.eos_config:
     lines:
       - "neighbor {{ item.remote_ip }} peer group {{ leaf_bgp_peer_group }}"
-    parents: "router bgp {{ underlay_asn }}"
+    parents:
+      - "router bgp {{ bgp_as }}"
+    before: "end"
     match: line
   loop: "{{ p2p_links | default([]) }}"
   loop_control:
