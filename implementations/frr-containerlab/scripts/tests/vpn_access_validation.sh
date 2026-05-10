@@ -16,6 +16,7 @@ INTERNET_ROUTERS=(
 )
 
 VPN_ENDPOINT="https://198.51.100.20:8448/enroll"
+VPN_HEALTH_URL="https://198.51.100.20:8448/health"
 WG_ALLOWED="192.168.10.10/32,192.168.70.10/32,192.168.70.30/32"
 
 failures=0
@@ -25,6 +26,23 @@ fail() { echo "FAIL: $*"; failures=$((failures + 1)); }
 
 run_in() {
   docker exec "$1" sh -lc "$2"
+}
+
+wait_for_vpn_health() {
+  local label="$1"
+  local output
+  local attempt
+  for attempt in 1 2 3 4 5; do
+    output="$(run_in "$VPN_CLIENT" "curl -ks ${VPN_HEALTH_URL}" 2>/dev/null || true)"
+    if echo "$output" | grep -q '"ok": true'; then
+      ok "$label"
+      return 0
+    fi
+    sleep 2
+  done
+  fail "$label"
+  echo "$output" | sed -n '1,6p' | sed 's/^/  /'
+  return 1
 }
 
 expect_tcp() {
@@ -81,7 +99,16 @@ run_in "$VPN_CLIENT" "ip link del wg0 2>/dev/null || true; rm -f /tmp/vpn-client
 run_in "$VPN_GATEWAY" "wg show wg0 peers 2>/dev/null | while read peer; do wg set wg0 peer \"\$peer\" remove; done" >/dev/null 2>&1 || true
 run_in "$VPN_CLIENT" "umask 077; wg genkey | tee /tmp/vpn-client.key | wg pubkey > /tmp/vpn-client.pub" >/dev/null 2>&1 || true
 
-RESP=$(run_in "$VPN_CLIENT" "PUB=\$(cat /tmp/vpn-client.pub); curl -ks -X POST -H 'Content-Type: application/json' -d '{\"username\":\"student1\",\"password\":\"Student@2026\",\"public_key\":\"'\"\${PUB}\"'\"}' ${VPN_ENDPOINT}")
+wait_for_vpn_health "VPN enrollment portal health is OK"
+
+RESP=""
+for attempt in 1 2 3 4 5; do
+  RESP=$(run_in "$VPN_CLIENT" "PUB=\$(cat /tmp/vpn-client.pub); curl -ks -X POST -H 'Content-Type: application/json' -d '{\"username\":\"student1\",\"password\":\"Student@2026\",\"public_key\":\"'\"\${PUB}\"'\"}' ${VPN_ENDPOINT}" 2>/dev/null || true)
+  if echo "$RESP" | grep -q '"ok": true'; then
+    break
+  fi
+  sleep 2
+done
 
 if echo "$RESP" | grep -q '"ok": true'; then
   ok "student VPN enrollment accepted"

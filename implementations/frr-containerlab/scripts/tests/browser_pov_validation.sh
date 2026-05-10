@@ -21,6 +21,7 @@ JUPYTER_IP_URL="https://192.168.70.30:8080/hub/login"
 VPN_ENROLL_HOST="198.51.100.20"
 VPN_ENROLL_PORT="8448"
 VPN_ENDPOINT="https://198.51.100.20:8448/enroll"
+VPN_HEALTH_URL="https://198.51.100.20:8448/health"
 WG_ALLOWED="192.168.10.10/32,192.168.70.10/32,192.168.70.30/32"
 
 failures=0
@@ -82,6 +83,23 @@ expect_page() {
     fail "$label"
     echo "$output" | sed -n '1,8p' | sed 's/^/  /'
   fi
+}
+
+wait_for_vpn_health() {
+  local label="$1"
+  local output
+  local attempt
+  for attempt in 1 2 3 4 5; do
+    output="$(run_in "$VPN_CLIENT" "curl -ks ${VPN_HEALTH_URL}" 2>/dev/null || true)"
+    if echo "$output" | grep -q '"ok": true'; then
+      ok "$label"
+      return 0
+    fi
+    sleep 2
+  done
+  fail "$label"
+  echo "$output" | sed -n '1,6p' | sed 's/^/  /'
+  return 1
 }
 
 expect_tcp() {
@@ -146,14 +164,22 @@ clear_browser_roles() {
 }
 
 setup_vpn_tunnel() {
-  local response vpn_addr server_pub
+  local response vpn_addr server_pub attempt
+  local enroll_ok=0
 
   run_in "$VPN_CLIENT" "ip link del wg0 2>/dev/null || true; rm -f /tmp/browser-vpn.key /tmp/browser-vpn.pub" >/dev/null 2>&1 || true
   run_in "$VPN_GATEWAY" "wg show wg0 peers 2>/dev/null | while read peer; do wg set wg0 peer \"\$peer\" remove; done" >/dev/null 2>&1 || true
   run_in "$VPN_CLIENT" "umask 077; wg genkey | tee /tmp/browser-vpn.key | wg pubkey > /tmp/browser-vpn.pub" >/dev/null 2>&1 || true
 
-  response=$(run_in "$VPN_CLIENT" "PUB=\$(cat /tmp/browser-vpn.pub); curl -ks -X POST -H 'Content-Type: application/json' -d '{\"username\":\"student1\",\"password\":\"Student@2026\",\"public_key\":\"'\"\${PUB}\"'\"}' ${VPN_ENDPOINT}" 2>/dev/null || true)
-  if ! echo "$response" | grep -q '"ok": true'; then
+  for attempt in 1 2 3 4 5; do
+    response=$(run_in "$VPN_CLIENT" "PUB=\$(cat /tmp/browser-vpn.pub); curl -ks -X POST -H 'Content-Type: application/json' -d '{\"username\":\"student1\",\"password\":\"Student@2026\",\"public_key\":\"'\"\${PUB}\"'\"}' ${VPN_ENDPOINT}" 2>/dev/null || true)
+    if echo "$response" | grep -q '"ok": true'; then
+      enroll_ok=1
+      break
+    fi
+    sleep 2
+  done
+  if [ "$enroll_ok" -ne 1 ]; then
     fail "student VPN enrollment for browser rejected"
     echo "$response" | sed -n '1,4p' | sed 's/^/  /'
     return 1
@@ -216,6 +242,7 @@ expect_page "$ADMIN_BROWSER" "$JUPYTER_URL" "JupyterHub|jupyterhub" "admin brows
 expect_tcp "$ADMIN_BROWSER" "192.168.50.10" 22 "admin browser can open admin SSH transport"
 
 expect_tcp "$VPN_BROWSER" "$VPN_ENROLL_HOST" "$VPN_ENROLL_PORT" "VPN browser can reach HTTPS enrollment portal"
+wait_for_vpn_health "VPN enrollment portal health is OK"
 if setup_vpn_tunnel; then
   expect_page "$VPN_BROWSER" "$JUPYTER_IP_URL" "JupyterHub|jupyterhub" "VPN browser can load JupyterHub after WireGuard enrollment"
 fi
