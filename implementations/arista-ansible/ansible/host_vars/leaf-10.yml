@@ -322,3 +322,41 @@ login_banner: |
   *  ESI Data Center Lab — Authorised access only                  *
   *  All sessions are monitored and recorded                       *
   ******************************************************************
+
+evpn_spine_peers:
+  - neighbor_ip: 10.0.0.1    # spine-01 Loopback0
+    bgp_as:      65000
+  - neighbor_ip: 10.0.0.2    # spine-02 Loopback0
+    bgp_as:      65000
+    
+# -----------------------------------------------------------------------------
+# Communication Domains — consumed by arista-evpn role
+# -----------------------------------------------------------------------------
+communication_domains:
+  - vrf:         HPC
+    l3vni:       10400
+    rd:          "10.0.5.2:10400"
+    rt_import:   ["65000:10400"]
+    rt_export:   ["65000:10400"]
+    vlans:
+      - id:      400
+        name:    HPC-DATA
+        vni:     10400
+        vrf:     HPC
+        rt:      "65000:10400"
+        gateway: "192.168.60.1"
+        prefix:  "192.168.60.0/24"
+
+  - vrf:         STUDENT
+    l3vni:       10500
+    rd:          "10.0.5.2:10500"
+    rt_import:   ["65000:10500"]
+    rt_export:   ["65000:10500"]
+    vlans:
+      - id:      500
+        name:    STUDENT-WORKLOAD
+        vni:     10500
+        vrf:     STUDENT
+        rt:      "65000:10500"
+        gateway: "192.168.50.1"
+        prefix:  "192.168.50.0/24"

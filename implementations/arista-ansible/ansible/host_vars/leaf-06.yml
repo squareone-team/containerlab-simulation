@@ -79,3 +79,35 @@ host_ports:
 qos_policy_name: STORAGE-QOS
 qos_ceph_replication_dscp: 18
 bgp_community_storage: "65000:300"
+
+
+evpn_spine_peers:
+  - neighbor_ip: 10.0.0.1    # spine-01 Loopback0
+    bgp_as:      65000
+  - neighbor_ip: 10.0.0.2    # spine-02 Loopback0
+    bgp_as:      65000
+    
+# -----------------------------------------------------------------------------
+# Communication Domains — consumed by arista-evpn role
+# -----------------------------------------------------------------------------
+communication_domains:
+  - vrf:         STORAGE
+    l3vni:       10300
+    rd:          "10.0.3.2:10300"
+    rt_import:   ["65000:10300"]
+    rt_export:   ["65000:10300"]
+    vlans:
+      - id:      300
+        name:    STORAGE-CEPH-PUBLIC
+        vni:     10300
+        vrf:     STORAGE
+        rt:      "65000:10300"
+        gateway: "192.168.130.1"
+        prefix:  "192.168.130.0/24"
+      - id:      310
+        name:    STORAGE-CEPH-PRIVATE
+        vni:     10310
+        vrf:     STORAGE
+        rt:      "65000:10310"
+        gateway: "192.168.131.1"
+        prefix:  "192.168.131.0/24"

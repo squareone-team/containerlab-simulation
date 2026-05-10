@@ -311,3 +311,70 @@ vlan_vni_map:
   - vlan: 230
     vni: 10230
     name: SERVICES-WEB
+
+
+evpn_spine_peers:
+  - neighbor_ip: 10.0.0.1    # spine-01 Loopback0
+    bgp_as:      65000
+  - neighbor_ip: 10.0.0.2    # spine-02 Loopback0
+    bgp_as:      65000
+    
+# -----------------------------------------------------------------------------
+# Communication Domains — consumed by arista-evpn role
+# -----------------------------------------------------------------------------
+communication_domains:
+  - vrf:         ADMIN
+    l3vni:       10200
+    rd:          "10.0.2.2:10200"
+    rt_import:   ["65000:10200"]
+    rt_export:   ["65000:10200"]
+    vlans:
+      - id:      200
+        name:    ADMIN
+        vni:     10200
+        vrf:     ADMIN
+        rt:      "65000:10200"
+        gateway: "192.168.200.1"
+        prefix:  "192.168.200.0/24"
+
+  - vrf:         INFRA
+    l3vni:       10210
+    rd:          "10.0.2.2:10210"
+    rt_import:   ["65000:10210"]
+    rt_export:   ["65000:10210"]
+    vlans:
+      - id:      210
+        name:    INFRA-MGMT
+        vni:     10210
+        vrf:     INFRA
+        rt:      "65000:10210"
+        gateway: "192.168.20.1"
+        prefix:  "192.168.20.0/24"
+
+  - vrf:         LMS
+    l3vni:       10220
+    rd:          "10.0.2.2:10220"
+    rt_import:   ["65000:10220"]
+    rt_export:   ["65000:10220"]
+    vlans:
+      - id:      220
+        name:    LMS-STAFF
+        vni:     10220
+        vrf:     LMS
+        rt:      "65000:10220"
+        gateway: "192.168.30.1"
+        prefix:  "192.168.30.0/24"
+
+  - vrf:         SERVICES
+    l3vni:       10230
+    rd:          "10.0.2.2:10230"
+    rt_import:   ["65000:10230"]
+    rt_export:   ["65000:10230"]
+    vlans:
+      - id:      230
+        name:    SERVICES-WEB
+        vni:     10230
+        vrf:     SERVICES
+        rt:      "65000:10230"
+        gateway: "192.168.40.1"
+        prefix:  "192.168.40.0/24"

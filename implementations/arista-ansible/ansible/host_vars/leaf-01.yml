@@ -151,6 +151,11 @@ bgp_neighbors:
 bgp_networks:
   - "203.0.113.0/24"   # public address block (lab placeholder)
 
+evpn_spine_peers:
+  - neighbor_ip: 10.0.0.1    # spine-01 Loopback0
+    bgp_as:      65000
+  - neighbor_ip: 10.0.0.2    # spine-02 Loopback0
+    bgp_as:      65000
 # -----------------------------------------------------------------------------
 # VRFs hosted on this leaf (Edge Pod)
 # -----------------------------------------------------------------------------
@@ -191,3 +196,37 @@ monitor_sessions:
 # -----------------------------------------------------------------------------
 esi_id: "0000:0000:0001:0001:0001"
 lacp_system_id: "0001.0001.0001"
+
+
+communication_domains:
+  - vrf:         PUBLIC
+    description: "DMZ / Public-facing services"
+    l3vni:       10100
+    rd:          "10.0.1.1:10100"
+    rt_import:   ["65000:10100"]
+    rt_export:   ["65000:10100"]
+    rfc1918_block: true          # blocks RFC1918 routes leaking out to ISP
+    vlans:
+      - id:      100
+        name:    DMZ
+        vni:     10100
+        vrf:     PUBLIC
+        rt:      "65000:10100"
+        gateway: "192.168.100.1"
+        prefix:  "192.168.100.0/24"
+ 
+  - vrf:         CAMPUS
+    description: "Campus WiFi and wired endpoints"
+    l3vni:       10110
+    rd:          "10.0.1.1:10110"
+    rt_import:   ["65000:10110"]
+    rt_export:   ["65000:10110"]
+    vlans:
+      - id:      110
+        name:    CAMPUS-WIFI
+        vni:     10110
+        vrf:     CAMPUS
+        rt:      "65000:10110"
+        gateway: "192.168.110.1"
+        prefix:  "192.168.110.0/24"
+ 

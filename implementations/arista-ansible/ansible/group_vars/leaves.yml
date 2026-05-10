@@ -33,6 +33,13 @@ bgp_bfd_multiplier: 3
 # -----------------------------------------------------------------------------
 vtep_loopback: Loopback0
 vtep_source_interface: Loopback0
+
+evpn_spine_peers:
+  - neighbor_ip: 10.0.0.1    # spine-01 Loopback0
+    bgp_as:      65000
+  - neighbor_ip: 10.0.0.2    # spine-02 Loopback0
+    bgp_as:      65000
+
 vtep_interface: Loopback1
 vxlan_interface: Vxlan1
 vxlan_udp_port: 4789

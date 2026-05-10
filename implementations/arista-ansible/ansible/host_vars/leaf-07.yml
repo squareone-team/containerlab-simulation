@@ -182,3 +182,41 @@ vlan_vni_map:
   - vlan: 710
     vni: 10710
     name: TENANT-B
+
+evpn_spine_peers:
+  - neighbor_ip: 10.0.0.1    # spine-01 Loopback0
+    bgp_as:      65000
+  - neighbor_ip: 10.0.0.2    # spine-02 Loopback0
+    bgp_as:      65000
+    
+# -----------------------------------------------------------------------------
+# Communication Domains — consumed by arista-evpn role
+# -----------------------------------------------------------------------------
+communication_domains:
+  - vrf:         TENANT_A
+    l3vni:       10700
+    rd:          "10.0.4.1:10700"
+    rt_import:   ["65000:10700"]
+    rt_export:   ["65000:10700"]
+    vlans:
+      - id:      700
+        name:    TENANT-A
+        vni:     10700
+        vrf:     TENANT_A
+        rt:      "65000:10700"
+        gateway: "192.168.70.1"
+        prefix:  "192.168.70.0/24"
+
+  - vrf:         TENANT_B
+    l3vni:       10710
+    rd:          "10.0.4.1:10710"
+    rt_import:   ["65000:10710"]
+    rt_export:   ["65000:10710"]
+    vlans:
+      - id:      710
+        name:    TENANT-B
+        vni:     10710
+        vrf:     TENANT_B
+        rt:      "65000:10710"
+        gateway: "192.168.71.1"
+        prefix:  "192.168.71.0/24"
