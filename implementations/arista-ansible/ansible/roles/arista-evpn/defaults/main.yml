@@ -8,6 +8,10 @@ spine_evpn_peer_group: EVPN-LEAF
 
 vxlan_udp_port: 4789
 
+# VTEP source interface — Loopback0 in single-loopback cEOS mode
+vtep_loopback: Loopback0
+vtep_source_interface: Loopback0
+
 leaf_max_evpn_routes: 12000
 spine_max_evpn_routes: 12000
 

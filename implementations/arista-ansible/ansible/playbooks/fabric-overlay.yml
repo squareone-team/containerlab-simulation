@@ -82,16 +82,21 @@
 
     - name: "Report EVPN peer count"
       vars:
+        evpn_data: >-
+          {{ evpn_summary.stdout[0]
+             if evpn_summary.stdout[0] is mapping
+             else evpn_summary.stdout[0] | from_json }}
         evpn_peers: >-
-          {{ (bgp_summary.stdout[0] | from_json)
-            .vrfs | default({})
+          {{ evpn_data.vrfs | default({})
             | dict2items
             | selectattr('key', 'equalto', 'default')
             | map(attribute='value')
             | map(attribute='peers')
             | first | default({})
             | dict2items }}
-      assert:
+      ansible.builtin.assert:
         that:
           - evpn_peers | length > 0
         fail_msg: "No EVPN peers established on {{ inventory_hostname }}"
+        success_msg: "{{ inventory_hostname }} has {{ evpn_peers | length }} EVPN peer(s)"
+      when: evpn_summary.stdout is defined

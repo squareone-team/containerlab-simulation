@@ -202,6 +202,50 @@
   when: "'leaves' in group_names"
 
 # =============================================================================
+# 8. Spine EVPN Configuration — eBGP EVPN Route Reflector
+# Spines do NOT host VTEPs/VNIs. They reflect EVPN routes between all leaves.
+# =============================================================================
+
+- name: EVPN | Spine — Define LEAF-EVPN Peer Group
+  arista.eos.eos_config:
+    lines:
+      - "neighbor {{ spine_evpn_peer_group }} peer group"
+      - "neighbor {{ spine_evpn_peer_group }} send-community extended"
+      - "neighbor {{ spine_evpn_peer_group }} ebgp-multihop 3"
+      - "neighbor {{ spine_evpn_peer_group }} update-source Loopback0"
+      - "neighbor {{ spine_evpn_peer_group }} next-hop-unchanged"
+    parents: "router bgp {{ bgp_as }}"
+    match: line
+  when: "'spines' in group_names"
+  tags: [evpn, spine]
+
+- name: EVPN | Spine — Add EVPN leaf neighbors
+  arista.eos.eos_config:
+    lines:
+      - "neighbor {{ item.neighbor_ip }} peer group {{ spine_evpn_peer_group }}"
+      - "neighbor {{ item.neighbor_ip }} remote-as {{ item.bgp_as }}"
+    parents: "router bgp {{ bgp_as }}"
+    match: line
+  loop: "{{ evpn_peers | default([]) }}"
+  loop_control:
+    label: "{{ item.neighbor_ip }}"
+  when:
+    - "'spines' in group_names"
+    - evpn_peers is defined
+  tags: [evpn, spine]
+
+- name: EVPN | Spine — Activate EVPN Address-Family
+  arista.eos.eos_config:
+    lines:
+      - "neighbor {{ spine_evpn_peer_group }} activate"
+    parents:
+      - "router bgp {{ bgp_as }}"
+      - "address-family evpn"
+    match: line
+  when: "'spines' in group_names"
+  tags: [evpn, spine]
+
+# =============================================================================
 # Final Save
 # =============================================================================
 - name: EVPN | Save running config

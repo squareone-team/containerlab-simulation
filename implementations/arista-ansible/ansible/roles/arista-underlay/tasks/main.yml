@@ -156,7 +156,7 @@
       - "bgp log-neighbor-changes"
       - "timers bgp {{ bgp_keepalive | default(3) }} {{ bgp_hold_time | default(9) }}"
     parents: "router bgp {{ underlay_asn }}"
-    match: none
+    match: line
   tags: [underlay, bgp]
 
 # =============================================================================
