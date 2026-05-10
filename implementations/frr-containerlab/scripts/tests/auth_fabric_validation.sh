@@ -16,6 +16,7 @@ SERVER_HPC="${CLAB_PREFIX}-server-hpc-01"
 STUDENT_TARGET="192.168.10.10"
 ADMIN_TARGET="192.168.50.10"
 HPC_TARGET="192.168.70.10"
+JUPYTER_TARGET="192.168.70.30"
 AUTH_IP="192.168.50.80"
 RADIUS_SECRET_CAMPUS="CampusRadiusSecret@2026"
 
@@ -202,12 +203,17 @@ fi
 
 wait_for_tcp "$CAMPUS_STUDENT" "$STUDENT_TARGET" 22 "campus student to student pod SSH"
 wait_for_tcp "$CAMPUS_STUDENT" "$HPC_TARGET" 22 "campus student to HPC pod SSH"
+wait_for_tcp "$CAMPUS_STUDENT" "$JUPYTER_TARGET" 8080 "campus student to Jupyter frontend after NAC"
 expect_tcp_blocked "$CAMPUS_STUDENT" "$ADMIN_TARGET" 22 "campus student to admin pod SSH before auth prompt"
 
 wait_for_tcp "$CAMPUS_ADMIN" "$STUDENT_TARGET" 22 "campus admin to student pod SSH"
 wait_for_tcp "$CAMPUS_ADMIN" "$HPC_TARGET" 22 "campus admin to HPC pod SSH"
+wait_for_tcp "$CAMPUS_ADMIN" "$JUPYTER_TARGET" 8080 "campus admin to Jupyter frontend after NAC"
 wait_for_tcp "$CAMPUS_ADMIN" "$ADMIN_TARGET" 22 "campus admin to admin pod SSH"
 
+expect_tcp_blocked "$STUDENT_BP" "198.18.3.10" 80 "unauthenticated campus device to Internet web"
+expect_tcp_blocked "$STUDENT_BP" "198.51.100.10" 80 "unauthenticated campus device to DMZ web"
+expect_tcp_blocked "$STUDENT_BP" "$JUPYTER_TARGET" 8080 "unauthenticated campus device to Jupyter frontend"
 expect_tcp_blocked "$STUDENT_BP" "$STUDENT_TARGET" 22 "student-bp attacker to student pod SSH"
 expect_tcp_blocked "$STUDENT_BP" "$HPC_TARGET" 22 "student-bp attacker to HPC pod SSH"
 expect_tcp_blocked "$STUDENT_BP" "$ADMIN_TARGET" 22 "student-bp attacker to admin pod SSH"
@@ -235,6 +241,12 @@ expect_ssh_success "admin identity can access server-admin through TACACS+ autho
 
 expect_ssh_denied "wrong password is rejected by LDAP-backed TACACS+" \
   "$CAMPUS_ADMIN" admin1 WrongPassword "$HPC_TARGET"
+
+if run_in "$AUTH_SERVER" "tail -n 80 /var/log/esi-tacacs.log 2>/dev/null | grep -q '\"encrypted_body\": true' && ! tail -n 80 /var/log/esi-tacacs.log 2>/dev/null | grep -q '\"encrypted_body\": false'"; then
+  ok "TACACS+ exchanges use encrypted packet bodies"
+else
+  fail "TACACS+ exchanges did not prove encrypted packet bodies"
+fi
 
 info "Recent TACACS+ decisions:"
 docker exec "$AUTH_SERVER" sh -lc "tail -n 20 /var/log/esi-tacacs.log 2>/dev/null || true"

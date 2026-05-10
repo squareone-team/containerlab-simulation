@@ -46,10 +46,10 @@ bash implementations/frr-containerlab/configs/orientation-runbook.sh --deactivat
 
 | Command | Why you run it | Good sign |
 | --- | --- | --- |
-| `docker exec clab-esi-datacenter-student-bp-01 ping -c2 -W2 198.18.3.10` | campus test client can reach the simulated internet web server | succeeds |
-| `docker exec clab-esi-datacenter-student-bp-01 ping -c2 -W2 198.51.100.10` | campus test client can reach the DMZ server | succeeds |
-| `docker exec clab-esi-datacenter-student-bp-01 nslookup dmz-server-01.esi.internal 192.168.50.30` | DNS path to the DMZ service | resolves to `198.51.100.10` |
-| `docker exec clab-esi-datacenter-student-bp-01 curl -fsS --max-time 5 http://dmz-server-01.esi.internal` | checks HTTP data plane to DMZ | returns the DMZ test page |
+| `docker exec clab-esi-datacenter-campus-student-01 wget -qO- -T 5 http://internet.esi.dz/` | authenticated campus student can reach the simulated internet web server | returns `internet.esi.dz` |
+| `docker exec clab-esi-datacenter-campus-student-01 wget -qO- -T 5 http://esi.dz/` | authenticated campus student can reach the DMZ portal | returns `ESI.dz DMZ Portal` |
+| `docker exec clab-esi-datacenter-student-bp-01 timeout 4 nc -z -w2 198.18.3.10 80 || echo blocked` | unauthenticated campus client cannot reach Internet before NAC | prints `blocked` |
+| `docker exec clab-esi-datacenter-student-bp-01 timeout 4 nc -z -w2 198.51.100.10 80 || echo blocked` | unauthenticated campus client cannot reach DMZ before NAC | prints `blocked` |
 | `docker exec clab-esi-datacenter-internet-client-01 ping -c2 -W2 198.51.100.10` | external client can reach the DMZ IP | succeeds |
 | `docker exec clab-esi-datacenter-server-dmz-01 ip -4 -o addr show dev eth1` | confirms the DMZ host uses public/testnet addressing | `198.51.100.10/24` |
 
@@ -58,12 +58,12 @@ bash implementations/frr-containerlab/configs/orientation-runbook.sh --deactivat
 ```bash
 curl -s http://localhost:9090/api/v1/targets
 curl -s http://localhost:3000/api/health
-docker exec clab-esi-datacenter-frr-exporter head -40 /srv/www/metrics/metrics
+docker exec clab-esi-datacenter-fabric-telemetry head -40 /srv/www/metrics/metrics
 ```
 
-- Prometheus should show `frr-exporter:9342` as an up target.
+- Prometheus should show `fabric-telemetry:9342` as an up target.
 - Grafana should return a health payload without authentication errors.
-- The exporter file is the quickest place to see whether routing telemetry is still being generated.
+- The telemetry file is the quickest place to see whether routing data is still being generated.
 
 ## Automation
 

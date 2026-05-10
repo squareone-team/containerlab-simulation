@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import json
+import hashlib
 import os
 import re
 import socketserver
@@ -35,6 +36,9 @@ LDAP_URI = os.environ.get("LDAP_URI", "ldap://127.0.0.1:389")
 LDAP_BASE_DN = os.environ.get("LDAP_BASE_DN", "dc=esi,dc=internal")
 LDAP_BIND_DN = os.environ.get("LDAP_BIND_DN", f"cn=admin,{LDAP_BASE_DN}")
 LDAP_BIND_PASSWORD = os.environ.get("LDAP_BIND_PASSWORD", "DirectoryAdmin@2026")
+TACACS_SECRET = os.environ.get("ESI_TACACS_SECRET", "TacacsSecret@2026").encode("utf-8")
+ALLOW_UNENCRYPTED = os.environ.get("ESI_TACACS_ALLOW_UNENCRYPTED", "0") == "1"
+SEND_UNENCRYPTED = os.environ.get("ESI_TACACS_SEND_UNENCRYPTED", "0") == "1"
 LOG_FILE = os.environ.get("ESI_TACACS_LOG", "/var/log/esi-tacacs.log")
 
 RESOURCE_RULES = {
@@ -132,6 +136,18 @@ def recv_exact(sock, length):
 
 def to_text(data):
     return data.decode("utf-8", "replace")
+
+
+def tacacs_crypt(body, version, seq_no, session_id):
+    if not TACACS_SECRET:
+        return body
+    seed = struct.pack("!I", session_id) + TACACS_SECRET + bytes([version, seq_no])
+    pad = b""
+    previous = b""
+    while len(pad) < len(body):
+        previous = hashlib.md5(seed + previous).digest()
+        pad += previous
+    return bytes(value ^ pad_byte for value, pad_byte in zip(body, pad))
 
 
 def parse_authen_start(body):
@@ -237,8 +253,15 @@ def author_reply(status, message, args=None, data=b""):
 
 class TacacsHandler(socketserver.BaseRequestHandler):
     def reply(self, version, pkt_type, seq_no, session_id, body):
-        header = struct.pack("!BBBBII", version, pkt_type, seq_no + 1, UNENCRYPTED, session_id, len(body))
-        self.request.sendall(header + body)
+        reply_seq = seq_no + 1
+        if SEND_UNENCRYPTED:
+            flags = UNENCRYPTED
+            wire_body = body
+        else:
+            flags = 0
+            wire_body = tacacs_crypt(body, version, reply_seq, session_id)
+        header = struct.pack("!BBBBII", version, pkt_type, reply_seq, flags, session_id, len(body))
+        self.request.sendall(header + wire_body)
 
     def handle_authen(self, version, seq_no, session_id, body):
         try:
@@ -295,12 +318,32 @@ class TacacsHandler(socketserver.BaseRequestHandler):
         try:
             header = recv_exact(self.request, 12)
             version, pkt_type, seq_no, flags, session_id, length = struct.unpack("!BBBBII", header)
-            body = recv_exact(self.request, length)
-            if not flags & UNENCRYPTED:
-                if pkt_type == AUTHEN:
-                    self.reply(version, pkt_type, seq_no, session_id, authen_reply(AUTHEN_STATUS_ERROR, "encrypted_not_supported"))
-                elif pkt_type == AUTHOR:
-                    self.reply(version, pkt_type, seq_no, session_id, author_reply(AUTHOR_STATUS_ERROR, "encrypted_not_supported"))
+            wire_body = recv_exact(self.request, length)
+            if flags & UNENCRYPTED:
+                if not ALLOW_UNENCRYPTED:
+                    if pkt_type == AUTHEN:
+                        self.reply(version, pkt_type, seq_no, session_id, authen_reply(AUTHEN_STATUS_ERROR, "unencrypted_not_allowed"))
+                    elif pkt_type == AUTHOR:
+                        self.reply(version, pkt_type, seq_no, session_id, author_reply(AUTHOR_STATUS_ERROR, "unencrypted_not_allowed"))
+                    return
+                body = wire_body
+            else:
+                body = tacacs_crypt(wire_body, version, seq_no, session_id)
+            if not (flags & UNENCRYPTED):
+                log_event({
+                    "phase": "transport",
+                    "client": self.client_address[0],
+                    "pkt_type": pkt_type,
+                    "encrypted_body": True,
+                })
+            else:
+                log_event({
+                    "phase": "transport",
+                    "client": self.client_address[0],
+                    "pkt_type": pkt_type,
+                    "encrypted_body": False,
+                })
+            if flags & UNENCRYPTED and not ALLOW_UNENCRYPTED:
                 return
             if pkt_type == AUTHEN:
                 self.handle_authen(version, seq_no, session_id, body)

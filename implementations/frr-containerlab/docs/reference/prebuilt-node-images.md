@@ -34,7 +34,7 @@ not spend time running `apk update` and `apk add` during every deploy.
     `keepalived`, `nftables`, `tcpdump`, `curl`, `iputils`.
 
 - `esi/alpine-exporter:3.20`
-  - Packages the FRR exporter runtime:
+  - Packages the fabric telemetry scraper runtime:
     `busybox-extras`, `docker-cli`, `jq`, `iproute2`.
 
 ## Build

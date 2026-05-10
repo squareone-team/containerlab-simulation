@@ -15,8 +15,8 @@ INTERNET_ROUTERS=(
   "${CLAB_PREFIX}-internet-router-02"
 )
 
-VPN_ENDPOINT="http://198.51.100.20:8088/enroll"
-WG_ALLOWED="192.168.10.10/32,192.168.70.10/32"
+VPN_ENDPOINT="https://198.51.100.20:8448/enroll"
+WG_ALLOWED="192.168.10.10/32,192.168.70.10/32,192.168.70.30/32"
 
 failures=0
 
@@ -81,7 +81,7 @@ run_in "$VPN_CLIENT" "ip link del wg0 2>/dev/null || true; rm -f /tmp/vpn-client
 run_in "$VPN_GATEWAY" "wg show wg0 peers 2>/dev/null | while read peer; do wg set wg0 peer \"\$peer\" remove; done" >/dev/null 2>&1 || true
 run_in "$VPN_CLIENT" "umask 077; wg genkey | tee /tmp/vpn-client.key | wg pubkey > /tmp/vpn-client.pub" >/dev/null 2>&1 || true
 
-RESP=$(run_in "$VPN_CLIENT" "PUB=\$(cat /tmp/vpn-client.pub); curl -s -X POST -H 'Content-Type: application/json' -d '{\"username\":\"student1\",\"password\":\"Student@2026\",\"public_key\":\"'\"\${PUB}\"'\"}' ${VPN_ENDPOINT}")
+RESP=$(run_in "$VPN_CLIENT" "PUB=\$(cat /tmp/vpn-client.pub); curl -ks -X POST -H 'Content-Type: application/json' -d '{\"username\":\"student1\",\"password\":\"Student@2026\",\"public_key\":\"'\"\${PUB}\"'\"}' ${VPN_ENDPOINT}")
 
 if echo "$RESP" | grep -q '"ok": true'; then
   ok "student VPN enrollment accepted"
@@ -99,6 +99,7 @@ if [ -n "$VPN_ADDR" ] && [ -n "$SERVER_PUB" ]; then
   run_in "$VPN_CLIENT" "ip link set wg0 up"
   run_in "$VPN_CLIENT" "ip route replace 192.168.10.10/32 dev wg0"
   run_in "$VPN_CLIENT" "ip route replace 192.168.70.10/32 dev wg0"
+  run_in "$VPN_CLIENT" "ip route replace 192.168.70.30/32 dev wg0"
   run_in "$VPN_CLIENT" "ip route replace 192.168.50.10/32 dev wg0"
 else
   fail "missing VPN address or server key from enrollment"
@@ -106,9 +107,10 @@ fi
 
 expect_tcp "$VPN_CLIENT" "192.168.10.10" "22" "VPN client can reach student SSH"
 expect_tcp "$VPN_CLIENT" "192.168.70.10" "22" "VPN client can reach HPC SSH"
+expect_tcp "$VPN_CLIENT" "192.168.70.30" "8080" "VPN client can reach Jupyter frontend"
 expect_tcp_blocked "$VPN_CLIENT" "192.168.50.10" "22" "VPN client cannot reach admin SSH"
 
-RESP_ADMIN=$(run_in "$VPN_CLIENT" "PUB=\$(cat /tmp/vpn-client.pub); curl -s -X POST -H 'Content-Type: application/json' -d '{\"username\":\"admin1\",\"password\":\"Admin@2026\",\"public_key\":\"'\"\${PUB}\"'\"}' ${VPN_ENDPOINT}")
+RESP_ADMIN=$(run_in "$VPN_CLIENT" "PUB=\$(cat /tmp/vpn-client.pub); curl -ks -X POST -H 'Content-Type: application/json' -d '{\"username\":\"admin1\",\"password\":\"Admin@2026\",\"public_key\":\"'\"\${PUB}\"'\"}' ${VPN_ENDPOINT}")
 if echo "$RESP_ADMIN" | grep -q '"ok": false'; then
   ok "admin VPN enrollment rejected"
 else

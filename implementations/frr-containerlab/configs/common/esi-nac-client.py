@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
 import json
 import os
+import ssl
 import time
 import urllib.error
 import urllib.request
 
 
-NAC_URL = os.environ.get("ESI_NAC_URL", "http://192.168.110.1:8085/auth")
+NAC_URL = os.environ.get("ESI_NAC_URL", "https://192.168.110.1:8443/auth")
 NAC_USER = os.environ.get("ESI_NAC_USER", "")
 NAC_PASSWORD = os.environ.get("ESI_NAC_PASSWORD", "")
 REFRESH = int(os.environ.get("ESI_NAC_REFRESH", "600"))
@@ -32,7 +33,8 @@ def send_auth():
         method="POST",
     )
     try:
-        with urllib.request.urlopen(request, timeout=6) as response:
+        context = ssl._create_unverified_context() if NAC_URL.startswith("https://") else None
+        with urllib.request.urlopen(request, timeout=6, context=context) as response:
             status = response.status
             body = response.read().decode("utf-8", "replace")
     except (urllib.error.URLError, OSError, TimeoutError, ValueError) as exc:

@@ -8,6 +8,7 @@ RUN set -eux; \
       iproute2 \
       iptables \
       nftables \
+      openssl \
       openssh-client \
       openssh-server \
       openssh-server-pam \

@@ -211,23 +211,23 @@ generate_metrics() {
     echo "# TYPE fabric_uplink_status gauge"
     echo "# HELP fabric_pod_health_score Dynamic pod health score from 0 to 1 based on uplink and BGP readiness."
     echo "# TYPE fabric_pod_health_score gauge"
-    echo "# HELP frr_exporter_target_containers Number of FRR containers discovered for dynamic scrape."
-    echo "# TYPE frr_exporter_target_containers gauge"
-    echo "# HELP frr_exporter_last_scrape_success Last scrape generation status (1=success, 0=failure)."
-    echo "# TYPE frr_exporter_last_scrape_success gauge"
-    echo "# HELP frr_exporter_scrape_duration_seconds Dynamic scrape generation duration in seconds."
-    echo "# TYPE frr_exporter_scrape_duration_seconds gauge"
+    echo "# HELP fabric_telemetry_target_containers Number of FRR containers discovered for dynamic scrape."
+    echo "# TYPE fabric_telemetry_target_containers gauge"
+    echo "# HELP fabric_telemetry_last_scrape_success Last scrape generation status (1=success, 0=failure)."
+    echo "# TYPE fabric_telemetry_last_scrape_success gauge"
+    echo "# HELP fabric_telemetry_scrape_duration_seconds Dynamic scrape generation duration in seconds."
+    echo "# TYPE fabric_telemetry_scrape_duration_seconds gauge"
   } > "$tmp_file"
 
   frr_containers="$(docker ps --format '{{.Names}} {{.Image}}' | awk '$2 ~ /^frrouting\/frr/ || $2 ~ /^esi\/frr-node/ {print $1}' || true)"
   targets_count="$(printf '%s\n' "$frr_containers" | awk 'NF>0 {n++} END {print n+0}')"
 
-  printf 'frr_exporter_target_containers %s\n' "$targets_count" >> "$tmp_file"
+  printf 'fabric_telemetry_target_containers %s\n' "$targets_count" >> "$tmp_file"
 
   if [ "$targets_count" -eq 0 ]; then
-    printf 'frr_exporter_last_scrape_success 0\n' >> "$tmp_file"
+    printf 'fabric_telemetry_last_scrape_success 0\n' >> "$tmp_file"
     duration="$(awk -v s="$start_ts" -v e="$(date +%s)" 'BEGIN { printf "%.3f", e-s }')"
-    printf 'frr_exporter_scrape_duration_seconds %s\n' "$duration" >> "$tmp_file"
+    printf 'fabric_telemetry_scrape_duration_seconds %s\n' "$duration" >> "$tmp_file"
     mv "$tmp_file" "$OUT_FILE"
     return
   fi
@@ -314,9 +314,9 @@ generate_metrics() {
   emit_pod_health "storage" "leaf-07" "leaf-08" "$tmp_file"
   emit_pod_health "student" "leaf-09" "leaf-10" "$tmp_file"
 
-  printf 'frr_exporter_last_scrape_success 1\n' >> "$tmp_file"
+  printf 'fabric_telemetry_last_scrape_success 1\n' >> "$tmp_file"
   duration="$(awk -v s="$start_ts" -v e="$(date +%s)" 'BEGIN { printf "%.3f", e-s }')"
-  printf 'frr_exporter_scrape_duration_seconds %s\n' "$duration" >> "$tmp_file"
+  printf 'fabric_telemetry_scrape_duration_seconds %s\n' "$duration" >> "$tmp_file"
 
   mv "$tmp_file" "$OUT_FILE"
 }

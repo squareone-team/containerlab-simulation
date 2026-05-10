@@ -16,8 +16,8 @@ It is aligned with the `feature/authentication-fabric` branch commits:
 | LDAP directory | `auth-server` | loopback `389` only | stores users, device identities, groups, and descriptions |
 | TACACS+ | `auth-server` | TCP `49` | protects SSH logins to student, HPC, and admin servers |
 | RADIUS | `auth-server` | UDP `1812` | returns campus device roles and VPN student role |
-| Campus NAC | `campus-bp` | TCP `8085` on `192.168.110.1` | turns RADIUS roles into nftables source-IP sets |
-| VPN gateway | `vpn-gateway` | TCP `8088`, UDP `51820` on `198.51.100.20` | enrolls students, installs WireGuard peers, NATs tunnel clients |
+| Campus NAC | `campus-bp` | HTTP redirect `80`, HTTPS `8443` on `192.168.110.1` | turns RADIUS roles into nftables source-IP sets |
+| VPN gateway | `vpn-gateway` | HTTPS `8448`, UDP `51820` on `198.51.100.20` | enrolls students, installs WireGuard peers, NATs tunnel clients |
 | Ring 1 firewall | `firewall-01/02` | transit only | allows only approved cross-VRF flows |
 
 The important part: reaching TCP/22 is not the same as being authorized. The packet path may allow SSH, but the target server still asks TACACS+, and TACACS+ asks LDAP.
@@ -199,10 +199,13 @@ Good log evidence:
 
 ## Try The Unauthenticated Campus Client
 
-`student-bp-01` is a same-subnet campus client with no NAC enrollment. It should keep basic campus/Internet service access but not protected SSH.
+`student-bp-01` is a same-subnet campus client with no NAC enrollment. It should reach only the NAC portal on `campus-bp`; Internet, DMZ, Jupyter, SSH, TACACS+, and LDAP paths stay blocked until a device is authenticated into a NAC role.
 
 ```bash
 docker exec clab-esi-datacenter-student-bp-01 sh -lc 'ip -4 addr show dev eth1'
+docker exec clab-esi-datacenter-student-bp-01 sh -lc 'nc -z -w3 198.18.3.10 80 && echo unexpected-internet || echo blocked-internet'
+docker exec clab-esi-datacenter-student-bp-01 sh -lc 'nc -z -w3 198.51.100.10 80 && echo unexpected-dmz || echo blocked-dmz'
+docker exec clab-esi-datacenter-student-bp-01 sh -lc 'nc -z -w3 192.168.70.30 8080 && echo unexpected-jupyter || echo blocked-jupyter'
 docker exec clab-esi-datacenter-student-bp-01 sh -lc 'nc -z -w3 192.168.10.10 22 && echo unexpected-student-ssh || echo blocked-student-ssh'
 docker exec clab-esi-datacenter-student-bp-01 sh -lc 'nc -z -w3 192.168.70.10 22 && echo unexpected-hpc-ssh || echo blocked-hpc-ssh'
 docker exec clab-esi-datacenter-student-bp-01 sh -lc 'nc -z -w3 192.168.50.10 22 && echo unexpected-admin-ssh || echo blocked-admin-ssh'
@@ -211,6 +214,63 @@ docker exec clab-esi-datacenter-student-bp-01 sh -lc 'nc -z -w3 192.168.50.80 38
 ```
 
 The direct LDAP/TACACS blocks are important: clients do not get to query the identity back end themselves.
+
+## Try The Browser POV Scenarios
+
+The Firefox containers are not extra campus clients. They share the network namespace of the real device they represent, so the browser sees the same IP, routes, NAC role, and firewall policy as that device.
+
+| Browser | Host URL | Real network identity |
+| --- | --- | --- |
+| guest campus browser | `http://127.0.0.1:5813` | `student-bp-01`, `192.168.110.30`, unauthenticated |
+| student campus browser | `http://127.0.0.1:5811` | `campus-student-01`, `192.168.110.31` |
+| admin campus browser | `http://127.0.0.1:5812` | `campus-admin-01`, `192.168.110.32` |
+| VPN browser | `http://127.0.0.1:5814` | `vpn-client-01`, `198.18.4.20` before tunnel |
+
+Unauthenticated campus:
+
+1. Open `http://127.0.0.1:5813` on the host.
+2. In Firefox, open `http://192.168.110.1/`.
+3. Accept the lab self-signed certificate when redirected to HTTPS.
+4. Confirm the NAC portal appears.
+5. Try `http://internet.esi.dz/`, `http://esi.dz/`, and `https://hpc-jupyter.esi.internal:8080/hub/login`.
+
+Expected result: only the NAC portal works. Internet, DMZ, and Jupyter are blocked because `192.168.110.30` is absent from both NAC role sets.
+
+Campus student:
+
+1. Open `http://127.0.0.1:5811`.
+2. Open `http://192.168.110.1/`.
+3. Log in with device identity `dev-campus-student-01` and password `DeviceStudent@2026`.
+4. Use the granted page links, or manually open:
+   - `http://internet.esi.dz/`
+   - `http://esi.dz/`
+   - `https://hpc-jupyter.esi.internal:8080/hub/login`
+
+Expected result: Internet, the ESI DMZ page, and Jupyter load. Student access to admin SSH remains blocked before a password prompt.
+
+Campus admin:
+
+1. Open `http://127.0.0.1:5812`.
+2. Open `http://192.168.110.1/`.
+3. Log in with device identity `dev-campus-admin-01` and password `DeviceAdmin@2026`.
+4. Open `https://hpc-jupyter.esi.internal:8080/hub/login`, `http://esi.dz/`, and `http://internet.esi.dz/`.
+
+Expected result: admin browsing works, and admin SSH transport to the admin pod is allowed. TACACS+ still decides whether the human identity can log in.
+
+VPN browser:
+
+1. Open `http://127.0.0.1:5814`.
+2. Open `https://198.51.100.20:8448/` to confirm the external browser can reach the VPN enrollment endpoint.
+3. Complete the WireGuard enrollment with the CLI steps in the next section.
+4. After the tunnel is up, open `https://192.168.70.30:8080/hub/login` from the VPN browser.
+
+Expected result: the browser can reach the HTTPS enrollment endpoint from the Internet side, and after student VPN enrollment it can browse the Jupyter frontend through the tunnel. Use the Jupyter IP for this browser path unless you deliberately add VPN DNS service.
+
+The automated proof for all browser paths is:
+
+```bash
+bash implementations/frr-containerlab/scripts/tests/browser_pov_validation.sh
+```
 
 ## Try Remote Student VPN
 
@@ -224,13 +284,13 @@ docker exec clab-esi-datacenter-vpn-client-01 sh -lc 'umask 077; wg genkey | tee
 Send student credentials and the public key to the enrollment API:
 
 ```bash
-docker exec clab-esi-datacenter-vpn-client-01 sh -lc 'PUB=$(cat /tmp/vpn.pub); printf "{\"username\":\"student1\",\"password\":\"Student@2026\",\"public_key\":\"%s\"}" "$PUB" | curl -s -X POST -H "Content-Type: application/json" -d @- http://198.51.100.20:8088/enroll'
+docker exec clab-esi-datacenter-vpn-client-01 sh -lc 'PUB=$(cat /tmp/vpn.pub); printf "{\"username\":\"student1\",\"password\":\"Student@2026\",\"public_key\":\"%s\"}" "$PUB" | curl -ks -X POST -H "Content-Type: application/json" -d @- https://198.51.100.20:8448/enroll'
 ```
 
 Expected response shape:
 
 ```json
-{"ok": true, "address": "10.250.200.10/32", "endpoint": "198.51.100.20:51820", "server_pubkey": "...", "allowed_ips": ["192.168.10.10/32", "192.168.70.10/32"]}
+{"ok": true, "address": "10.250.200.10/32", "endpoint": "198.51.100.20:51820", "server_pubkey": "...", "allowed_ips": ["192.168.10.10/32", "192.168.70.10/32", "192.168.70.30/32"]}
 ```
 
 Configure the tunnel using the `server_pubkey` returned by the API:
@@ -238,7 +298,7 @@ Configure the tunnel using the `server_pubkey` returned by the API:
 ```bash
 docker exec clab-esi-datacenter-vpn-client-01 sh -lc 'ip link add wg0 type wireguard 2>/dev/null || true'
 docker exec clab-esi-datacenter-vpn-client-01 sh -lc 'ip addr replace 10.250.200.10/32 dev wg0'
-docker exec clab-esi-datacenter-vpn-client-01 sh -lc 'wg set wg0 private-key /tmp/vpn.key peer <SERVER_PUBKEY> endpoint 198.51.100.20:51820 allowed-ips 192.168.10.10/32,192.168.70.10/32 persistent-keepalive 25'
+docker exec clab-esi-datacenter-vpn-client-01 sh -lc 'wg set wg0 private-key /tmp/vpn.key peer <SERVER_PUBKEY> endpoint 198.51.100.20:51820 allowed-ips 192.168.10.10/32,192.168.70.10/32,192.168.70.30/32 persistent-keepalive 25'
 docker exec clab-esi-datacenter-vpn-client-01 sh -lc 'ip link set wg0 up'
 docker exec clab-esi-datacenter-vpn-client-01 sh -lc 'ip route replace 192.168.10.10/32 dev wg0'
 docker exec clab-esi-datacenter-vpn-client-01 sh -lc 'ip route replace 192.168.70.10/32 dev wg0'
@@ -255,7 +315,7 @@ docker exec clab-esi-datacenter-vpn-client-01 sh -lc 'nc -z -w3 192.168.70.10 22
 docker exec clab-esi-datacenter-vpn-client-01 sh -lc 'nc -z -w3 192.168.50.10 22 && echo unexpected-admin-open || echo vpn-admin-blocked'
 ```
 
-The normal enrollment response lists only `192.168.10.10/32` and `192.168.70.10/32` in `allowed_ips`, so the client itself has no valid WireGuard peer for the admin server. If you deliberately broaden the client peer for a deeper negative test, the VPN gateway forwarding rules, Ring 1 firewall, and `server-admin-01` host policy still do not permit VPN-to-admin SSH.
+The normal enrollment response lists only student/HPC SSH targets plus the Jupyter frontend in `allowed_ips`, so the client itself has no valid WireGuard peer for the admin server. If you deliberately broaden the client peer for a deeper negative test, the VPN gateway forwarding rules, Ring 1 firewall, and `server-admin-01` host policy still do not permit VPN-to-admin SSH.
 
 Use the human student identity over the tunnel:
 
@@ -276,7 +336,7 @@ docker exec clab-esi-datacenter-server-admin-01 nft list ruleset | grep '198.51.
 Admin VPN enrollment is intentionally rejected:
 
 ```bash
-docker exec clab-esi-datacenter-vpn-client-01 sh -lc 'PUB=$(cat /tmp/vpn.pub); printf "{\"username\":\"admin1\",\"password\":\"Admin@2026\",\"public_key\":\"%s\"}" "$PUB" | curl -s -X POST -H "Content-Type: application/json" -d @- http://198.51.100.20:8088/enroll'
+docker exec clab-esi-datacenter-vpn-client-01 sh -lc 'PUB=$(cat /tmp/vpn.pub); printf "{\"username\":\"admin1\",\"password\":\"Admin@2026\",\"public_key\":\"%s\"}" "$PUB" | curl -ks -X POST -H "Content-Type: application/json" -d @- https://198.51.100.20:8448/enroll'
 docker exec clab-esi-datacenter-vpn-gateway tail -n 20 /var/log/esi-vpn-auth.log
 docker exec clab-esi-datacenter-auth-server tail -n 20 /var/log/esi-radius.log
 ```
@@ -342,8 +402,8 @@ The lab is intentionally observable. That is great for learning and risky for pr
 | WireGuard data plane | encrypted tunnel on UDP `51820` | inner SSH traffic is hidden on the Internet-facing link |
 | SSH login session | SSH transport encryption | password and commands are not readable after SSH key exchange |
 | RADIUS | shared-secret password hiding only | user name, NAS ID, and role attributes may still be visible |
-| TACACS+ | custom PoC uses unencrypted TACACS+ packets | isolate it in the management plane or replace with encrypted production AAA |
-| NAC API and VPN enrollment API | HTTP in this lab | credentials are visible if you capture those links; use HTTPS in production |
+| TACACS+ | custom PoC uses encrypted TACACS+ packet bodies with a shared lab secret | still isolate it in the management plane and replace demo secrets in production |
+| NAC portal and VPN enrollment API | HTTPS with lab self-signed certificates | credentials are encrypted on the wire; still replace demo passwords and certs in production |
 | LDAP | loopback only inside `auth-server` | not exposed on the fabric, but also not LDAPS |
 
 For packet-level proof, use [Packet capture and Wireshark](./packet-capture-and-wireshark.md).

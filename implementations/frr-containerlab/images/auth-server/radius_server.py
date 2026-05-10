@@ -34,7 +34,7 @@ LOG_FILE = os.environ.get("ESI_RADIUS_LOG", "/var/log/esi-radius.log")
 
 CLIENTS_RAW = os.environ.get(
     "ESI_RADIUS_CLIENTS",
-    "10.200.0.2:CampusRadiusSecret@2026:campus-nac,198.51.100.20:VpnRadiusSecret@2026:vpn-gateway",
+    "192.168.110.1:CampusRadiusSecret@2026:campus-nac,198.51.100.20:VpnRadiusSecret@2026:vpn-gateway",
 )
 
 

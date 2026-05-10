@@ -9,13 +9,13 @@ The honest encryption story for this lab:
 | WireGuard tunnel | `udp port 51820` | outer IPs, UDP lengths, handshake/data packets | yes for tunnel payload |
 | SSH to protected servers | `tcp port 22` | SSH banner and key exchange, then encrypted application data | yes after SSH setup |
 | RADIUS | `udp port 1812` | user name, NAS ID, Filter-Id role, hidden password field | partial, not full packet encryption |
-| TACACS+ PoC | `tcp port 49` | custom TACACS+ request and response payload | no in this lab |
-| NAC registration API | `tcp port 8085` | HTTP JSON with device credentials | no in this lab |
-| VPN enrollment API | `tcp port 8088` | HTTP JSON with username, password, and public key | no in this lab |
+| TACACS+ PoC | `tcp port 49` | header metadata; body is encrypted by the TACACS+ shared-secret method | yes for packet body |
+| NAC registration API | `tcp port 8443` | TLS handshake and encrypted HTTPS payload | yes, self-signed lab certificate |
+| VPN enrollment API | `tcp port 8448` | TLS handshake and encrypted HTTPS payload | yes, self-signed lab certificate |
 | LDAP | `tcp port 389` on loopback | LDAP binds/searches only inside `auth-server` | not exposed on fabric, not LDAPS |
 | VXLAN overlay | `udp port 4789` | outer VTEP IPs and VNI | encapsulated, not encrypted |
 
-Use these captures to prove which data is protected and which PoC control-plane paths would need TLS or encrypted AAA in production.
+Use these captures to prove which data is protected and which PoC control-plane paths would still need production-grade certificates, managed secrets, or RadSec/DTLS-style hardening.
 
 ## Capture Workflow
 
@@ -121,41 +121,40 @@ Expected observation:
 
 ## VPN Enrollment Visibility
 
-This capture proves the current enrollment API is HTTP, not HTTPS.
+This capture proves the enrollment API is now HTTPS. You should see TLS records, not JSON credentials.
 
 Terminal A:
 
 ```bash
 PID=$(docker inspect -f '{{.State.Pid}}' clab-esi-datacenter-vpn-gateway)
-sudo nsenter -t "$PID" -n tcpdump -i eth1 -U -w /tmp/vpn-enroll-http.pcap 'tcp port 8088'
+sudo nsenter -t "$PID" -n tcpdump -i eth1 -U -w /tmp/vpn-enroll-https.pcap 'tcp port 8448'
 ```
 
 Terminal B:
 
 ```bash
-docker exec clab-esi-datacenter-vpn-client-01 sh -lc 'PUB=$(cat /tmp/vpn.pub); printf "{\"username\":\"student1\",\"password\":\"Student@2026\",\"public_key\":\"%s\"}" "$PUB" | curl -s -X POST -H "Content-Type: application/json" -d @- http://198.51.100.20:8088/enroll'
+docker exec clab-esi-datacenter-vpn-client-01 sh -lc 'PUB=$(cat /tmp/vpn.pub); printf "{\"username\":\"student1\",\"password\":\"Student@2026\",\"public_key\":\"%s\"}" "$PUB" | curl -ks -X POST -H "Content-Type: application/json" -d @- https://198.51.100.20:8448/enroll'
 ```
 
 Wireshark display filters:
 
 ```text
-tcp.port == 8088
-http
-http.request.method == "POST"
+tcp.port == 8448
+tls
 ```
 
 Expected observation:
 
-- You can follow the TCP stream and see JSON fields.
-- This is useful for learning the flow, but it is not production-safe.
+- You can see the TLS handshake and encrypted application records.
+- You should not see the username, password, or public key in cleartext.
 
 ## Campus NAC And RADIUS
 
-Capture campus-side NAC HTTP on `campus-bp`:
+Capture campus-side NAC HTTPS on `campus-bp`:
 
 ```bash
 PID=$(docker inspect -f '{{.State.Pid}}' clab-esi-datacenter-campus-bp)
-sudo nsenter -t "$PID" -n tcpdump -i br-student -U -w /tmp/campus-nac-http.pcap 'tcp port 8085'
+sudo nsenter -t "$PID" -n tcpdump -i br-student -U -w /tmp/campus-nac-https.pcap 'tcp port 8443'
 ```
 
 Trigger a registration:
@@ -174,8 +173,8 @@ sudo nsenter -t "$PID" -n tcpdump -i eth3 -U -w /tmp/campus-radius.pcap 'host 19
 Display filters:
 
 ```text
-tcp.port == 8085
-http
+tcp.port == 8443
+tls
 udp.port == 1812
 radius
 radius.User_Name
@@ -184,7 +183,7 @@ radius.Filter_Id
 
 Expected observation:
 
-- NAC HTTP on `br-student` exposes the device credential JSON in this lab.
+- NAC HTTPS on `br-student` exposes only TLS metadata; the device credentials are encrypted.
 - RADIUS shows user and role attributes, such as `Filter-Id = campus-student`.
 - RADIUS does not provide full packet encryption; only the password field is hidden by the shared-secret method.
 
@@ -215,9 +214,9 @@ frame contains "resource=admin"
 
 Expected observation:
 
-- The custom TACACS+ PoC uses the unencrypted flag.
-- Wireshark may show readable username/resource data, or you can use Follow TCP Stream.
-- The log should show `resource_not_allowed` for `student1` on resource `admin`.
+- The TACACS+ header is visible, but the body should not expose `student1`, the password, or `resource=admin` in clear text.
+- The display filters that search the frame for `student1` or `resource=admin` should not match the TCP/49 capture.
+- The auth-server log should show `encrypted_body: true` plus `resource_not_allowed` for `student1` on resource `admin`.
 
 Now capture SSH itself:
 
@@ -317,7 +316,7 @@ By default this may be blocked on the client because the enrolled WireGuard peer
 ```bash
 docker exec clab-esi-datacenter-vpn-client-01 sh -lc 'PEER=$(wg show wg0 peers | head -n 1); wg set wg0 peer "$PEER" allowed-ips 192.168.10.10/32,192.168.70.10/32,192.168.50.10/32'
 docker exec clab-esi-datacenter-vpn-client-01 sh -lc 'nc -z -w3 192.168.50.10 22 && echo unexpected || echo blocked'
-docker exec clab-esi-datacenter-vpn-client-01 sh -lc 'PEER=$(wg show wg0 peers | head -n 1); wg set wg0 peer "$PEER" allowed-ips 192.168.10.10/32,192.168.70.10/32'
+docker exec clab-esi-datacenter-vpn-client-01 sh -lc 'PEER=$(wg show wg0 peers | head -n 1); wg set wg0 peer "$PEER" allowed-ips 192.168.10.10/32,192.168.70.10/32,192.168.70.30/32'
 ```
 
 After the test:

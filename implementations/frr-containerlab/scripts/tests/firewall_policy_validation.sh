@@ -102,6 +102,8 @@ test_tacacs_auth_policy_present() {
         rule_present "ip saddr @campus_nac_gateway ip daddr @core_infra_auth udp dport 1812 ct state new" &&
         rule_present "ip saddr @vpn_gateway ip daddr @core_infra_auth udp dport 1812 ct state new" &&
         rule_present "ip saddr @vpn_gateway ip daddr @vpn_student_ssh_targets tcp dport 22 ct state new" &&
+        rule_present "ip saddr @cluster_campus_access ip daddr 192.168.70.30 tcp dport 8080 ct state new" &&
+        rule_present "ip saddr @vpn_gateway ip daddr 192.168.70.30 tcp dport 8080 ct state new" &&
         rule_present "ip saddr @cluster_campus_access ip daddr @core_infra_auth tcp dport { 49, 389, 8080 }"
 }
 

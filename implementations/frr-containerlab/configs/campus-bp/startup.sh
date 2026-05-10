@@ -40,6 +40,7 @@ ip route replace 192.168.50.80/32 via 10.200.0.1 dev eth3 src 192.168.110.1
 ip route replace 192.168.10.10/32 via 10.200.0.1 dev eth3
 ip route replace 192.168.50.10/32 via 10.200.0.1 dev eth3
 ip route replace 192.168.70.10/32 via 10.200.0.1 dev eth3
+ip route replace 192.168.70.30/32 via 10.200.0.1 dev eth3
 
 for IFACE in eth4 eth5 eth6; do
     wait_for_iface "$IFACE"
@@ -58,9 +59,23 @@ iptables -t nat -C POSTROUTING -s 192.168.110.0/24 -o eth1 -j MASQUERADE 2>/dev/
 
 mkdir -p /var/log
 if [ -f /usr/local/bin/esi-nac-server.py ]; then
+    mkdir -p /etc/esi-nac/tls
+    if [ ! -f /etc/esi-nac/tls/nac.key ] || [ ! -f /etc/esi-nac/tls/nac.crt ]; then
+        openssl req -x509 -newkey rsa:2048 -nodes \
+            -keyout /etc/esi-nac/tls/nac.key \
+            -out /etc/esi-nac/tls/nac.crt \
+            -days 365 \
+            -subj "/C=DZ/ST=Algiers/L=Oued Smar/O=ESI/CN=192.168.110.1" \
+            >/dev/null 2>&1
+        chmod 600 /etc/esi-nac/tls/nac.key
+    fi
     ESI_RADIUS_HOST="192.168.50.80" \
     ESI_RADIUS_SECRET="CampusRadiusSecret@2026" \
     ESI_NAC_LISTEN="192.168.110.1" \
-    ESI_NAC_PORT="8085" \
+    ESI_NAC_PORT="8443" \
+    ESI_NAC_REDIRECT_PORT="80" \
+    ESI_NAC_TLS="1" \
+    ESI_NAC_TLS_CERT="/etc/esi-nac/tls/nac.crt" \
+    ESI_NAC_TLS_KEY="/etc/esi-nac/tls/nac.key" \
     nohup python3 /usr/local/bin/esi-nac-server.py >/var/log/esi-nac-server.log 2>&1 &
 fi

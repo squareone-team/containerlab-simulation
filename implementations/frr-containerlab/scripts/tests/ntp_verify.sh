@@ -16,10 +16,14 @@ discover_nodes() {
 
 wait_for_spine_sync() {
   local node="$1"
-  local retries=30
+  local retries="${NTP_SPINE_SYNC_RETRIES:-90}"
+  local stratum=""
   while [ $retries -gt 0 ]; do
     if $C-$node chronyc sources 2>/dev/null | grep -qE '^\^\*.*192\.168\.50\.20'; then
-      return 0
+      stratum=$($C-$node chronyc tracking 2>/dev/null | awk -F: '/Stratum/ {gsub(/[[:space:]]/, "", $2); print $2}')
+      if [ -n "$stratum" ] && [ "$stratum" != "0" ] && [ "$stratum" != "10" ]; then
+        return 0
+      fi
     fi
     retries=$((retries - 1))
     sleep 2

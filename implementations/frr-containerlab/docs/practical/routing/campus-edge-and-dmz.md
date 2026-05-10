@@ -19,11 +19,12 @@ This page is for the campus test segment, the WiFi management path, and the DMZ 
 | Command | Why you run it | Good sign |
 | --- | --- | --- |
 | `docker exec clab-esi-datacenter-student-bp-01 ip -4 addr show dev eth1` | confirms the campus client is on the right subnet | `192.168.110.30/24` |
-| `docker exec clab-esi-datacenter-student-bp-01 cat /etc/resolv.conf` | confirms DNS is prepointed to core services | nameserver `192.168.50.30` |
-| `docker exec clab-esi-datacenter-student-bp-01 nslookup dmz-server-01.esi.internal 192.168.50.30` | checks campus-to-DNS path | returns `198.51.100.10` |
-| `docker exec clab-esi-datacenter-student-bp-01 curl -s http://dmz-server-01.esi.internal` | checks campus-to-DMZ HTTP | returns the DMZ page |
-| `docker exec clab-esi-datacenter-student-bp-01 nslookup ntp-server.esi.internal 192.168.50.30` | checks campus DNS service access | returns `192.168.50.20` |
-| `docker exec clab-esi-datacenter-student-bp-01 nc -zu -w2 192.168.50.20 123` | checks allowed UDP path to NTP | command exits cleanly |
+| `docker exec clab-esi-datacenter-student-bp-01 cat /etc/resolv.conf` | confirms the unauthenticated client is configured like a campus host | nameserver `192.168.50.30` |
+| `docker exec clab-esi-datacenter-student-bp-01 nc -z -w3 198.51.100.10 80 || echo blocked` | proves unauthenticated campus cannot reach DMZ HTTP | prints `blocked` |
+| `docker exec clab-esi-datacenter-student-bp-01 nc -z -w3 198.18.3.10 80 || echo blocked` | proves unauthenticated campus cannot reach Internet HTTP | prints `blocked` |
+| `docker exec clab-esi-datacenter-campus-student-01 nslookup dmz-server-01.esi.internal 192.168.50.30` | checks authenticated campus-to-DNS path | returns `198.51.100.10` |
+| `docker exec clab-esi-datacenter-campus-student-01 wget -qO- http://dmz-server-01.esi.internal` | checks authenticated campus-to-DMZ HTTP | returns the DMZ page |
+| `docker exec clab-esi-datacenter-campus-student-01 nslookup ntp-server.esi.internal 192.168.50.30` | checks authenticated campus DNS service access | returns `192.168.50.20` |
 | `docker exec clab-esi-datacenter-campus-bp ip route get 192.168.50.80` | checks NAC RADIUS source identity | contains `src 192.168.110.1` |
 
 ## Campus NAC Checks
@@ -36,6 +37,7 @@ docker exec clab-esi-datacenter-campus-bp nft list set inet campus_nac campus_ad
 - `campus_students` should include `192.168.110.31`.
 - `campus_admins` should include `192.168.110.32`.
 - `student-bp-01` should not appear in either set.
+- `student-bp-01` should reach the NAC portal only; Internet, DMZ, Jupyter, SSH, TACACS+, and LDAP are blocked until authentication.
 - Protected servers accept the campus subnet as a possible SSH source; role separation is enforced at `campus-bp`, not by fixed endpoint IPs on the servers.
 
 ## Campus Border Checks

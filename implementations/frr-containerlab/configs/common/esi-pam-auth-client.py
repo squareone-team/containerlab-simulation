@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import json
+import hashlib
 import os
 import random
 import socket
@@ -23,6 +24,8 @@ AUTHOR_STATUS_PASS_REPL = 2
 
 TACACS_HOST = os.environ.get("ESI_TACACS_HOST", "192.168.50.80")
 TACACS_PORT = int(os.environ.get("ESI_TACACS_PORT", "49"))
+TACACS_SECRET = os.environ.get("ESI_TACACS_SECRET", "TacacsSecret@2026").encode("utf-8")
+SEND_UNENCRYPTED = os.environ.get("ESI_TACACS_SEND_UNENCRYPTED", "0") == "1"
 RESOURCE_FILE = os.environ.get("ESI_AUTH_RESOURCE_FILE", "/etc/esi-auth-resource")
 LOG_FILE = os.environ.get("ESI_AUTH_CLIENT_LOG", "/var/log/esi-auth-client.log")
 
@@ -55,19 +58,38 @@ def recv_exact(sock, length):
     return b"".join(chunks)
 
 
+def tacacs_crypt(body, version, seq_no, session_id):
+    if not TACACS_SECRET:
+        return body
+    seed = struct.pack("!I", session_id) + TACACS_SECRET + bytes([version, seq_no])
+    pad = b""
+    previous = b""
+    while len(pad) < len(body):
+        previous = hashlib.md5(seed + previous).digest()
+        pad += previous
+    return bytes(value ^ pad_byte for value, pad_byte in zip(body, pad))
+
+
 def exchange(packet_type, body, timeout=4):
     session_id = random.getrandbits(32)
-    header = struct.pack("!BBBBII", 0xC0, packet_type, 1, UNENCRYPTED, session_id, len(body))
+    if SEND_UNENCRYPTED:
+        flags = UNENCRYPTED
+        wire_body = body
+    else:
+        flags = 0
+        wire_body = tacacs_crypt(body, 0xC0, 1, session_id)
+    header = struct.pack("!BBBBII", 0xC0, packet_type, 1, flags, session_id, len(body))
     with socket.create_connection((TACACS_HOST, TACACS_PORT), timeout=timeout) as sock:
         sock.settimeout(timeout)
-        sock.sendall(header + body)
+        sock.sendall(header + wire_body)
         reply_header = recv_exact(sock, 12)
         version, reply_type, seq_no, flags, reply_session, length = struct.unpack("!BBBBII", reply_header)
         if version != 0xC0 or reply_type != packet_type or seq_no != 2 or reply_session != session_id:
             raise ValueError("invalid TACACS+ reply header")
-        if not flags & UNENCRYPTED:
-            raise ValueError("encrypted TACACS+ replies are not supported in this lab")
-        return recv_exact(sock, length)
+        reply_body = recv_exact(sock, length)
+        if flags & UNENCRYPTED:
+            return reply_body
+        return tacacs_crypt(reply_body, version, seq_no, reply_session)
 
 
 def checked_len(value, label):

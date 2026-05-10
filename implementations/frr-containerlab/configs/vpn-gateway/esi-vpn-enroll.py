@@ -3,6 +3,7 @@ import ipaddress
 import json
 import os
 import re
+import ssl
 import subprocess
 from http.server import BaseHTTPRequestHandler, HTTPServer
 
@@ -13,7 +14,10 @@ RADIUS_SECRET = os.environ.get("ESI_RADIUS_SECRET", "VpnRadiusSecret@2026")
 RADIUS_NAS_ID = os.environ.get("ESI_RADIUS_NAS_ID", "vpn-gateway")
 
 LISTEN_HOST = os.environ.get("ESI_VPN_LISTEN", "198.51.100.20")
-LISTEN_PORT = int(os.environ.get("ESI_VPN_PORT", "8088"))
+LISTEN_PORT = int(os.environ.get("ESI_VPN_PORT", "8448"))
+TLS_CERT = os.environ.get("ESI_VPN_TLS_CERT", "/etc/esi-vpn/tls/vpn.crt")
+TLS_KEY = os.environ.get("ESI_VPN_TLS_KEY", "/etc/esi-vpn/tls/vpn.key")
+TLS_ENABLED = os.environ.get("ESI_VPN_TLS", "1") == "1"
 WG_INTERFACE = os.environ.get("ESI_WG_INTERFACE", "wg0")
 SERVER_PUB = os.environ.get("ESI_WG_SERVER_PUB", "/etc/wireguard/server.pub")
 STATE_FILE = os.environ.get("ESI_VPN_STATE", "/var/lib/esi-vpn/leases.json")
@@ -139,7 +143,7 @@ class Handler(BaseHTTPRequestHandler):
                 "address": f"{address}/32",
                 "endpoint": "198.51.100.20:51820",
                 "server_pubkey": server_pubkey(),
-                "allowed_ips": ["192.168.10.10/32", "192.168.70.10/32"],
+                "allowed_ips": ["192.168.10.10/32", "192.168.70.10/32", "192.168.70.30/32"],
             }
             status = 200
         else:
@@ -150,7 +154,7 @@ class Handler(BaseHTTPRequestHandler):
             "user": username,
             "role": role or "none",
             "accepted": accepted,
-            "detail": detail,
+            "radius_result": "accepted" if accepted else "rejected",
         })
 
         body = json.dumps(response).encode("utf-8")
@@ -166,7 +170,11 @@ class Handler(BaseHTTPRequestHandler):
 
 def main():
     server = HTTPServer((LISTEN_HOST, LISTEN_PORT), Handler)
-    log_event({"event": "vpn_enroll_start", "listen": f"{LISTEN_HOST}:{LISTEN_PORT}"})
+    if TLS_ENABLED:
+        context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+        context.load_cert_chain(TLS_CERT, TLS_KEY)
+        server.socket = context.wrap_socket(server.socket, server_side=True)
+    log_event({"event": "vpn_enroll_start", "listen": f"{LISTEN_HOST}:{LISTEN_PORT}", "tls": TLS_ENABLED})
     server.serve_forever()
 
 

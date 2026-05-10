@@ -72,6 +72,22 @@ check_host() {
   return 0
 }
 
+check_blocked() {
+  local label="$1"
+  local node="$2"
+  local cmd="$3"
+
+  if last_output="$(timeout "$COMMAND_TIMEOUT" docker exec "${CLAB_PREFIX}-${node}" sh -lc "$cmd" 2>&1)"; then
+    ko "$label"
+    if [ -n "$last_output" ]; then
+      echo "$last_output" | sed 's/^/  /'
+    fi
+  else
+    ok "$label"
+  fi
+  return 0
+}
+
 echo "=== Resilience Post-Check ==="
 
 echo
@@ -169,7 +185,7 @@ check "dhcp-server kea-dhcp4 is running" \
   "dhcp-server" \
   "pgrep kea-dhcp4 >/dev/null"
 
-for source in lms-staff services-web server-admin-01 server-hpc-01 server-hpc-02 server-storage-01; do
+for source in server-admin-01 server-hpc-01 server-hpc-02 server-storage-01; do
   check "${source} reaches DNS core service" \
     "$source" \
     "ping -c2 -W2 192.168.50.30 >/dev/null"
@@ -192,17 +208,21 @@ check "storage pod reaches its anycast gateway" \
   "ping -c2 -W2 192.168.80.1 >/dev/null"
 
 
-check "student-bp resolves DMZ name through core DNS" \
+check_blocked "unauthenticated student-bp cannot resolve DMZ name through core DNS" \
   "student-bp-01" \
-  "nslookup dmz-server-01.esi.internal 192.168.50.30 | grep -Eq 'Address.*198\\.51\\.100\\.10'"
+  "nslookup dmz-server-01.esi.internal 192.168.50.30 >/dev/null 2>&1"
 
-check "student-bp reaches DMZ HTTP service" \
+check_blocked "unauthenticated student-bp cannot reach DMZ HTTP service" \
   "student-bp-01" \
-  "curl -fsS --max-time 5 http://dmz-server-01.esi.internal | grep -q 'ESI Datacenter DMZ test service is reachable'"
+  "nc -z -w2 198.51.100.10 80"
 
-check "student-bp reaches WiFi controller through campus path" \
+check_blocked "unauthenticated student-bp cannot reach WiFi controller through campus path" \
   "student-bp-01" \
   "ping -c2 -W2 192.168.10.100 >/dev/null"
+
+check_blocked "unauthenticated student-bp cannot reach Jupyter frontend" \
+  "student-bp-01" \
+  "nc -z -w2 192.168.70.30 8080"
 
 check "campus-bp reaches WiFi controller" \
   "campus-bp" \

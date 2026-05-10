@@ -126,6 +126,7 @@ view:
   name: "internal"
   local-zone: "." transparent
   local-zone: "esi.internal." static
+  local-zone: "esi.dz." static
   local-zone: "50.168.192.in-addr.arpa." static
   # Spines
   local-data: "spine-01.esi.internal.       300 IN A 10.1.0.1"
@@ -184,6 +185,10 @@ view:
   # Storage pod
   local-data: "ftp-server.esi.internal.     300 IN A 192.168.80.10"
   local-data: "ftp.esi.internal.            300 IN A 192.168.80.10"
+  # Public browser demo names
+  local-data: "esi.dz.                      300 IN A 198.51.100.10"
+  local-data: "www.esi.dz.                  300 IN A 198.51.100.10"
+  local-data: "internet.esi.dz.             300 IN A 198.18.3.10"
   # WiFi controller
   local-data: "wifi-controller.esi.internal. 300 IN A 192.168.10.100"
   local-data: "wifi.esi.internal.           300 IN A 192.168.10.100"

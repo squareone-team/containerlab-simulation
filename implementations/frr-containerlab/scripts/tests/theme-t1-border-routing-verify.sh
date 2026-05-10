@@ -283,22 +283,22 @@ else
 fi
 
 # ---------------------------------------------------------------------------
-# 5) Monitoring artifacts owned by T1 (Prometheus/Grafana/frr-exporter)
+# 5) Monitoring artifacts owned by T1 (Prometheus/Grafana/fabric-telemetry)
 # ---------------------------------------------------------------------------
 if container_exists "clab-${LAB}-prometheus"; then
   PROM_IP="$(container_ip prometheus)"
   if [ -n "$PROM_IP" ] && wait_http_ok "http://${PROM_IP}:9090/api/v1/targets" 25 2 && curl -s "http://${PROM_IP}:9090/api/v1/targets" >/tmp/t1-prom-targets.json 2>/dev/null; then
     ok "prometheus API reachable"
-    grep -Eq "frr[_-]exporter|frr-exporter" /tmp/t1-prom-targets.json && ok "prometheus has frr exporter target" || fail "prometheus has frr exporter target"
-    grep -Eq '"instance":"frr-exporter:9342".*"health":"up"' /tmp/t1-prom-targets.json && ok "prometheus exporter target health is up" || fail "prometheus exporter target health is up"
+    grep -q "fabric-telemetry" /tmp/t1-prom-targets.json && ok "prometheus has fabric telemetry scraper target" || fail "prometheus has fabric telemetry scraper target"
+    grep -Eq '"instance":"fabric-telemetry:9342".*"health":"up"' /tmp/t1-prom-targets.json && ok "prometheus fabric telemetry target health is up" || fail "prometheus fabric telemetry target health is up"
   else
     fail "prometheus API reachable"
-    fail "prometheus has frr exporter target"
-    fail "prometheus exporter target health is up"
+    fail "prometheus has fabric telemetry scraper target"
+    fail "prometheus fabric telemetry target health is up"
   fi
 else
   fail "prometheus container missing"
-  fail "prometheus exporter target health is up"
+  fail "prometheus fabric telemetry target health is up"
 fi
 
 if container_exists "clab-${LAB}-grafana"; then
@@ -331,26 +331,38 @@ cmd_no_match "SERVICES-WEB NOT on border-leaf (leaf-01)" \
 # 8) Intuitive Objective: True Internet Reachability (Behavioral E2E)
 # ---------------------------------------------------------------------------
 echo
-ping_with_retry "student-bp-01 can reach internet-web-01 (198.18.3.10)" \
-  "$C-student-bp-01 ping -c2 -W2 198.18.3.10" \
-  "2 (packets )?received"
+cmd_match "authenticated campus student can reach internet-web-01" \
+  "$C-campus-student-01 wget -qO- -T 5 http://198.18.3.10/" \
+  "internet\\.esi\\.dz"
 
 echo
-ping_with_retry "student-bp-01 can reach server-dmz-01 (198.51.100.10)" \
-  "$C-student-bp-01 ping -c2 -W2 198.51.100.10" \
-  "2 (packets )?received"
-
-cmd_match "student-bp-01 resolves dmz-server-01.esi.internal via dns-server" \
-  "$C-student-bp-01 nslookup dmz-server-01.esi.internal 192.168.50.30" \
-  "Address: 198\\.51\\.100\\.10|Address.*198\\.51\\.100\\.10"
-
-cmd_match "student-bp-01 HTTP GET dmz-server-01 returns expected page" \
-  "$C-student-bp-01 curl -fsS --max-time 5 http://dmz-server-01.esi.internal" \
+cmd_match "authenticated campus student can reach server-dmz-01" \
+  "$C-campus-student-01 wget -qO- -T 5 http://198.51.100.10/" \
   "ESI Datacenter DMZ test service is reachable"
 
-cmd_match "student-bp-01 HTTP HEAD dmz-server-01 returns 200" \
-  "$C-student-bp-01 curl -sSI --max-time 5 http://dmz-server-01.esi.internal" \
-  "HTTP/[0-9.]+ 200"
+cmd_match "authenticated campus student resolves esi.dz via dns-server" \
+  "$C-campus-student-01 nslookup esi.dz 192.168.50.30" \
+  "Address: 198\\.51\\.100\\.10|Address.*198\\.51\\.100\\.10"
+
+cmd_match "authenticated campus student HTTP GET esi.dz returns expected page" \
+  "$C-campus-student-01 wget -qO- -T 5 http://esi.dz/" \
+  "ESI\\.dz DMZ Portal"
+
+test_banner "unauthenticated campus client cannot reach internet-web-01"
+info "command: $C-student-bp-01 timeout 4 nc -z -w2 198.18.3.10 80"
+if $C-student-bp-01 timeout 4 nc -z -w2 198.18.3.10 80 >/dev/null 2>&1; then
+  fail "unauthenticated campus client cannot reach internet-web-01"
+else
+  ok "unauthenticated campus client cannot reach internet-web-01"
+fi
+
+test_banner "unauthenticated campus client cannot reach server-dmz-01"
+info "command: $C-student-bp-01 timeout 4 nc -z -w2 198.51.100.10 80"
+if $C-student-bp-01 timeout 4 nc -z -w2 198.51.100.10 80 >/dev/null 2>&1; then
+  fail "unauthenticated campus client cannot reach server-dmz-01"
+else
+  ok "unauthenticated campus client cannot reach server-dmz-01"
+fi
 
 echo
 ping_with_retry "internet-client-01 can reach server-dmz-01 (198.51.100.10)" \

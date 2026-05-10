@@ -242,10 +242,20 @@ topology:
         - NET_ADMIN
         - NET_RAW
         - SYS_MODULE
+      ports:
+        - 127.0.0.1:5814:5800
       binds:
         - configs/vpn-client-01/startup.sh:/startup.sh
       exec:
         - sh /startup.sh
+
+    vpn-browser-01:
+      kind: linux
+      image: jlesage/firefox:latest
+      network-mode: container:clab-esi-datacenter-vpn-client-01
+      startup-delay: 15
+      exec:
+        - sh -lc "echo 'nameserver 1.1.1.1' > /etc/resolv.conf"
 
     server-student-01:
       kind: linux
@@ -406,28 +416,6 @@ topology:
         - sh /startup.sh
         - sh /ntp-client.sh
 
-    lms-staff:
-      kind: linux
-      image: esi/alpine-host:3.20
-      binds:
-        - configs/ntp-server/server-client-ntp.sh:/ntp-client.sh
-      exec:
-        - ip addr add 192.168.30.10/24 dev eth1
-        - ip route del default
-        - ip route add default via 192.168.30.1 dev eth1
-        - sh /ntp-client.sh
-
-    services-web:
-      kind: linux
-      image: esi/alpine-host:3.20
-      binds:
-        - configs/ntp-server/server-client-ntp.sh:/ntp-client.sh
-      exec:
-        - ip addr add 192.168.40.10/24 dev eth1
-        - ip route del default
-        - ip route add default via 192.168.40.1 dev eth1
-        - sh /ntp-client.sh
-
     firewall-01:
       kind: linux
       image: esi/alpine-firewall:3.20
@@ -497,15 +485,6 @@ topology:
       cap-add:
         - NET_ADMIN
         - NET_RAW
-
-    ftp-server:
-      kind: linux
-      image: esi/alpine-host:3.20
-      binds:
-        - configs/ftp-server/startup.sh:/startup.sh
-        - configs/shared:/shared:ro
-      exec:
-        - sh /startup.sh
     zabbix-server:
       kind: linux
       image: esi/alpine-zabbix:3.20
@@ -541,20 +520,20 @@ topology:
         GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /etc/grafana/provisioning/dashboards/json/esi-fabric-observability.json
       binds:
         - configs/grafana/provisioning:/etc/grafana/provisioning
-    frr-exporter:
+    fabric-telemetry:
       kind: linux
       image: esi/alpine-exporter:3.20
       env:
         LAB_NAME: esi-datacenter
       binds:
-        - configs/frr-exporter/metrics:/srv/www/metrics
-        - configs/frr-exporter/generate-metrics.sh:/opt/frr-exporter/generate-metrics.sh
+        - configs/fabric-telemetry/metrics:/srv/www/metrics
+        - configs/fabric-telemetry/generate-metrics.sh:/opt/fabric-telemetry/generate-metrics.sh
         - /var/run/docker.sock:/var/run/docker.sock
       exec:
-        - sh -lc "chmod +x /opt/frr-exporter/generate-metrics.sh; nohup
-          /opt/frr-exporter/generate-metrics.sh >/tmp/frr-exporter-loop.log 2>&1
-          & nohup httpd -f -p 9342 -h /srv/www >/tmp/frr-exporter-httpd.log 2>&1
-          &"
+        - sh -lc "chmod +x /opt/fabric-telemetry/generate-metrics.sh; nohup
+          /opt/fabric-telemetry/generate-metrics.sh
+          >/tmp/fabric-telemetry-loop.log 2>&1 & nohup httpd -f -p 9342 -h
+          /srv/www >/tmp/fabric-telemetry-httpd.log 2>&1 &"
     syslog-server:
       kind: linux
       image: esi/alpine-host:3.20
@@ -586,12 +565,16 @@ topology:
       binds:
         - configs/student-bp-01/startup.sh:/startup.sh
       cmd: sleep infinity
+      ports:
+        - 127.0.0.1:5813:5800
       exec:
         - sh /startup.sh
 
     campus-student-01:
       kind: linux
       image: esi/alpine-host:3.20
+      ports:
+        - 127.0.0.1:5811:5800
       binds:
         - configs/campus-student-01/startup.sh:/startup.sh
         - configs/common/esi-nac-client.py:/usr/local/bin/esi-nac-client.py:ro
@@ -601,11 +584,40 @@ topology:
     campus-admin-01:
       kind: linux
       image: esi/alpine-host:3.20
+      ports:
+        - 127.0.0.1:5812:5800
       binds:
         - configs/campus-admin-01/startup.sh:/startup.sh
         - configs/common/esi-nac-client.py:/usr/local/bin/esi-nac-client.py:ro
       exec:
         - sh /startup.sh
+
+    campus-student-browser:
+      kind: linux
+      image: jlesage/firefox:latest
+      network-mode: container:clab-esi-datacenter-campus-student-01
+      startup-delay: 15
+      exec:
+        - sh -lc "{ echo 'search esi.internal'; echo 'nameserver 192.168.50.30';
+          } > /etc/resolv.conf"
+
+    campus-admin-browser:
+      kind: linux
+      image: jlesage/firefox:latest
+      network-mode: container:clab-esi-datacenter-campus-admin-01
+      startup-delay: 15
+      exec:
+        - sh -lc "{ echo 'search esi.internal'; echo 'nameserver 192.168.50.30';
+          } > /etc/resolv.conf"
+
+    campus-guest-browser:
+      kind: linux
+      image: jlesage/firefox:latest
+      network-mode: container:clab-esi-datacenter-student-bp-01
+      startup-delay: 15
+      exec:
+        - sh -lc "{ echo 'search esi.internal'; echo 'nameserver 192.168.50.30';
+          } > /etc/resolv.conf"
 
     oob-sw:
       kind: linux
@@ -683,10 +695,7 @@ topology:
     - endpoints: [ "leaf-08:eth3", "server-storage-01:eth2" ]
     - endpoints: [ "leaf-01:eth7", "server-dmz-01:eth1" ]
     - endpoints: [ "leaf-01:eth6", "vpn-gateway:eth1" ]
-    - endpoints: [ "leaf-03:eth5", "lms-staff:eth1" ]
-    - endpoints: [ "leaf-04:eth4", "services-web:eth1" ]
     - endpoints: [ "leaf-04:eth6", "syslog-server:eth1" ]
-    - endpoints: [ "leaf-03:eth3", "ftp-server:eth1" ]
     - endpoints: [ "campus-bp:eth3", "leaf-01:eth8" ]
     - endpoints: [ "wifi-controller:eth1", "leaf-01:eth14" ]
     - endpoints: [ "campus-bp:eth4", "student-bp-01:eth1" ]
@@ -694,7 +703,7 @@ topology:
     - endpoints: [ "campus-bp:eth6", "campus-admin-01:eth1" ]
     - endpoints: [ "firewall-01:eth3", "firewall-02:eth3" ]
     - endpoints: [ "bastion-01:eth1", "oob-sw:eth1" ]
-    - endpoints: [ "prometheus:eth1", "frr-exporter:eth1" ]
+    - endpoints: [ "prometheus:eth1", "fabric-telemetry:eth1" ]
     - endpoints: [ "oob-sw:eth2", "spine-01:eth11" ]
     - endpoints: [ "oob-sw:eth3", "spine-02:eth11" ]
     - endpoints: [ "oob-sw:eth4", "leaf-01:eth10" ]
@@ -707,11 +716,9 @@ topology:
     - endpoints: [ "oob-sw:eth11", "leaf-08:eth10" ]
     - endpoints: [ "oob-sw:eth12", "leaf-09:eth10" ]
     - endpoints: [ "oob-sw:eth13", "leaf-10:eth10" ]
-    - endpoints: [ "oob-sw:eth14", "ftp-server:eth2" ]
     - endpoints: [ "oob-sw:eth16", "ids-01:eth3" ]
 
     - endpoints: [ "leaf-03:eth9", "ntp-server:eth1" ] # changing eth6 to eth9 to avoid conflict with server-admin-02
-    - endpoints: [ "oob-sw:eth15", "ntp-server:eth2" ] # changing eth2 to eth15 to avoid conflict with spine-01
     - endpoints: [ "leaf-04:eth9", "ntp-server:eth3" ] # ring1 multihoming for ntp-server data-plane
     - endpoints: [ "leaf-03:eth7", "dns-server:eth1" ]
     - endpoints: [ "leaf-04:eth7", "dns-server:eth2" ] # ring1 multihoming for dns-server data-plane

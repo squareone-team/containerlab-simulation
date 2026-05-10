@@ -2,15 +2,15 @@ groups:
   - name: monitoring-stack
     interval: 30s
     rules:
-      - alert: FRRExporterTargetDown
-        expr: up{job="frr-exporter"} == 0
+      - alert: FabricTelemetryTargetDown
+        expr: up{job="fabric-telemetry"} == 0
         for: 1m
         labels:
           severity: critical
           team: netops
         annotations:
-          summary: "FRR exporter target is down"
-          description: "Prometheus cannot scrape frr-exporter:9342 for more than 1 minute."
+          summary: "fabric telemetry scraper target is down"
+          description: "Prometheus cannot scrape fabric-telemetry:9342 for more than 1 minute."
 
       - alert: GrafanaTargetDown
         expr: up{job="grafana"} == 0

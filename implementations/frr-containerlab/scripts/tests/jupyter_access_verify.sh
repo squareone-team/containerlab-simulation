@@ -11,6 +11,8 @@ CLAB_PREFIX="clab-${LAB_NAME}"
 JUPYTER_NODE="${CLAB_PREFIX}-server-hpc-jupyter"
 ADMIN_NODE="${CLAB_PREFIX}-server-admin-01"
 STUDENT_NODE="${CLAB_PREFIX}-server-student-01"
+CAMPUS_STUDENT_NODE="${CLAB_PREFIX}-campus-student-01"
+CAMPUS_ADMIN_NODE="${CLAB_PREFIX}-campus-admin-01"
 JUPYTER_URL="https://${JUPYTER_HOST}:8080/hub/login"
 
 PASS=0
@@ -72,6 +74,8 @@ echo "=== Jupyter Access and Execution Verification ==="
 require_container "$JUPYTER_NODE"
 require_container "$ADMIN_NODE"
 require_container "$STUDENT_NODE"
+require_container "$CAMPUS_STUDENT_NODE"
+require_container "$CAMPUS_ADMIN_NODE"
 
 if docker exec "$JUPYTER_NODE" sh -lc "ss -lntp | grep -q ':8080'"; then
   ok "Jupyter is listening on TCP/8080"
@@ -101,6 +105,18 @@ if fetch_jupyter_login "$STUDENT_NODE"; then
   ok "Student node can load JupyterHub over HTTPS via DNS name"
 else
   ko "Student node cannot load JupyterHub over HTTPS via DNS name"
+fi
+
+if fetch_jupyter_login "$CAMPUS_STUDENT_NODE"; then
+  ok "Campus student can load JupyterHub after NAC"
+else
+  ko "Campus student cannot load JupyterHub after NAC"
+fi
+
+if fetch_jupyter_login "$CAMPUS_ADMIN_NODE"; then
+  ok "Campus admin can load JupyterHub after NAC"
+else
+  ko "Campus admin cannot load JupyterHub after NAC"
 fi
 
 TMP_NOTEBOOK="$(mktemp /tmp/jupyter-proof.XXXXXX.ipynb)"

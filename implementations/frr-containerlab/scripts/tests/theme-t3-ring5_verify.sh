@@ -3,6 +3,8 @@ set -euo pipefail
 
 LAB_NAME="${LAB_NAME:-esi-datacenter}"
 CLAB_PREFIX="clab-${LAB_NAME}-"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+LAB_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 BASTION="${CLAB_PREFIX}bastion-01"
 STUDENT="${CLAB_PREFIX}server-student-01"
 FTP="${CLAB_PREFIX}ftp-server"
@@ -21,6 +23,12 @@ fail() {
   echo "[FAIL] $1"
   FAIL=$((FAIL + 1))
 }
+
+if ! grep -q '^    ftp-server:' "${LAB_ROOT}/esi-datacenter.clab.yml"; then
+  echo "=== Ring 5 Verification ==="
+  echo "[SKIP] ftp-server is not part of the current topology; legacy FTP micro-segmentation test is deprecated"
+  exit 0
+fi
 
 for c in "$BASTION" "$STUDENT" "$FTP"; do
   if ! docker ps --format '{{.Names}}' | grep -qx "$c"; then

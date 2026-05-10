@@ -15,6 +15,6 @@ EOF
 if [ -f /usr/local/bin/esi-nac-client.py ]; then
 	ESI_NAC_USER="dev-campus-student-01" \
 	ESI_NAC_PASSWORD="DeviceStudent@2026" \
-	ESI_NAC_URL="http://192.168.110.1:8085/auth" \
+	ESI_NAC_URL="https://192.168.110.1:8443/auth" \
 	nohup python3 /usr/local/bin/esi-nac-client.py >/var/log/esi-nac-client.log 2>&1 &
 fi

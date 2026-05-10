@@ -27,7 +27,7 @@
         "type": "prometheus",
         "uid": "prometheus-main"
       },
-      "description": "Average scrape reachability for FRR exporter targets.",
+      "description": "Average scrape reachability for fabric telemetry scraper targets.",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -83,7 +83,7 @@
             "type": "prometheus",
             "uid": "prometheus-main"
           },
-          "expr": "100 * avg(up{job=\"frr-exporter\"})",
+          "expr": "100 * avg(up{job=\"fabric-telemetry\"})",
           "refId": "A"
         }
       ],

@@ -6,6 +6,7 @@ LDAP_BIND_DN="cn=admin,${LDAP_BASE_DN}"
 LDAP_BIND_PASSWORD="DirectoryAdmin@2026"
 RADIUS_SECRET_CAMPUS="CampusRadiusSecret@2026"
 RADIUS_SECRET_VPN="VpnRadiusSecret@2026"
+TACACS_SECRET="TacacsSecret@2026"
 
 wait_for_iface() {
     iface="$1"
@@ -232,6 +233,7 @@ LDAP_URI="ldap://127.0.0.1:389" \
 LDAP_BASE_DN="${LDAP_BASE_DN}" \
 LDAP_BIND_DN="${LDAP_BIND_DN}" \
 LDAP_BIND_PASSWORD="${LDAP_BIND_PASSWORD}" \
+ESI_TACACS_SECRET="${TACACS_SECRET}" \
 ESI_TACACS_LOG="/var/log/esi-tacacs.log" \
 nohup /usr/local/bin/esi-tacacsd >/var/log/esi-tacacs.stdout 2>&1 &
 
