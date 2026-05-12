@@ -32,7 +32,8 @@
 
   post_tasks:
     - name: "Check keepalived service status"
-      ansible.builtin.command: rc-service keepalived status
+      ansible.builtin.command:
+        cmd: rc-service keepalived status
       register: keepalived_status
       changed_when: false
       tags: [verify, keepalived]
@@ -43,7 +44,8 @@
       tags: [verify, keepalived]
 
     - name: "Check nftables ruleset loaded"
-      ansible.builtin.command: nft list ruleset
+      ansible.builtin.command:
+        cmd: nft list ruleset
       register: nft_ruleset
       changed_when: false
       tags: [verify, nftables]

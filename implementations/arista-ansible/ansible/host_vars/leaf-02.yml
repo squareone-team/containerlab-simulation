@@ -278,10 +278,7 @@ fabric_port_description_prefix: "FABRIC | "
 spanning_tree_bpduguard: true
 spanning_tree_portfast: true
 
-leaf_eos_features:
-  - vxlan
-  - "routing bgp"
-  - "spanning-tree portfast default"
+leaf_eos_features: []
 
 # -----------------------------------------------------------------------------
 # Management / infra services

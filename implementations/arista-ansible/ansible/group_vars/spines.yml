@@ -57,10 +57,10 @@ spine_is_vtep: false
 loopback0_description: "Router-ID / BGP EVPN RR"
 
 # -----------------------------------------------------------------------------
-# EOS features enabled on spines
+# EOS global commands applied on spines.
+# BGP is enabled by the router bgp process, not an EOS "feature" command.
 # -----------------------------------------------------------------------------
-spine_eos_features:
-  - "routing bgp"
+spine_eos_features: []
 
 # -----------------------------------------------------------------------------
 # ECMP / load-balancing

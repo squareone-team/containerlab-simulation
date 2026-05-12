@@ -9,5 +9,5 @@ galaxy_info:
       versions: ["4.35"]
 
 dependencies:
-  - role: arista-common      # hostname, features, NTP, logging baseline
+  - role: arista-common      # hostname, EOS baseline, NTP, logging
   - role: arista-underlay    # BGP underlay must be up before overlay

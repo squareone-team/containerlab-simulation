@@ -1,0 +1,142 @@
+# =============================================================================
+# Strict Fabric Validation
+# Fails on any spine/leaf underlay, EVPN, or VXLAN convergence issue.
+# =============================================================================
+
+- name: "STRICT | BGP Underlay and EVPN Sessions"
+  hosts: fabric
+  gather_facts: false
+
+  tasks:
+    - name: "Collect IPv4 BGP summary"
+      arista.eos.eos_command:
+        commands:
+          - "show bgp summary | json"
+      register: strict_bgp_summary
+
+    - name: "Assert expected IPv4 underlay peers are Established"
+      vars:
+        bgp_data: >-
+          {{ strict_bgp_summary.stdout[0]
+             if strict_bgp_summary.stdout[0] is mapping
+             else strict_bgp_summary.stdout[0] | from_json }}
+        underlay_peers: >-
+          {{ bgp_data.vrfs | default({})
+            | dict2items
+            | selectattr('key', 'equalto', 'default')
+            | map(attribute='value')
+            | map(attribute='peers')
+            | first | default({})
+            | dict2items
+            | selectattr('value.ipv4Unicast', 'defined')
+            | list }}
+        expected_underlay_peer_count: >-
+          {{ (spine_p2p_peers | default([]) | length)
+             if 'spines' in group_names
+             else 2 }}
+        established_underlay_peers: >-
+          {{ underlay_peers
+             | selectattr('value.peerState', 'equalto', 'Established')
+             | list }}
+      ansible.builtin.assert:
+        that:
+          - underlay_peers | length == (expected_underlay_peer_count | int)
+          - established_underlay_peers | length == (expected_underlay_peer_count | int)
+        fail_msg: >-
+          {{ inventory_hostname }} underlay peers are not fully Established.
+          Expected {{ expected_underlay_peer_count }}, got
+          {{ established_underlay_peers | length }} Established from
+          {{ underlay_peers | length }} configured peers:
+          {{ underlay_peers }}
+        success_msg: >-
+          {{ inventory_hostname }} has all
+          {{ expected_underlay_peer_count }} underlay peer(s) Established.
+
+    - name: "Collect EVPN BGP summary"
+      arista.eos.eos_command:
+        commands:
+          - "show bgp evpn summary | json"
+      register: strict_evpn_summary
+
+    - name: "Assert expected EVPN peers are Established"
+      vars:
+        evpn_data: >-
+          {{ strict_evpn_summary.stdout[0]
+             if strict_evpn_summary.stdout[0] is mapping
+             else strict_evpn_summary.stdout[0] | from_json }}
+        evpn_summary_peers: >-
+          {{ evpn_data.vrfs | default({})
+            | dict2items
+            | selectattr('key', 'equalto', 'default')
+            | map(attribute='value')
+            | map(attribute='peers')
+            | first | default({})
+            | dict2items }}
+        expected_evpn_peer_count: >-
+          {{ (evpn_peers | default([]) | length)
+             if 'spines' in group_names
+             else (evpn_spine_peers | default([]) | length) }}
+        established_evpn_peers: >-
+          {{ evpn_summary_peers
+             | selectattr('value.peerState', 'equalto', 'Established')
+             | list }}
+      ansible.builtin.assert:
+        that:
+          - expected_evpn_peer_count | int > 0
+          - evpn_summary_peers | length == (expected_evpn_peer_count | int)
+          - established_evpn_peers | length == (expected_evpn_peer_count | int)
+        fail_msg: >-
+          {{ inventory_hostname }} EVPN peers are not fully Established.
+          Expected {{ expected_evpn_peer_count }}, got
+          {{ established_evpn_peers | length }} Established from
+          {{ evpn_summary_peers | length }} configured peers:
+          {{ evpn_summary_peers }}
+        success_msg: >-
+          {{ inventory_hostname }} has all
+          {{ expected_evpn_peer_count }} EVPN peer(s) Established.
+
+- name: "STRICT | Leaf VXLAN Data Plane"
+  hosts: leaves
+  gather_facts: false
+
+  tasks:
+    - name: "Collect Vxlan1 interface status"
+      arista.eos.eos_command:
+        commands:
+          - "show interfaces Vxlan1 | json"
+      register: strict_vxlan_interface
+
+    - name: "Assert Vxlan1 is up"
+      vars:
+        vxlan_data: >-
+          {{ strict_vxlan_interface.stdout[0]
+             if strict_vxlan_interface.stdout[0] is mapping
+             else strict_vxlan_interface.stdout[0] | from_json }}
+      ansible.builtin.assert:
+        that:
+          - vxlan_data.interfaces.Vxlan1.lineProtocolStatus == 'up'
+        fail_msg: "Vxlan1 is not up on {{ inventory_hostname }}: {{ vxlan_data.interfaces.Vxlan1 }}"
+        success_msg: "Vxlan1 is up on {{ inventory_hostname }}"
+
+    - name: "Collect VXLAN VTEP table"
+      arista.eos.eos_command:
+        commands:
+          - "show vxlan vtep | json"
+      register: strict_vtep_table
+
+    - name: "Assert remote VTEPs are present"
+      vars:
+        vtep_data: >-
+          {{ strict_vtep_table.stdout[0]
+             if strict_vtep_table.stdout[0] is mapping
+             else strict_vtep_table.stdout[0] | from_json }}
+        top_level_vteps: "{{ vtep_data.vteps | default({}) }}"
+        interface_vteps: "{{ vtep_data.interfaces.Vxlan1.vteps | default([]) }}"
+      ansible.builtin.assert:
+        that:
+          - (top_level_vteps | length > 0) or (interface_vteps | length > 0)
+        fail_msg: "No remote VTEPs learned on {{ inventory_hostname }}: {{ vtep_data }}"
+        success_msg: >-
+          {{ inventory_hostname }} learned
+          {{ (top_level_vteps | length) + (interface_vteps | length) }}
+          remote VTEP entrie(s).

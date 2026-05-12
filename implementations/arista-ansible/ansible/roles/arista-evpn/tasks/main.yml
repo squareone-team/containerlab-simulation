@@ -114,7 +114,8 @@
   when:
     - "'leaves' in group_names"
     - leaf_active_l2vnis | default([]) | length > 0
-    - item.gateway is defined and item.gateway != ""
+    - item.gateway | default('') | string | length > 0
+    - item.prefix | default('') | string | length > 0
   tags: [evpn, svi, irb]
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -242,8 +243,8 @@
   arista.eos.eos_config:
     lines:
       - "rd {{ router_id }}:{{ item.vni }}"
-      - "route-target import evpn {{ item.rt }}"
-      - "route-target export evpn {{ item.rt }}"
+      - "route-target import {{ item.rt }}"
+      - "route-target export {{ item.rt }}"
       - "redistribute learned"
     parents:
       - "router bgp {{ bgp_as }}"

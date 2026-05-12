@@ -81,4 +81,3 @@
           | dict2items
         }}
       when: bgp_summary.stdout is defined
-      ignore_errors: true

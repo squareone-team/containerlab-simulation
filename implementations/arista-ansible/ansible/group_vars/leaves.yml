@@ -89,13 +89,10 @@ fabric_port_description_prefix: "FABRIC | "
 loopback0_description: "Router-ID / VTEP"
 
 # -----------------------------------------------------------------------------
-# EOS features enabled on every leaf
+# EOS global commands applied on every leaf.
+# cEOS does not use NX-OS-style "feature ..." enables for BGP/VXLAN.
 # -----------------------------------------------------------------------------
-leaf_eos_features:
-  - "vxlan"
-  - "routing bgp"
-  - "spanning-tree portfast default"
-  - "hardware speed unsupported forced"    # cEOS: suppress speed negotiation warnings
+leaf_eos_features: []
 
 # -----------------------------------------------------------------------------
 # LLDP

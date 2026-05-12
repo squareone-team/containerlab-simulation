@@ -4,30 +4,36 @@
 # =============================================================================
 
 # -----------------------------------------------------------------------------
-# 1. EOS features (daemon / service enables)
+# 1. EOS baseline commands
 # -----------------------------------------------------------------------------
-- name: "COMMON | Enable EOS features"
+- name: "COMMON | Enable EOS multi-agent routing model"
   arista.eos.eos_config:
     lines:
       - "service routing protocols model multi-agent"
     match: line
-  tags: [features]
+  tags: [baseline]
 
-- name: "COMMON | Enable required EOS features from group_vars"
+- name: "COMMON | Enable default VRF IP routing"
   arista.eos.eos_config:
-    lines: >
+    lines:
+      - "ip routing"
+    match: line
+  tags: [baseline]
+
+- name: "COMMON | Apply required EOS global commands from group_vars"
+  arista.eos.eos_config:
+    lines: >-
       {{
         (common_eos_features +
          (leaf_eos_features | default([])) +
-         (spine_eos_features | default([])))
-        | map('regex_replace', '^(.*)$', 'feature \1') | list
+         (spine_eos_features | default([]))) | list
       }}
     match: line
   when: >
     (common_eos_features +
      (leaf_eos_features | default([])) +
      (spine_eos_features | default([]))) | length > 0
-  tags: [features]
+  tags: [baseline]
 
 # -----------------------------------------------------------------------------
 # 2. Hostname and domain
@@ -87,12 +93,12 @@
 # 6. Syslog
 # -----------------------------------------------------------------------------
 - name: "COMMON | Configure syslog"
-  arista.eos.eos_logging:
-    dest: host
-    name: "{{ syslog_server }}"
-    facility: "{{ syslog_facility | default('local7') }}"
-    level: "{{ syslog_level | default('informational') }}"
-    state: present
+  arista.eos.eos_config:
+    lines:
+      - "logging host {{ syslog_server }}"
+      - "logging facility {{ syslog_facility | default('local7') }}"
+      - "logging trap {{ syslog_level | default('informational') }}"
+    match: line
   when: syslog_server is defined
   tags: [syslog, logging]
 

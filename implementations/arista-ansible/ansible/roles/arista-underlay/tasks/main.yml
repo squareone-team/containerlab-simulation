@@ -12,6 +12,13 @@
     match: line
   tags: [underlay, routing_model]
 
+- name: "UNDERLAY | Enable default VRF IP routing"
+  arista.eos.eos_config:
+    lines:
+      - "ip routing"
+    match: line
+  tags: [underlay, routing_model]
+
 # -----------------------------------------------------------------------------
 # 2. Loopback0
 # -----------------------------------------------------------------------------
@@ -26,20 +33,41 @@
   when: loopback0 is defined
   tags: [underlay, loopback]
 
+- name: "UNDERLAY | Decide whether to derive spine p2p_links"
+  ansible.builtin.set_fact:
+    underlay_derive_spine_p2p_links: >-
+      {{
+        'spines' in group_names
+        and spine_p2p_peers is defined
+        and (p2p_links | default([]) | length == 0)
+      }}
+  when:
+    - "'spines' in group_names"
+    - spine_p2p_peers is defined
+
+- name: "UNDERLAY | Initialize derived spine p2p_links"
+  ansible.builtin.set_fact:
+    p2p_links: []
+  when: underlay_derive_spine_p2p_links | default(false) | bool
+
 - name: "UNDERLAY | Normalize spine p2p_links from spine_p2p_peers"
   ansible.builtin.set_fact:
     p2p_links: >-
       {{
-        spine_p2p_peers | map('combine', {
-          'ip': item.spine_ip,
-          'mtu': 9214
-        }) | list
+        (p2p_links | default([]))
+        + [
+          {
+            'interface': item.interface,
+            'description': item.description | default('FABRIC | P2P underlay'),
+            'ip': item.spine_ip,
+            'mtu': item.mtu | default(mtu_fabric | default(9214))
+          }
+        ]
       }}
-  loop: "{{ spine_p2p_peers }}"
-  when:
-    - "'spines' in group_names"
-    - spine_p2p_peers is defined
-    - p2p_links | default([]) | length == 0
+  loop: "{{ spine_p2p_peers | default([]) }}"
+  loop_control:
+    label: "{{ item.interface }}"
+  when: underlay_derive_spine_p2p_links | default(false) | bool
 
 - name: "UNDERLAY | Normalize leaf p2p_links from spine*_p2p vars"
   ansible.builtin.set_fact:
@@ -61,6 +89,46 @@
     - spine01_leaf_ip is defined
     - spine02_leaf_ip is defined
     - p2p_links | default([]) | length == 0
+
+- name: "UNDERLAY | Decide whether to derive leaf p2p_links from interfaces"
+  ansible.builtin.set_fact:
+    underlay_derive_leaf_p2p_from_interfaces: >-
+      {{
+        'leaves' in group_names
+        and interfaces is defined
+        and (p2p_links | default([]) | length == 0)
+      }}
+  when:
+    - "'leaves' in group_names"
+    - interfaces is defined
+
+- name: "UNDERLAY | Initialize interface-derived leaf p2p_links"
+  ansible.builtin.set_fact:
+    p2p_links: []
+  when: underlay_derive_leaf_p2p_from_interfaces | default(false) | bool
+
+- name: "UNDERLAY | Normalize leaf p2p_links from interface map"
+  ansible.builtin.set_fact:
+    p2p_links: >-
+      {{
+        (p2p_links | default([]))
+        + [
+          {
+            'interface': item.key,
+            'description': item.value.description | default('FABRIC | P2P underlay'),
+            'ip': item.value.ip,
+            'mtu': mtu_fabric | default(9214)
+          }
+        ]
+      }}
+  loop: "{{ interfaces | default({}) | dict2items }}"
+  loop_control:
+    label: "{{ item.key }}"
+  when:
+    - underlay_derive_leaf_p2p_from_interfaces | default(false) | bool
+    - item.value.ip is defined
+    - item.value.type | default('') == 'routed'
+    - "'P2P' in (item.value.description | default(''))"
 
 # -----------------------------------------------------------------------------
 # 3. P2P interfaces (without BFD)
@@ -113,7 +181,7 @@
 - name: "UNDERLAY | Configure loopback prefix-list"
   arista.eos.eos_config:
     lines:
-      - "seq 10 permit 10.0.0.0/8 le 32"
+      - "seq 10 permit 10.0.0.0/16 le 32"
     parents: "ip prefix-list {{ underlay_prefix_list_name | default('LOOPBACKS') }}"
     match: line
   tags: [underlay, prefix_list]
@@ -190,12 +258,48 @@
   when: "'spines' in group_names"
   tags: [underlay, spine]
 
+- name: "SPINE | collect BGP config for legacy listen range"
+  arista.eos.eos_command:
+    commands:
+      - "show running-config section router bgp"
+  register: spine_bgp_running_config
+  when: "'spines' in group_names"
+  tags: [underlay, spine]
+
+- name: "SPINE | remove legacy broad listen range"
+  arista.eos.eos_config:
+    lines:
+      - "no bgp listen range 10.0.0.0/8 peer-group {{ spine_bgp_peer_group }} peer-filter {{ spine_bgp_peer_filter }}"
+    parents:
+      - "router bgp {{ bgp_as }}"
+    before: "end"
+    match: none
+  when:
+    - "'spines' in group_names"
+    - spine_bgp_running_config.stdout is defined
+    - "'bgp listen range 10.0.0.0/8 peer-group' in spine_bgp_running_config.stdout[0]"
+  tags: [underlay, spine]
+
 - name: "SPINE | listen range"
   arista.eos.eos_config:
     lines:
-      - "bgp listen range 10.0.0.0/8 peer-group {{ spine_bgp_peer_group }} peer-filter {{ spine_bgp_peer_filter }}"
+      - "bgp listen range 10.1.0.0/16 peer-group {{ spine_bgp_peer_group }} peer-filter {{ spine_bgp_peer_filter }}"
+      - "bgp listen range 10.2.0.0/16 peer-group {{ spine_bgp_peer_group }} peer-filter {{ spine_bgp_peer_filter }}"
     parents:
       - "router bgp {{ bgp_as }}"
+    before: "end"
+    match: line
+  when: "'spines' in group_names"
+  tags: [underlay, spine]
+
+- name: "SPINE | activate IPv4 unicast underlay"
+  arista.eos.eos_config:
+    lines:
+      - "neighbor {{ spine_bgp_peer_group }} activate"
+      - "redistribute connected route-map {{ underlay_route_map_out_name | default('RM-OUT') }}"
+    parents:
+      - "router bgp {{ bgp_as }}"
+      - "address-family ipv4"
     before: "end"
     match: line
   when: "'spines' in group_names"
@@ -221,7 +325,7 @@
   when: "'leaves' in group_names"
   tags: [underlay, leaf]
 
-- name: "LEAF | neighbors"
+- name: "LEAF | neighbors from explicit p2p remote metadata"
   arista.eos.eos_config:
     lines:
       - "neighbor {{ item.remote_ip }} peer group {{ leaf_bgp_peer_group }}"
@@ -235,8 +339,58 @@
   when:
     - "'leaves' in group_names"
     - p2p_links is defined
-    - item.remote_asn is defined
-    - item.remote_asn == spine_asn
+    - item.remote_ip is defined
+    - (item.remote_asn | default(spine_asn) | int) == (spine_asn | int)
+  tags: [underlay, leaf]
+
+- name: "LEAF | neighbors from spine uplink variables"
+  arista.eos.eos_config:
+    lines:
+      - "neighbor {{ item }} peer group {{ leaf_bgp_peer_group }}"
+    parents:
+      - "router bgp {{ bgp_as }}"
+    before: "end"
+    match: line
+  loop:
+    - "{{ spine01_ip | default('') }}"
+    - "{{ spine02_ip | default('') }}"
+  loop_control:
+    label: "{{ item }}"
+  when:
+    - "'leaves' in group_names"
+    - item | length > 0
+  tags: [underlay, leaf]
+
+- name: "LEAF | neighbors from bgp_neighbors underlay schema"
+  arista.eos.eos_config:
+    lines:
+      - "neighbor {{ item.peer_ip }} peer group {{ leaf_bgp_peer_group }}"
+    parents:
+      - "router bgp {{ bgp_as }}"
+    before: "end"
+    match: line
+  loop: "{{ bgp_neighbors | default([]) }}"
+  loop_control:
+    label: "{{ item.peer_ip | default('undefined') }}"
+  when:
+    - "'leaves' in group_names"
+    - item.peer_ip is defined
+    - item.remote_as is defined
+    - (item.remote_as | int) == (spine_asn | int)
+    - "'ipv4_unicast' in (item.address_family | default([]))"
+  tags: [underlay, leaf]
+
+- name: "LEAF | activate IPv4 unicast underlay"
+  arista.eos.eos_config:
+    lines:
+      - "neighbor {{ leaf_bgp_peer_group }} activate"
+      - "redistribute connected route-map {{ underlay_route_map_out_name | default('RM-OUT') }}"
+    parents:
+      - "router bgp {{ bgp_as }}"
+      - "address-family ipv4"
+    before: "end"
+    match: line
+  when: "'leaves' in group_names"
   tags: [underlay, leaf]
 
 # -----------------------------------------------------------------------------

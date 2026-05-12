@@ -9,6 +9,7 @@
      esi_id             — EVPN ESI string  e.g. "0000:0000:0509:0000:0001"
      esi_lacp_id        — LACP system-ID   e.g. "0000.0509.0001"
      portchannels       — list of port-channel objects (see schema below)
+                           (port_channels is also accepted for legacy host_vars)
      host_ports         — list of host-facing port objects
 
    portchannel schema:
@@ -20,6 +21,7 @@
      mtu:              integer           MTU on port-channel SVI
      esi:              string            ESI identifier (overrides host esi_id)
      lacp_system_id:   string            LACP system-ID (overrides host default)
+     access_vlan:      integer           Legacy alias for vlan
 
    host_port schema:
      interface:        string            EOS interface name (e.g. Ethernet3)
@@ -30,31 +32,40 @@
      description:      string
    ============================================================================= #}
 
-{% if portchannels is defined and portchannels | length > 0 %}
+{% set esi_portchannels = portchannels | default(port_channels | default([])) %}
+{% set host_port_channel_members = host_ports | default([]) | selectattr('portchannel', 'defined') | map(attribute='interface') | list %}
+
+{% if esi_portchannels | length > 0 %}
 ! ── ESI Multi-homing: {{ inventory_hostname }}
 ! ── ESI ID: {{ esi_id }}
 ! ── LACP System-ID: {{ esi_lacp_id }}
 !
-{% for pc in portchannels %}
+{% for pc in esi_portchannels %}
+{%   set pc_esi = pc.esi | default(esi_id) %}
+{%   set esi_hex = pc_esi | replace(':', '') %}
+{%   set esi_route_target = esi_hex[-12:-10] ~ ':' ~ esi_hex[-10:-8] ~ ':' ~ esi_hex[-8:-6] ~ ':' ~ esi_hex[-6:-4] ~ ':' ~ esi_hex[-4:-2] ~ ':' ~ esi_hex[-2:] %}
+{%   set pc_access_vlan = pc.vlan | default(pc.access_vlan | default(1)) %}
+{%   set pc_switchport_mode = 'trunk' if pc.mode | default('access') == 'trunk' else 'access' %}
+{%   set pc_lacp_mode = pc.lacp_mode | default(pc.mode if pc.mode | default('active') in ['active', 'passive', 'on'] else 'active') %}
 ! Port-Channel{{ pc.id }} — {{ pc.description | default('ESI LAG') }}
 interface Port-Channel{{ pc.id }}
    description {{ pc.description | default('ESI LAG — ' ~ inventory_hostname) }}
    !
-{%   if pc.mode is defined and pc.mode == 'trunk' %}
+{%   if pc_switchport_mode == 'trunk' %}
    switchport mode trunk
 {%     if pc.trunk_vlans is defined %}
    switchport trunk allowed vlan {{ pc.trunk_vlans }}
-{%     elif pc.vlan is defined %}
-   switchport trunk allowed vlan {{ pc.vlan }}
+{%     else %}
+   switchport trunk allowed vlan {{ pc_access_vlan }}
 {%     endif %}
 {%   else %}
-   switchport access vlan {{ pc.vlan | default(1) }}
+   switchport access vlan {{ pc_access_vlan }}
 {%   endif %}
    !
    ! EVPN ESI multi-homing — RFC 7432
    evpn ethernet-segment
-      identifier {{ pc.esi | default(esi_id) }}
-      route-target import {{ (pc.esi | default(esi_id)).split(':')[2:5] | join(':') }}
+      identifier {{ pc_esi }}
+      route-target import {{ esi_route_target }}
    !
    lacp system-id {{ pc.lacp_system_id | default(esi_lacp_id) }}
    spanning-tree portfast
@@ -70,13 +81,26 @@ interface Port-Channel{{ pc.id }}
 interface {{ port.interface }}
    description {{ port.description | default(port.interface ~ ' ESI LAG member') }}
    channel-group {{ port.portchannel | regex_replace('Port-Channel', '') }} mode {{ port.lacp_mode | default('active') }}
-   lacp rate {{ port.lacp_rate | default('fast') }}
    mtu {{ port.mtu | default(mtu_host) }}
    no shutdown
 !
 {%     endif %}
 {%   endfor %}
 {% endif %}
+
+{% for pc in esi_portchannels %}
+{%   set pc_lacp_mode = pc.lacp_mode | default(pc.mode if pc.mode | default('active') in ['active', 'passive', 'on'] else 'active') %}
+{%   for member in pc.members | default([]) %}
+{%     if member not in host_port_channel_members %}
+interface {{ member }}
+   description {{ pc.description | default(member ~ ' ESI LAG member') }}
+   channel-group {{ pc.id }} mode {{ pc_lacp_mode }}
+   mtu {{ pc.mtu | default(mtu_host) }}
+   no shutdown
+!
+{%     endif %}
+{%   endfor %}
+{% endfor %}
 
 {% else %}
 ! No ESI Port-Channels defined for {{ inventory_hostname }}

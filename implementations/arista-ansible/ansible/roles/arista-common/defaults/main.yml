@@ -4,7 +4,7 @@
 # or group_vars/fabric.yml as needed.
 # =============================================================================
 
-# EOS features to enable (merged with group-level leaf_eos_features / spine_eos_features)
+# EOS global commands (merged with group-level leaf_eos_features / spine_eos_features)
 common_eos_features: []
 
 # Management VRF name

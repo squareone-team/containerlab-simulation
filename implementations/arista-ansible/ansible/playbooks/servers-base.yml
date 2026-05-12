@@ -30,16 +30,15 @@
 
   tasks:
     - name: "Ensure IP address is configured on data interface"
-      ansible.builtin.command: >
-        ip addr add {{ server_ip }} dev eth1
-      args:
-        creates: /tmp/.ip_configured_{{ inventory_hostname }}
+      ansible.builtin.command:
+        cmd: ip addr replace {{ server_ip }} dev eth1
       when: server_ip is defined
+      changed_when: true
       tags: [ip, networking]
 
     - name: "Ensure default route via gateway"
-      ansible.builtin.command: >
-        ip route replace default via {{ server_gw }}
+      ansible.builtin.command:
+        cmd: ip route replace default via {{ server_gw }}
       when: server_gw is defined
       changed_when: true
       tags: [routing, networking]
@@ -50,8 +49,8 @@
       tags: [hostname]
 
     - name: "Verify connectivity to gateway"
-      ansible.builtin.command: >
-        ping -c 2 -W 2 {{ server_gw }}
+      ansible.builtin.command:
+        cmd: ping -c 2 -W 2 {{ server_gw }}
       register: gw_ping
       changed_when: false
       failed_when: false
@@ -78,7 +77,8 @@
 
   tasks:
     - name: "Check bond0 interface exists"
-      ansible.builtin.command: ip link show bond0
+      ansible.builtin.command:
+        cmd: ip link show bond0
       register: bond_status
       changed_when: false
       failed_when: false
@@ -97,8 +97,8 @@
       tags: [bond, verify]
 
     - name: "Ensure IP on bond0"
-      ansible.builtin.command: >
-        ip addr show bond0
+      ansible.builtin.command:
+        cmd: ip addr show bond0
       register: bond_ip
       changed_when: false
       failed_when: false
@@ -112,7 +112,8 @@
       tags: [bond, verify]
 
     - name: "Verify default route"
-      ansible.builtin.command: ip route show default
+      ansible.builtin.command:
+        cmd: ip route show default
       register: default_route
       changed_when: false
       failed_when: false
@@ -137,8 +138,8 @@
       tags: [verify, infra]
 
     - name: "Check NTP service (chrony/busybox ntpd)"
-      ansible.builtin.command: >
-        pgrep -x ntpd || pgrep -x chronyd || echo "no-ntp"
+      ansible.builtin.shell:
+        cmd: pgrep -x ntpd || pgrep -x chronyd || echo "no-ntp"
       register: ntp_proc
       changed_when: false
       failed_when: false
@@ -146,7 +147,8 @@
       tags: [verify, ntp]
 
     - name: "Check DNS (unbound)"
-      ansible.builtin.command: pgrep -x unbound
+      ansible.builtin.command:
+        cmd: pgrep -x unbound
       register: dns_proc
       changed_when: false
       failed_when: false

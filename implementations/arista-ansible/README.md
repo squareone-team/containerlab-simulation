@@ -3,8 +3,6 @@
 Ansible-driven fabric automation for a 10-leaf / 2-spine Arista cEOS lab running
 EVPN/VXLAN with ESI multi-homing, symmetric IRB, and per-pod VRF segmentation.
 
-```
-
 ### Pod Layout
 
 | Pod     | ID | Leaves           | Role                                        | VRFs                          |
@@ -54,8 +52,7 @@ ansible-galaxy collection install -r ansible/requirements.yml
 ### 3. Start the Containerlab topology
 
 ```bash
-cd clab/
-sudo containerlab deploy -t esi-datacenter.yml
+sudo containerlab deploy -t arista-ansible.clab.yml
 ```
 
 ### 4. Enter the Ansible container
@@ -76,6 +73,7 @@ pip3 install netaddr
 ### 6. Run the full site playbook
 
 ```bash
+cd /ansible
 ansible-playbook playbooks/site.yml
 ```
 
@@ -86,10 +84,12 @@ ansible-playbook playbooks/site.yml
 ```
 arista-ansible/
 |
-+-- ansible.cfg                        # Ansible configuration (inventory path, SSH settings)
-+-- requirements.yml                   # Collection dependencies (arista.eos, etc.)
++-- arista-ansible.clab.yml            # Containerlab topology
 |
 +-- ansible/
+|   +-- ansible.cfg                    # Ansible configuration (container paths)
+|   +-- requirements.yml               # Collection dependencies
+|
 |   +-- group_vars/
 |   |   +-- all.yml                    # Lab-wide: NTP, DNS, syslog, SNMP, credentials
 |   |   +-- fabric.yml                 # Fabric-wide knobs (MTU, BGP timers, etc.)
@@ -116,7 +116,8 @@ arista-ansible/
 |   |   +-- spine-01.yml               # Spine-01: P2P peers + EVPN peer list
 |   |   +-- spine-02.yml               # Spine-02: P2P peers + EVPN peer list
 |   |
-|   +-- inventory                      # Hosts grouped by role and pod
+|   +-- inventory/
+|   |   +-- hosts.yml                  # Hosts grouped by role and pod
 |   |
 |   +-- playbooks/
 |   |   +-- site.yml                   # Master playbook — runs all plays in order
@@ -144,12 +145,6 @@ arista-ansible/
 |           +-- defaults/
 |           +-- tasks/
 |               +-- main.yml           # Multi-agent model, P2P interfaces, BGP process
-|
-+-- configs/
-    +-- leaf-09/
-    |   +-- startup.cfg                # Saved startup config for leaf-09
-    +-- leaf-10/
-        +-- startup.cfg                # Saved startup config for leaf-10
 ```
 
 ---
