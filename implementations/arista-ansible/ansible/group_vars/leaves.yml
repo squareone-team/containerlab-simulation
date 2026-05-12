@@ -33,6 +33,13 @@ bgp_bfd_multiplier: 3
 # -----------------------------------------------------------------------------
 vtep_loopback: Loopback0
 vtep_source_interface: Loopback0
+
+evpn_spine_peers:
+  - neighbor_ip: 10.0.0.1    # spine-01 Loopback0
+    bgp_as:      65000
+  - neighbor_ip: 10.0.0.2    # spine-02 Loopback0
+    bgp_as:      65000
+
 vtep_interface: Loopback1
 vxlan_interface: Vxlan1
 vxlan_udp_port: 4789
@@ -82,13 +89,10 @@ fabric_port_description_prefix: "FABRIC | "
 loopback0_description: "Router-ID / VTEP"
 
 # -----------------------------------------------------------------------------
-# EOS features enabled on every leaf
+# EOS global commands applied on every leaf.
+# cEOS does not use NX-OS-style "feature ..." enables for BGP/VXLAN.
 # -----------------------------------------------------------------------------
-leaf_eos_features:
-  - "vxlan"
-  - "routing bgp"
-  - "spanning-tree portfast default"
-  - "hardware speed unsupported forced"    # cEOS: suppress speed negotiation warnings
+leaf_eos_features: []
 
 # -----------------------------------------------------------------------------
 # LLDP

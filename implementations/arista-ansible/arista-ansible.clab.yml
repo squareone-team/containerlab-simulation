@@ -62,13 +62,12 @@ topology:
       kind: ceos
       image: ceos:4.35.1F
       mgmt-ipv4: 172.20.20.29
-      startup-config: configs/leaf-09/startup.cfg
 
     leaf-10:
       kind: ceos
       image: ceos:4.35.1F
       mgmt-ipv4: 172.20.20.30
-      startup-config: configs/leaf-10/startup.cfg
+
 
     # ───────── ISP / INTERNET ─────────
     isp-router-01:
@@ -220,21 +219,82 @@ topology:
 
   # ───────── LINKS (UNCHANGED) ─────────
   links:
-    - endpoints: ["spine-01:eth1", "leaf-01:eth1"]
-    - endpoints: ["spine-02:eth1", "leaf-02:eth1"]
+    - endpoints: [ "spine-01:eth1", "leaf-01:eth1" ]
+    - endpoints: [ "spine-01:eth2", "leaf-02:eth1" ]
+    - endpoints: [ "spine-01:eth3", "leaf-03:eth1" ]
+    - endpoints: [ "spine-01:eth4", "leaf-04:eth1" ]
+    - endpoints: [ "spine-01:eth5", "leaf-05:eth1" ]
+    - endpoints: [ "spine-01:eth6", "leaf-06:eth1" ]
+    - endpoints: [ "spine-01:eth7", "leaf-07:eth1" ]
+    - endpoints: [ "spine-01:eth8", "leaf-08:eth1" ]
+    - endpoints: [ "spine-01:eth9", "leaf-09:eth1" ]
+    - endpoints: [ "spine-01:eth10", "leaf-10:eth1" ]
 
-    - endpoints: ["leaf-01:eth3", "isp-router-01:eth1"]
-    - endpoints: ["leaf-02:eth3", "isp-router-02:eth1"]
+    - endpoints: [ "spine-02:eth1", "leaf-01:eth2" ]
+    - endpoints: [ "spine-02:eth2", "leaf-02:eth2" ]
+    - endpoints: [ "spine-02:eth3", "leaf-03:eth2" ]
+    - endpoints: [ "spine-02:eth4", "leaf-04:eth2" ]
+    - endpoints: [ "spine-02:eth5", "leaf-05:eth2" ]
+    - endpoints: [ "spine-02:eth6", "leaf-06:eth2" ]
+    - endpoints: [ "spine-02:eth7", "leaf-07:eth2" ]
+    - endpoints: [ "spine-02:eth8", "leaf-08:eth2" ]
+    - endpoints: [ "spine-02:eth9", "leaf-09:eth2" ]
+    - endpoints: [ "spine-02:eth10", "leaf-10:eth2" ]
 
-    - endpoints: ["leaf-01:eth5", "firewall-01:eth1"]
-    - endpoints: ["leaf-02:eth5", "firewall-02:eth1"]
+    - endpoints: [ "leaf-01:eth3", "isp-router-01:eth1" ]
+    - endpoints: [ "leaf-02:eth3", "isp-router-02:eth1" ]
+    - endpoints: [ "leaf-01:eth4", "isp-router-03:eth1" ]
+    - endpoints: [ "isp-router-01:eth2", "isp-router-04:eth3" ]
 
-    - endpoints: ["leaf-03:eth1", "server-admin-01:eth1"]
-    - endpoints: ["leaf-04:eth1", "server-admin-02:eth1"]
+    - endpoints: [ "internet-router-01:eth2", "isp-router-04:eth1" ]
+    - endpoints: [ "internet-router-02:eth2", "isp-router-04:eth2" ]
+    - endpoints: [ "internet-client-01:eth1", "internet-router-01:eth1" ]
+    - endpoints: [ "internet-client-02:eth1", "internet-router-02:eth1" ]
+    - endpoints: [ "internet-router-01:eth3", "internet-web-01:eth1" ]
 
-    - endpoints: ["leaf-05:eth1", "server-hpc-01:eth1"]
-    - endpoints: ["leaf-06:eth1", "server-hpc-02:eth1"]
+    - endpoints: [ "leaf-01:eth5", "firewall-01:eth1" ]
+    - endpoints: [ "leaf-02:eth5", "firewall-02:eth1" ]
+    - endpoints: [ "leaf-01:eth9", "leaf-02:eth9" ]
+    - endpoints: [ "leaf-01:eth6", "ids-01:eth1" ]
 
-    - endpoints: ["leaf-07:eth1", "server-storage-01:eth1"]
+    - endpoints: [ "leaf-09:eth3", "server-student-01:eth1" ]
+    - endpoints: [ "leaf-09:eth4", "server-student-02:eth1" ]
+    - endpoints: [ "leaf-10:eth3", "server-student-01:eth2" ]
+    - endpoints: [ "leaf-10:eth4", "server-student-02:eth2" ]
+    - endpoints: [ "leaf-03:eth4", "server-admin-01:eth1" ]
+    - endpoints: [ "leaf-03:eth6", "server-admin-02:eth1" ]
+    - endpoints: [ "leaf-04:eth3", "server-admin-01:eth2" ]
+    - endpoints: [ "leaf-04:eth5", "server-admin-02:eth2" ]
+    - endpoints: [ "leaf-05:eth3", "server-hpc-01:eth1" ]
+    - endpoints: [ "leaf-05:eth4", "server-hpc-02:eth1" ]
+    - endpoints: [ "leaf-06:eth3", "server-hpc-01:eth2" ]
+    - endpoints: [ "leaf-06:eth4", "server-hpc-02:eth2" ]
+    - endpoints: [ "leaf-07:eth3", "server-storage-01:eth1" ]
+    - endpoints: [ "leaf-08:eth3", "server-storage-01:eth2" ]
+    - endpoints: [ "leaf-01:eth7", "server-dmz-01:eth1" ]
+    - endpoints: [ "leaf-04:eth6", "syslog-server:eth1" ]
+    - endpoints: [ "leaf-03:eth3", "ftp-server:eth1" ]
+    - endpoints: [ "firewall-01:eth3", "firewall-02:eth3" ]
+    - endpoints: [ "bastion-01:eth1", "oob-sw:eth1" ]
+    - endpoints: [ "oob-sw:eth2", "spine-01:eth11" ]
+    - endpoints: [ "oob-sw:eth3", "spine-02:eth11" ]
+    - endpoints: [ "oob-sw:eth4", "leaf-01:eth10" ]
+    - endpoints: [ "oob-sw:eth5", "leaf-02:eth10" ]
+    - endpoints: [ "oob-sw:eth6", "leaf-03:eth10" ]
+    - endpoints: [ "oob-sw:eth7", "leaf-04:eth10" ]
+    - endpoints: [ "oob-sw:eth8", "leaf-05:eth10" ]
+    - endpoints: [ "oob-sw:eth9", "leaf-06:eth10" ]
+    - endpoints: [ "oob-sw:eth10", "leaf-07:eth10" ]
+    - endpoints: [ "oob-sw:eth11", "leaf-08:eth10" ]
+    - endpoints: [ "oob-sw:eth12", "leaf-09:eth10" ]
+    - endpoints: [ "oob-sw:eth13", "leaf-10:eth10" ]
+    - endpoints: [ "oob-sw:eth14", "ftp-server:eth2" ]
 
-    - endpoints: ["leaf-08:eth1", "server-dmz-01:eth1"]
+    - endpoints: [ "leaf-03:eth9", "ntp-server:eth1" ] # changing eth6 to eth9 to avoid conflict with server-admin-02
+    - endpoints: [ "oob-sw:eth15", "ntp-server:eth2" ] # changing eth2 to eth15 to avoid conflict with spine-01
+    - endpoints: [ "leaf-04:eth9", "ntp-server:eth3" ] # ring1 multihoming for ntp-server data-plane
+    - endpoints: [ "leaf-03:eth7", "dns-server:eth1" ]
+    - endpoints: [ "leaf-04:eth7", "dns-server:eth2" ] # ring1 multihoming for dns-server data-plane
+    - endpoints: [ "leaf-03:eth8", "dhcp-server:eth1" ]
+    - endpoints: [ "leaf-04:eth8", "dhcp-server:eth2" ] # ring1 multihoming for dhcp-server data-plane
+    - endpoints: [ "leaf-03:eth11", "zabbix-server:eth1" ] # changing eth10 to eth11 to avoid conflict with oob-sw

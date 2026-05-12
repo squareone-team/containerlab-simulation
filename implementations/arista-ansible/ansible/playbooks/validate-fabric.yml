@@ -27,12 +27,69 @@
   gather_facts: false
   tags: [validate, bgp]
 
-  # roles:
-  #   - role: validation
-  #     vars:
-  #       validation_checks:
-  #         - bgp_underlay
-  #         - bgp_evpn
+  tasks:
+    - name: "Collect BGP summary"
+      arista.eos.eos_command:
+        commands:
+          - "show bgp summary | json"
+      register: bgp_summary
+
+    - name: "Assert all BGP peers are Established"
+      vars:
+        bgp_data: >-
+          {{ bgp_summary.stdout[0]
+             if bgp_summary.stdout[0] is mapping
+             else bgp_summary.stdout[0] | from_json }}
+      ansible.builtin.assert:
+        that:
+          - item.value.peerState == "Established"
+        fail_msg: >-
+          BGP peer {{ item.key }} on {{ inventory_hostname }} is
+          {{ item.value.peerState }}, expected Established
+        success_msg: "BGP peer {{ item.key }} is Established"
+      loop: >-
+        {{ bgp_data.vrfs | default({})
+          | dict2items
+          | selectattr('key', 'equalto', 'default')
+          | map(attribute='value')
+          | map(attribute='peers')
+          | first | default({})
+          | dict2items }}
+      when: bgp_summary.stdout is defined
+      ignore_errors: true
+
+    - name: "Collect EVPN BGP summary"
+      arista.eos.eos_command:
+        commands:
+          - "show bgp evpn summary | json"
+      register: evpn_summary
+      when: "'spines' in group_names or 'leaves' in group_names"
+
+    - name: "Assert EVPN peers are Established"
+      vars:
+        evpn_data: >-
+          {{ evpn_summary.stdout[0]
+             if evpn_summary.stdout[0] is mapping
+             else evpn_summary.stdout[0] | from_json }}
+      ansible.builtin.assert:
+        that:
+          - item.value.peerState == "Established"
+        fail_msg: >-
+          EVPN peer {{ item.key }} on {{ inventory_hostname }} is
+          {{ item.value.peerState }}, expected Established
+        success_msg: "EVPN peer {{ item.key }} is Established"
+      loop: >-
+        {{ evpn_data.vrfs | default({})
+          | dict2items
+          | selectattr('key', 'equalto', 'default')
+          | map(attribute='value')
+          | map(attribute='peers')
+          | first | default({})
+          | dict2items }}
+      when:
+        - evpn_summary.stdout is defined
+        - evpn_summary is not skipped
+      ignore_errors: true
 
 # -----------------------------------------------------------------------------
 # 3 — VXLAN/VTEP validation on leaves
@@ -51,11 +108,14 @@
       tags: [vxlan]
 
     - name: "Assert Vxlan1 is up"
+      vars:
+        vxlan_data: >-
+          {{ vxlan_iface.stdout[0]
+             if vxlan_iface.stdout[0] is mapping
+             else vxlan_iface.stdout[0] | from_json }}
       ansible.builtin.assert:
         that:
-          - >
-            (vxlan_iface.stdout[0] | from_json).interfaces.Vxlan1.lineProtocolStatus
-            == 'up'
+          - vxlan_data.interfaces.Vxlan1.lineProtocolStatus == 'up'
         fail_msg: "Vxlan1 is not up on {{ inventory_hostname }}"
         success_msg: "Vxlan1 is up on {{ inventory_hostname }}"
       tags: [vxlan]
@@ -68,15 +128,20 @@
       tags: [vtep]
 
     - name: "Assert VTEP table is not empty"
+      vars:
+        vtep_data: >-
+          {{ vtep_table.stdout[0]
+             if vtep_table.stdout[0] is mapping
+             else vtep_table.stdout[0] | from_json }}
       ansible.builtin.assert:
         that:
-          - (vtep_table.stdout[0] | from_json).vteps | length > 0
+          - vtep_data.vteps | length > 0
         fail_msg: >
           VTEP table empty on {{ inventory_hostname }} —
           EVPN type-3 routes not received
         success_msg: >
           {{ inventory_hostname }} has
-          {{ (vtep_table.stdout[0] | from_json).vteps | length }}
+          {{ vtep_data.vteps | length }}
           VTEP(s) in table
       tags: [vtep]
 
@@ -96,9 +161,14 @@
       register: vrf_table
 
     - name: "Assert each expected VRF is present"
+      vars:
+        vrf_data: >-
+          {{ vrf_table.stdout[0]
+             if vrf_table.stdout[0] is mapping
+             else vrf_table.stdout[0] | from_json }}
       ansible.builtin.assert:
         that:
-          - item.name in (vrf_table.stdout[0] | from_json).vrfs
+          - item.name in vrf_data.vrfs
         fail_msg: "VRF {{ item.name }} not found on {{ inventory_hostname }}"
         success_msg: "VRF {{ item.name }} present on {{ inventory_hostname }}"
       loop: "{{ active_vrfs | default([]) }}"
@@ -122,11 +192,14 @@
       when: active_vlans is defined
 
     - name: "Assert SVIs are up"
+      vars:
+        svi_data: >-
+          {{ item.stdout[0]
+             if item.stdout[0] is mapping
+             else item.stdout[0] | from_json }}
       ansible.builtin.assert:
         that:
-          - >
-            (item.stdout[0] | from_json).interfaces['Vlan' + (item.item.id | string)].lineProtocolStatus
-            == 'up'
+          - svi_data.interfaces['Vlan' + (item.item.id | string)].lineProtocolStatus == 'up'
         fail_msg: >
           SVI Vlan{{ item.item.id }} down on {{ inventory_hostname }}
         success_msg: >
@@ -155,12 +228,19 @@
       register: evpn_routes
 
     - name: "Report EVPN route counts"
+      vars:
+        evpn_type5: >-
+          {{ evpn_routes.stdout[0] if evpn_routes.stdout[0] is mapping else evpn_routes.stdout[0] | from_json }}
+        evpn_type2: >-
+          {{ evpn_routes.stdout[1] if evpn_routes.stdout[1] is mapping else evpn_routes.stdout[1] | from_json }}
+        evpn_type3: >-
+          {{ evpn_routes.stdout[2] if evpn_routes.stdout[2] is mapping else evpn_routes.stdout[2] | from_json }}
       ansible.builtin.debug:
         msg: >
           {{ inventory_hostname }} EVPN routes —
-          type-5 (prefix): {{ (evpn_routes.stdout[0] | from_json).numEntries | default(0) }},
-          type-2 (MAC-IP): {{ (evpn_routes.stdout[1] | from_json).numEntries | default(0) }},
-          type-3 (IMET):   {{ (evpn_routes.stdout[2] | from_json).numEntries | default(0) }}
+          type-5 (prefix): {{ evpn_type5.numEntries | default(0) }},
+          type-2 (MAC-IP): {{ evpn_type2.numEntries | default(0) }},
+          type-3 (IMET):   {{ evpn_type3.numEntries | default(0) }}
       when: evpn_routes.stdout is defined
 
 # -----------------------------------------------------------------------------
@@ -225,8 +305,8 @@
     - name: "Assert ADMIN subnet absent from STUDENT VRF"
       ansible.builtin.assert:
         that:
-          - student_admin_route.stdout[0] | from_json | length == 0 or
-            (student_admin_route.stdout[0] | from_json).get('routes', {}) | length == 0
+          - (student_admin_route.stdout[0] if student_admin_route.stdout[0] is mapping else student_admin_route.stdout[0] | from_json) | length == 0 or
+            (student_admin_route.stdout[0] if student_admin_route.stdout[0] is mapping else student_admin_route.stdout[0] | from_json).get('routes', {}) | length == 0
         fail_msg: >
           ISOLATION FAILURE: ADMIN routes present in STUDENT VRF on
           {{ inventory_hostname }}

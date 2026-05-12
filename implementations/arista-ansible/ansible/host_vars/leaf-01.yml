@@ -1,4 +1,3 @@
-
 # =============================================================================
 # host_vars/leaf-01.yml — Edge Pod, Primary Leaf
 # Role: ISP uplinks (eth3/eth4), Firewall trunk (eth5),
@@ -69,13 +68,13 @@ interfaces:
   Ethernet9:
     description: "ESI peer-link → leaf-02 eth9"
     type: routed
-    ip: 10.255.1.0/31     # /31 point-to-point ESI heartbeat
+    ip: 10.255.1.0/31 # /31 point-to-point ESI heartbeat
 
   # OOB management (OOB switch eth4)
   Ethernet10:
     description: "OOB switch uplink"
     type: access
-    access_vlan: 1         # native VLAN on OOB switch
+    access_vlan: 1 # native VLAN on OOB switch
 
   # WiFi controller
   Ethernet14:
@@ -107,25 +106,25 @@ router_id: 10.0.1.1
 
 bgp_neighbors:
   # Spine peers (underlay IPv4 unicast)
-  - peer_ip: 10.1.1.0          # spine-01 eth1
+  - peer_ip: 10.1.1.0 # spine-01 eth1
     remote_as: 65000
     description: "spine-01 underlay"
     address_family: [ipv4_unicast]
 
-  - peer_ip: 10.2.1.0          # spine-02 eth1
+  - peer_ip: 10.2.1.0 # spine-02 eth1
     remote_as: 65000
     description: "spine-02 underlay"
     address_family: [ipv4_unicast]
 
   # EVPN overlay peers (to spines' loopbacks)
-  - peer_ip: 10.0.0.1          # spine-01 loopback
+  - peer_ip: 10.0.0.1 # spine-01 loopback
     remote_as: 65000
     description: "spine-01 EVPN"
     update_source: Loopback0
     ebgp_multihop: 3
     address_family: [evpn]
 
-  - peer_ip: 10.0.0.2          # spine-02 loopback
+  - peer_ip: 10.0.0.2 # spine-02 loopback
     remote_as: 65000
     description: "spine-02 EVPN"
     update_source: Loopback0
@@ -149,7 +148,7 @@ bgp_neighbors:
 
 # BGP networks advertised to ISP (public-facing)
 bgp_networks:
-  - "203.0.113.0/24"   # public address block (lab placeholder)
+  - "203.0.113.0/24" # public address block (lab placeholder)
 
 # -----------------------------------------------------------------------------
 # VRFs hosted on this leaf (Edge Pod)
@@ -191,3 +190,35 @@ monitor_sessions:
 # -----------------------------------------------------------------------------
 esi_id: "0000:0000:0001:0001:0001"
 lacp_system_id: "0001.0001.0001"
+
+communication_domains:
+  - vrf: PUBLIC
+    description: "DMZ / Public-facing services"
+    l3vni: 10100
+    rd: "10.0.1.1:10100"
+    rt_import: ["65000:10100"]
+    rt_export: ["65000:10100"]
+    rfc1918_block: true # blocks RFC1918 routes leaking out to ISP
+    vlans:
+      - id: 100
+        name: DMZ
+        vni: 10100
+        vrf: PUBLIC
+        rt: "65000:10100"
+        gateway: "192.168.100.1"
+        prefix: "192.168.100.0/24"
+
+  - vrf: CAMPUS
+    description: "Campus WiFi and wired endpoints"
+    l3vni: 10110
+    rd: "10.0.1.1:10110"
+    rt_import: ["65000:10110"]
+    rt_export: ["65000:10110"]
+    vlans:
+      - id: 110
+        name: CAMPUS-WIFI
+        vni: 10110
+        vrf: CAMPUS
+        rt: "65000:10110"
+        gateway: "192.168.110.1"
+        prefix: "192.168.110.0/24"

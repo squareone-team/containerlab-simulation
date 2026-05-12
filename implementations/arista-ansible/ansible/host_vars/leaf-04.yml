@@ -8,35 +8,35 @@
 # =============================================================================
 
 ansible_host: 172.20.20.24
-router_id:    10.0.2.2
-loopback0:    10.0.2.2/32
-bgp_as:       65104
+router_id: 10.0.2.2
+loopback0: 10.0.2.2/32
+bgp_as: 65104
 underlay_asn: 65104
 # -----------------------------------------------------------------------------
 # Spine uplink P2P addresses (leaf side = .1)
 # -----------------------------------------------------------------------------
-spine01_p2p:     10.1.4.0/31
-spine02_p2p:     10.2.4.0/31
+spine01_p2p: 10.1.4.0/31
+spine02_p2p: 10.2.4.0/31
 spine01_leaf_ip: 10.1.4.1
 spine02_leaf_ip: 10.2.4.1
-spine01_ip:      10.1.4.0
-spine02_ip:      10.2.4.0
+spine01_ip: 10.1.4.0
+spine02_ip: 10.2.4.0
 
 # -----------------------------------------------------------------------------
 # ESI Multi-homing parameters (paired with leaf-03)
 # ESI = 00:00:00:00:00:02:04:00:00:01  (pod=02, position=04)
 # -----------------------------------------------------------------------------
-esi_peer:           leaf-03
-esi_id:             "0000:0000:0204:0000:0001"
+esi_peer: leaf-03
+esi_id: "0000:0000:0204:0000:0001"
 esi_portchannel_id: 12
-esi_lacp_id:        "0000.0204.0001"
+esi_lacp_id: "0000.0204.0001"
 
 # -----------------------------------------------------------------------------
 # Uplink interface names (ContainerLab cEOS naming)
 # -----------------------------------------------------------------------------
-spine01_interface: Ethernet1    # → spine-01 : Ethernet4
-spine02_interface: Ethernet2    # → spine-02 : Ethernet4
-peer_interface:    Ethernet10   # → leaf-03 ESI heartbeat
+spine01_interface: Ethernet1 # → spine-01 : Ethernet4
+spine02_interface: Ethernet2 # → spine-02 : Ethernet4
+peer_interface: Ethernet10 # → leaf-03 ESI heartbeat
 
 # -----------------------------------------------------------------------------
 # Physical interface map
@@ -59,7 +59,7 @@ interfaces:
     type: access
     access_vlan: 200
     mtu: "{{ mtu_host }}"
-    channel_group: 12           # Port-Channel12 — ESI LAG with leaf-03 Po10
+    channel_group: 12 # Port-Channel12 — ESI LAG with leaf-03 Po10
 
   Ethernet4:
     description: "services-web eth1 [VLAN 230 SERVICES]"
@@ -73,7 +73,7 @@ interfaces:
     type: access
     access_vlan: 200
     mtu: "{{ mtu_host }}"
-    channel_group: 13           # Port-Channel13 — ESI LAG with leaf-03 Po11
+    channel_group: 13 # Port-Channel13 — ESI LAG with leaf-03 Po11
 
   Ethernet6:
     description: "syslog-server eth1 [VLAN 210 INFRA]"
@@ -180,7 +180,6 @@ active_vrfs:
     rd: "10.0.2.2:10200"
     rt_import: "65000:10200"
     rt_export: "65000:10200"
-
 
   - name: INFRA
     vrf_id: 210
@@ -311,3 +310,63 @@ vlan_vni_map:
   - vlan: 230
     vni: 10230
     name: SERVICES-WEB
+
+# -----------------------------------------------------------------------------
+# Communication Domains — consumed by arista-evpn role
+# -----------------------------------------------------------------------------
+communication_domains:
+  - vrf: ADMIN
+    l3vni: 10200
+    rd: "10.0.2.2:10200"
+    rt_import: ["65000:10200"]
+    rt_export: ["65000:10200"]
+    vlans:
+      - id: 200
+        name: ADMIN
+        vni: 10200
+        vrf: ADMIN
+        rt: "65000:10200"
+        gateway: "192.168.200.1"
+        prefix: "192.168.200.0/24"
+
+  - vrf: INFRA
+    l3vni: 10210
+    rd: "10.0.2.2:10210"
+    rt_import: ["65000:10210"]
+    rt_export: ["65000:10210"]
+    vlans:
+      - id: 210
+        name: INFRA-MGMT
+        vni: 10210
+        vrf: INFRA
+        rt: "65000:10210"
+        gateway: "192.168.20.1"
+        prefix: "192.168.20.0/24"
+
+  - vrf: LMS
+    l3vni: 10220
+    rd: "10.0.2.2:10220"
+    rt_import: ["65000:10220"]
+    rt_export: ["65000:10220"]
+    vlans:
+      - id: 220
+        name: LMS-STAFF
+        vni: 10220
+        vrf: LMS
+        rt: "65000:10220"
+        gateway: "192.168.30.1"
+        prefix: "192.168.30.0/24"
+
+  - vrf: SERVICES
+    l3vni: 10230
+    rd: "10.0.2.2:10230"
+    rt_import: ["65000:10230"]
+    rt_export: ["65000:10230"]
+    vlans:
+      - id: 230
+        name: SERVICES-WEB
+        vni: 10230
+        vrf: SERVICES
+        rt: "65000:10230"
+        gateway: "192.168.40.1"
+        prefix: "192.168.40.0/24"

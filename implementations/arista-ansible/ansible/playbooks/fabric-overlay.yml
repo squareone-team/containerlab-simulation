@@ -62,7 +62,7 @@
   tasks:
     - name: "Configure ESI Port-Channels"
       arista.eos.eos_config:
-        src: "esi-lag.j2"
+        src: "{{ playbook_dir }}/../roles/arista-evpn/templates/esi-lag.j2"
       when: esi_id is defined
 
 # -----------------------------------------------------------------------------
@@ -82,16 +82,34 @@
 
     - name: "Report EVPN peer count"
       vars:
-        evpn_peers: >-
-          {{ (bgp_summary.stdout[0] | from_json)
-            .vrfs | default({})
+        evpn_data: >-
+          {{ evpn_summary.stdout[0]
+             if evpn_summary.stdout[0] is mapping
+             else evpn_summary.stdout[0] | from_json }}
+        evpn_summary_peers: >-
+          {{ evpn_data.vrfs | default({})
             | dict2items
             | selectattr('key', 'equalto', 'default')
             | map(attribute='value')
             | map(attribute='peers')
             | first | default({})
             | dict2items }}
-      assert:
+        established_evpn_peers: >-
+          {{ evpn_summary_peers
+             | selectattr('value.peerState', 'equalto', 'Established')
+             | list }}
+        expected_evpn_peer_count: "{{ hostvars[inventory_hostname].evpn_peers | default([]) | length }}"
+      ansible.builtin.assert:
         that:
-          - evpn_peers | length > 0
-        fail_msg: "No EVPN peers established on {{ inventory_hostname }}"
+          - evpn_summary_peers | length > 0
+          - established_evpn_peers | length == (expected_evpn_peer_count | int)
+        fail_msg: >-
+          {{ inventory_hostname }} has
+          {{ established_evpn_peers | length }}/{{ expected_evpn_peer_count }}
+          EVPN peers Established. Configured neighbors are present only after
+          the underlay advertises Loopback0 reachability and leaf/spine EVPN
+          neighbors are activated.
+        success_msg: >-
+          {{ inventory_hostname }} has all
+          {{ established_evpn_peers | length }} EVPN peer(s) Established
+      when: evpn_summary.stdout is defined

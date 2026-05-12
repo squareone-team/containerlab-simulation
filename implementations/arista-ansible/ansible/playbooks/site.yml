@@ -2,7 +2,7 @@
 # ESI Data Center — Master Site Playbook
 # Orchestrates full fabric deployment in the correct dependency order:
 #
-#   1. arista-common   → EOS baseline (features, LLDP, NTP, syslog, banner)
+#   1. arista-common   → EOS baseline (routing model, LLDP, NTP, syslog, banner)
 #   2. fabric-underlay → eBGP P2P underlay (IPv4 unicast reachability)
 #   3. fabric-overlay  → EVPN/VXLAN overlay (VRFs, VNIs, anycast GW)
 #   4. firewalls       → nftables + keepalived on Alpine FW pair

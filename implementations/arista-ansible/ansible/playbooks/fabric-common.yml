@@ -5,7 +5,7 @@
 #
 # Configures:
 #   - Hostname, domain-name, login banner
-#   - EOS feature enables (routing bgp, vxlan, etc.)
+#   - EOS global baseline commands
 #   - Management IP + default route via mgmt VRF
 #   - NTP, syslog, SNMP
 #   - LLDP

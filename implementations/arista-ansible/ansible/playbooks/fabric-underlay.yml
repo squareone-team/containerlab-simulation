@@ -72,7 +72,12 @@
           ((bgp_summary.stdout[0]
             if bgp_summary.stdout[0] is mapping
             else bgp_summary.stdout[0] | from_json)
-          ).vrfs.default.peers | dict2items
+          ).vrfs | default({})
+          | dict2items
+          | selectattr('key', 'equalto', 'default')
+          | map(attribute='value')
+          | map(attribute='peers')
+          | first | default({})
+          | dict2items
         }}
       when: bgp_summary.stdout is defined
-      ignore_errors: true
