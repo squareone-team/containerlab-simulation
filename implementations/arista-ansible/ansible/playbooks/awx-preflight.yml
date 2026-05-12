@@ -1,0 +1,25 @@
+---
+- name: "AWX PREFLIGHT | Verify cEOS SSH and EOS command access"
+  hosts: fabric
+  gather_facts: false
+
+  tasks:
+    - name: "Check SSH port is reachable from AWX execution pod"
+      ansible.builtin.wait_for:
+        host: "{{ ansible_host }}"
+        port: 22
+        timeout: 20
+      delegate_to: localhost
+
+    - name: "Run EOS command"
+      arista.eos.eos_command:
+        commands:
+          - "show hostname"
+          - "show version"
+      register: eos_preflight
+
+    - name: "Report reachable device"
+      ansible.builtin.debug:
+        msg:
+          - "{{ inventory_hostname }} reachable at {{ ansible_host }}"
+          - "{{ eos_preflight.stdout[0] | default('hostname output unavailable') }}"

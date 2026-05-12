@@ -1,0 +1,19 @@
+---
+# AWX demo path:
+# Runs only the Arista fabric automation stages that are present in the inventory.
+
+- name: "AWX STAGE 1 | EOS Common Baseline"
+  import_playbook: fabric-common.yml
+  tags: [common, baseline]
+
+- name: "AWX STAGE 2 | Fabric Underlay - eBGP IPv4"
+  import_playbook: fabric-underlay.yml
+  tags: [underlay, bgp]
+
+- name: "AWX STAGE 3 | Fabric Overlay - EVPN/VXLAN"
+  import_playbook: fabric-overlay.yml
+  tags: [overlay, evpn, vxlan]
+
+- name: "AWX STAGE 4 | Strict Fabric Validation"
+  import_playbook: strict-fabric-validate.yml
+  tags: [validate, strict]
