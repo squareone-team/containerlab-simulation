@@ -1,0 +1,5 @@
+ansible-pylibssh
+paramiko
+netaddr
+jmespath
+jsonschema

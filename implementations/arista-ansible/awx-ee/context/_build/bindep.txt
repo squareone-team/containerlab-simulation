@@ -1,0 +1,5 @@
+gcc [platform:rpm]
+python3-devel [platform:rpm]
+libssh-devel [platform:rpm]
+openssh-clients [platform:rpm]
+sshpass [platform:rpm]

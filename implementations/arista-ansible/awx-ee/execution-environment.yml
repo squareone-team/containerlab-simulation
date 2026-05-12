@@ -1,0 +1,16 @@
+---
+version: 1
+
+build_arg_defaults:
+  EE_BASE_IMAGE: "quay.io/ansible/awx-ee:24.6.1"
+  EE_BUILDER_IMAGE: "localhost:5000/esi/ansible-builder-c9:1.2"
+
+dependencies:
+  galaxy: requirements.yml
+  python: requirements.txt
+  system: bindep.txt
+
+additional_build_steps:
+  append:
+    - RUN python3 -m pip show ansible-pylibssh paramiko netaddr jmespath
+    - RUN ansible-galaxy collection list
