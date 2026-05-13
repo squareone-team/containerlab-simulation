@@ -24,17 +24,17 @@ ATTR_REPLY_MESSAGE = 18
 ATTR_CALLING_STATION_ID = 31
 ATTR_NAS_IDENTIFIER = 32
 
-USERNAME_RE = re.compile(r"^[A-Za-z0-9_.-]{1,64}$")
+USERNAME_RE = re.compile(r"^[A-Za-z0-9_.@-]{1,96}$")
 
 LDAP_URI = os.environ.get("LDAP_URI", "ldap://127.0.0.1:389")
 LDAP_BASE_DN = os.environ.get("LDAP_BASE_DN", "dc=esi,dc=internal")
 LDAP_BIND_DN = os.environ.get("LDAP_BIND_DN", f"cn=admin,{LDAP_BASE_DN}")
-LDAP_BIND_PASSWORD = os.environ.get("LDAP_BIND_PASSWORD", "DirectoryAdmin@2026")
+LDAP_BIND_PASSWORD = os.environ.get("LDAP_BIND_PASSWORD", "EsiDirectoryRoot#2026")
 LOG_FILE = os.environ.get("ESI_RADIUS_LOG", "/var/log/esi-radius.log")
 
 CLIENTS_RAW = os.environ.get(
     "ESI_RADIUS_CLIENTS",
-    "192.168.110.1:CampusRadiusSecret@2026:campus-nac,198.51.100.20:VpnRadiusSecret@2026:vpn-gateway",
+    "192.168.110.1:EsiCampusNacRadius#2026:campus-nac,198.51.100.20:EsiVpnRadius#2026:vpn-gateway",
 )
 
 
@@ -191,13 +191,17 @@ def response_authenticator(code, identifier, req_auth, attrs, secret):
 def pick_role(nas_id, client_name, description, groups):
     context = nas_id or client_name
     if context == "campus-nac":
-        if description == "campus-student-device":
+        if description in ("campus-student-device", "student-vpn", "student-lms", "professor-student-privilege"):
             return "campus-student"
-        if description == "campus-admin-device":
+        if "students" in groups or "student" in groups or "professors" in groups:
+            return "campus-student"
+        if description in ("campus-admin-device", "squareone-admin", "squareone-admin-linux"):
+            return "campus-admin"
+        if "squareone-admins" in groups or "admins" in groups:
             return "campus-admin"
         return ""
     if context == "vpn-gateway":
-        if description == "vpn-student" or "students" in groups:
+        if description in ("vpn-student", "student-vpn", "professor-student-privilege") or "students" in groups or "student" in groups or "professors" in groups:
             return "vpn-student"
         return ""
     return ""

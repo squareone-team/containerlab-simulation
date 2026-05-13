@@ -82,7 +82,7 @@ ip link add VRF-ORIENTATION type vrf table 50
 ip link set VRF-ORIENTATION up
 ip link add VRF-WIFI-CTRL type vrf table 60
 ip link set VRF-WIFI-CTRL up
-for IFACE in eth3 eth4 eth5 eth6 eth7 eth8 eth9; do
+for IFACE in eth3 eth4 eth5 eth6 eth7 eth8 eth9 eth11 eth12; do
   ip link set dev $IFACE mtu 9000 || true
 done
 
@@ -312,6 +312,16 @@ fi
 if ip link show eth7 >/dev/null 2>&1; then
   ip link set eth7 master br0
   bridge vlan add vid 100 dev eth7 pvid untagged
+fi
+
+if ip link show eth11 >/dev/null 2>&1; then
+  ip link set eth11 master br0
+  bridge vlan add vid 100 dev eth11 pvid untagged
+fi
+
+if ip link show eth12 >/dev/null 2>&1; then
+  ip link set eth12 master br0
+  bridge vlan add vid 100 dev eth12 pvid untagged
 fi
 
 if ip link show eth6 >/dev/null 2>&1; then

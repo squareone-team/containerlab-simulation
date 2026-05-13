@@ -18,7 +18,7 @@ ADMIN_TARGET="192.168.50.10"
 HPC_TARGET="192.168.70.10"
 JUPYTER_TARGET="192.168.70.30"
 AUTH_IP="192.168.50.80"
-RADIUS_SECRET_CAMPUS="CampusRadiusSecret@2026"
+RADIUS_SECRET_CAMPUS="EsiCampusNacRadius#2026"
 
 NAC_STUDENT_IP="192.168.110.31"
 NAC_ADMIN_IP="192.168.110.32"
@@ -159,24 +159,24 @@ for node in "$AUTH_SERVER" "$CAMPUS_BP" "$CAMPUS_STUDENT" "$CAMPUS_ADMIN" "$STUD
   fi
 done
 
-if run_in "$AUTH_SERVER" "ldapsearch -x -H ldap://127.0.0.1:389 -b dc=esi,dc=internal '(uid=student1)' dn | grep -q 'uid=student1'"; then
-  ok "OpenLDAP directory contains student1"
+if run_in "$AUTH_SERVER" "ldapsearch -x -H ldap://127.0.0.1:389 -b dc=esi,dc=internal '(uid=amine.kadri@esi.dz)' dn | grep -q 'uid=amine.kadri@esi.dz'"; then
+  ok "OpenLDAP directory contains amine.kadri@esi.dz"
 else
-  fail "OpenLDAP directory missing student1"
+  fail "OpenLDAP directory missing amine.kadri@esi.dz"
 fi
 
-if run_in "$AUTH_SERVER" "ldapsearch -x -H ldap://127.0.0.1:389 -b dc=esi,dc=internal '(cn=admins)' memberUid | grep -q 'memberUid: admin1'"; then
-  ok "OpenLDAP directory contains admins group"
+if run_in "$AUTH_SERVER" "ldapsearch -x -H ldap://127.0.0.1:389 -b dc=esi,dc=internal '(cn=squareone-admins)' memberUid | grep -q 'memberUid: squareone.admin@esi.dz'"; then
+  ok "OpenLDAP directory contains SquareOne admin group"
 else
-  fail "OpenLDAP directory missing admins group"
+  fail "OpenLDAP directory missing SquareOne admin group"
 fi
 
 wait_for_tcp "$SERVER_STUDENT" "$AUTH_IP" 49 "student server to TACACS+"
 wait_for_tcp "$SERVER_ADMIN" "$AUTH_IP" 49 "admin server to TACACS+"
 wait_for_tcp "$SERVER_HPC" "$AUTH_IP" 49 "HPC server to TACACS+"
 
-expect_radius_role "${CAMPUS_BP}" "dev-campus-student-01" "DeviceStudent@2026" "campus-student" "campus device RADIUS returns student role"
-expect_radius_role "${CAMPUS_BP}" "dev-campus-admin-01" "DeviceAdmin@2026" "campus-admin" "campus device RADIUS returns admin role"
+expect_radius_role "${CAMPUS_BP}" "amine.kadri@esi.dz" "AmineLab#2026" "campus-student" "campus student RADIUS returns student role"
+expect_radius_role "${CAMPUS_BP}" "squareone.admin@esi.dz" "SquareOneRoot#2026" "campus-admin" "campus SquareOne admin RADIUS returns admin role"
 
 wait_for_nac_set "${CAMPUS_BP}" "campus_students" "${NAC_STUDENT_IP}" "campus student registered in NAC set"
 wait_for_nac_set "${CAMPUS_BP}" "campus_admins" "${NAC_ADMIN_IP}" "campus admin registered in NAC set"
@@ -222,25 +222,25 @@ expect_tcp_blocked "$CAMPUS_STUDENT" "$AUTH_IP" 49 "campus student direct TACACS
 expect_tcp_blocked "$CAMPUS_STUDENT" "$AUTH_IP" 389 "campus student direct LDAP probing"
 
 expect_ssh_success "student identity can access server-student through TACACS+ authorization" \
-  "$CAMPUS_STUDENT" student1 Student@2026 "$STUDENT_TARGET" student
+  "$CAMPUS_STUDENT" amine.kadri 'AmineLab#2026' "$STUDENT_TARGET" student
 
 expect_ssh_success "student identity can access server-hpc through TACACS+ authorization" \
-  "$CAMPUS_STUDENT" student1 Student@2026 "$HPC_TARGET" hpc
+  "$CAMPUS_STUDENT" amine.kadri 'AmineLab#2026' "$HPC_TARGET" hpc
 
 expect_ssh_denied "student identity cannot access server-admin even if routing changes" \
-  "$CAMPUS_ADMIN" student1 Student@2026 "$ADMIN_TARGET"
+  "$CAMPUS_ADMIN" amine.kadri 'AmineLab#2026' "$ADMIN_TARGET"
 
 expect_ssh_success "admin identity can access server-student through TACACS+ authorization" \
-  "$CAMPUS_ADMIN" admin1 Admin@2026 "$STUDENT_TARGET" student
+  "$CAMPUS_ADMIN" squareone.admin 'SquareOneRoot#2026' "$STUDENT_TARGET" student
 
 expect_ssh_success "admin identity can access server-hpc through TACACS+ authorization" \
-  "$CAMPUS_ADMIN" admin1 Admin@2026 "$HPC_TARGET" hpc
+  "$CAMPUS_ADMIN" squareone.admin 'SquareOneRoot#2026' "$HPC_TARGET" hpc
 
 expect_ssh_success "admin identity can access server-admin through TACACS+ authorization" \
-  "$CAMPUS_ADMIN" admin1 Admin@2026 "$ADMIN_TARGET" admin
+  "$CAMPUS_ADMIN" squareone.admin 'SquareOneRoot#2026' "$ADMIN_TARGET" admin
 
 expect_ssh_denied "wrong password is rejected by LDAP-backed TACACS+" \
-  "$CAMPUS_ADMIN" admin1 WrongPassword "$HPC_TARGET"
+  "$CAMPUS_ADMIN" squareone.admin WrongPassword "$HPC_TARGET"
 
 if run_in "$AUTH_SERVER" "tail -n 80 /var/log/esi-tacacs.log 2>/dev/null | grep -q '\"encrypted_body\": true' && ! tail -n 80 /var/log/esi-tacacs.log 2>/dev/null | grep -q '\"encrypted_body\": false'"; then
   ok "TACACS+ exchanges use encrypted packet bodies"

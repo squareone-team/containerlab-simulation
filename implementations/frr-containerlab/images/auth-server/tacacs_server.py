@@ -30,20 +30,22 @@ AUTHOR_STATUS_PASS_ADD = 1
 AUTHOR_STATUS_FAIL = 0x10
 AUTHOR_STATUS_ERROR = 0x11
 
-USERNAME_RE = re.compile(r"^[A-Za-z0-9_.-]{1,64}$")
+USERNAME_RE = re.compile(r"^[A-Za-z0-9_.@-]{1,96}$")
 
 LDAP_URI = os.environ.get("LDAP_URI", "ldap://127.0.0.1:389")
 LDAP_BASE_DN = os.environ.get("LDAP_BASE_DN", "dc=esi,dc=internal")
 LDAP_BIND_DN = os.environ.get("LDAP_BIND_DN", f"cn=admin,{LDAP_BASE_DN}")
-LDAP_BIND_PASSWORD = os.environ.get("LDAP_BIND_PASSWORD", "DirectoryAdmin@2026")
-TACACS_SECRET = os.environ.get("ESI_TACACS_SECRET", "TacacsSecret@2026").encode("utf-8")
+LDAP_BIND_PASSWORD = os.environ.get("LDAP_BIND_PASSWORD", "EsiDirectoryRoot#2026")
+TACACS_SECRET = os.environ.get("ESI_TACACS_SECRET", "SquareOneTacacs#2026").encode("utf-8")
 ALLOW_UNENCRYPTED = os.environ.get("ESI_TACACS_ALLOW_UNENCRYPTED", "0") == "1"
 SEND_UNENCRYPTED = os.environ.get("ESI_TACACS_SEND_UNENCRYPTED", "0") == "1"
 LOG_FILE = os.environ.get("ESI_TACACS_LOG", "/var/log/esi-tacacs.log")
 
 RESOURCE_RULES = {
     "admins": {"student", "hpc", "admin", "core"},
+    "squareone-admins": {"student", "hpc", "admin", "core"},
     "students": {"student", "hpc"},
+    "student": {"student", "hpc"},
     "hpc-users": {"hpc"},
 }
 

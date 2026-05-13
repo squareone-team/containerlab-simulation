@@ -24,7 +24,7 @@ AUTHOR_STATUS_PASS_REPL = 2
 
 TACACS_HOST = os.environ.get("ESI_TACACS_HOST", "192.168.50.80")
 TACACS_PORT = int(os.environ.get("ESI_TACACS_PORT", "49"))
-TACACS_SECRET = os.environ.get("ESI_TACACS_SECRET", "TacacsSecret@2026").encode("utf-8")
+TACACS_SECRET = os.environ.get("ESI_TACACS_SECRET", "SquareOneTacacs#2026").encode("utf-8")
 SEND_UNENCRYPTED = os.environ.get("ESI_TACACS_SEND_UNENCRYPTED", "0") == "1"
 RESOURCE_FILE = os.environ.get("ESI_AUTH_RESOURCE_FILE", "/etc/esi-auth-resource")
 LOG_FILE = os.environ.get("ESI_AUTH_CLIENT_LOG", "/var/log/esi-auth-client.log")

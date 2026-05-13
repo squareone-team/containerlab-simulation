@@ -103,7 +103,7 @@ wait_for_vpn_health "VPN enrollment portal health is OK"
 
 RESP=""
 for attempt in 1 2 3 4 5; do
-  RESP=$(run_in "$VPN_CLIENT" "PUB=\$(cat /tmp/vpn-client.pub); curl -ks -X POST -H 'Content-Type: application/json' -d '{\"username\":\"student1\",\"password\":\"Student@2026\",\"public_key\":\"'\"\${PUB}\"'\"}' ${VPN_ENDPOINT}" 2>/dev/null || true)
+  RESP=$(run_in "$VPN_CLIENT" "PUB=\$(cat /tmp/vpn-client.pub); curl -ks -X POST -H 'Content-Type: application/json' -d '{\"username\":\"amine.kadri@esi.dz\",\"password\":\"AmineLab#2026\",\"public_key\":\"'\"\${PUB}\"'\"}' ${VPN_ENDPOINT}" 2>/dev/null || true)
   if echo "$RESP" | grep -q '"ok": true'; then
     break
   fi
@@ -137,7 +137,7 @@ expect_tcp "$VPN_CLIENT" "192.168.70.10" "22" "VPN client can reach HPC SSH"
 expect_tcp "$VPN_CLIENT" "192.168.70.30" "8080" "VPN client can reach Jupyter frontend"
 expect_tcp_blocked "$VPN_CLIENT" "192.168.50.10" "22" "VPN client cannot reach admin SSH"
 
-RESP_ADMIN=$(run_in "$VPN_CLIENT" "PUB=\$(cat /tmp/vpn-client.pub); curl -ks -X POST -H 'Content-Type: application/json' -d '{\"username\":\"admin1\",\"password\":\"Admin@2026\",\"public_key\":\"'\"\${PUB}\"'\"}' ${VPN_ENDPOINT}")
+RESP_ADMIN=$(run_in "$VPN_CLIENT" "PUB=\$(cat /tmp/vpn-client.pub); curl -ks -X POST -H 'Content-Type: application/json' -d '{\"username\":\"squareone.admin@esi.dz\",\"password\":\"SquareOneRoot#2026\",\"public_key\":\"'\"\${PUB}\"'\"}' ${VPN_ENDPOINT}")
 if echo "$RESP_ADMIN" | grep -q '"ok": false'; then
   ok "admin VPN enrollment rejected"
 else

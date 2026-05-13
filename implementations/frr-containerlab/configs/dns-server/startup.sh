@@ -93,6 +93,7 @@ server:
   access-control: 10.0.0.0/8        allow
   access-control: 172.16.0.0/12     allow
   access-control: 192.168.0.0/16    allow
+  access-control: 198.51.100.0/24   allow
   num-threads: 2
   msg-cache-size: 16m
   rrset-cache-size: 32m
@@ -126,7 +127,8 @@ view:
   name: "internal"
   local-zone: "." transparent
   local-zone: "esi.internal." static
-  local-zone: "esi.dz." static
+  local-zone: "moodle.esi.dz." static
+  local-zone: "google.com." static
   local-zone: "50.168.192.in-addr.arpa." static
   # Spines
   local-data: "spine-01.esi.internal.       300 IN A 10.1.0.1"
@@ -186,9 +188,8 @@ view:
   local-data: "ftp-server.esi.internal.     300 IN A 192.168.80.10"
   local-data: "ftp.esi.internal.            300 IN A 192.168.80.10"
   # Public browser demo names
-  local-data: "esi.dz.                      300 IN A 198.51.100.10"
-  local-data: "www.esi.dz.                  300 IN A 198.51.100.10"
-  local-data: "internet.esi.dz.             300 IN A 198.18.3.10"
+  local-data: "moodle.esi.dz.               300 IN A 198.51.100.30"
+  local-data: "www.google.com.              300 IN A 198.18.3.10"
   # WiFi controller
   local-data: "wifi-controller.esi.internal. 300 IN A 192.168.10.100"
   local-data: "wifi.esi.internal.           300 IN A 192.168.10.100"

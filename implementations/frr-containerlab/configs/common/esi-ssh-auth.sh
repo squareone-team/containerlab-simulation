@@ -25,8 +25,8 @@ set_sshd_config() {
     fi
 }
 
-ensure_user admin1 2101
-ensure_user student1 2102
+ensure_user squareone.admin 2101
+ensure_user amine.kadri 2102
 
 echo "$RESOURCE" > /etc/esi-auth-resource
 
@@ -48,7 +48,7 @@ set_sshd_config AuthenticationMethods keyboard-interactive
 set_sshd_config PubkeyAuthentication no
 set_sshd_config PermitRootLogin no
 set_sshd_config PermitEmptyPasswords no
-set_sshd_config AllowUsers "admin1 student1"
+set_sshd_config AllowUsers "squareone.admin amine.kadri"
 set_sshd_config MaxAuthTries 3
 set_sshd_config LoginGraceTime 30
 

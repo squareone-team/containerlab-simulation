@@ -57,6 +57,11 @@ fi
 iptables -t nat -C POSTROUTING -s 192.168.110.0/24 -o eth1 -j MASQUERADE 2>/dev/null \
     || iptables -t nat -A POSTROUTING -s 192.168.110.0/24 -o eth1 -j MASQUERADE
 
+# Campus endpoints use jumbo MTU, while the public/DMZ path is intentionally
+# mixed. Clamp TCP SYN MSS so large Moodle pages do not black-hole on return.
+iptables -t mangle -C FORWARD -p tcp --tcp-flags SYN,RST SYN -j TCPMSS --set-mss 1360 2>/dev/null \
+    || iptables -t mangle -A FORWARD -p tcp --tcp-flags SYN,RST SYN -j TCPMSS --set-mss 1360
+
 mkdir -p /var/log
 if [ -f /usr/local/bin/esi-nac-server.py ]; then
     mkdir -p /etc/esi-nac/tls
@@ -70,7 +75,7 @@ if [ -f /usr/local/bin/esi-nac-server.py ]; then
         chmod 600 /etc/esi-nac/tls/nac.key
     fi
     ESI_RADIUS_HOST="192.168.50.80" \
-    ESI_RADIUS_SECRET="CampusRadiusSecret@2026" \
+    ESI_RADIUS_SECRET="EsiCampusNacRadius#2026" \
     ESI_NAC_LISTEN="192.168.110.1" \
     ESI_NAC_PORT="8443" \
     ESI_NAC_REDIRECT_PORT="80" \

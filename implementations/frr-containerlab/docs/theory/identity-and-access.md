@@ -2,7 +2,7 @@
 
 This lab models the identity plane with three layers so the behavior is visible even in ContainerLab:
 
-1. **OpenLDAP** is the source of truth for users and device identities.
+1. **OpenLDAP** is the source of truth for demo people and groups.
 2. **TACACS+** enforces SSH authentication and authorization on protected servers.
 3. **RADIUS** backs campus NAC and the VPN gateway so edge devices can classify clients.
 
@@ -12,15 +12,14 @@ The goal is to show how identity drives policy at the border without pretending 
 
 The `auth-server` container runs OpenLDAP on loopback only. It contains:
 
-- People: `student1`, `admin1`
-- Device identities: `dev-campus-student-01`, `dev-campus-admin-01`
-- Groups: `students`, `admins`, `hpc-users`
+- People: `nora.benali@esi.dz`, `amine.kadri@esi.dz`, `selma.bouaziz@esi.dz`, `ilyes.rahmani@esi.dz`, `squareone.admin@esi.dz`
+- Linux SSH aliases: `amine.kadri`, `squareone.admin`
+- Groups: `students`, `student`, `professors`, `squareone-admins`, `admins`, `hpc-users`
 
 Identity metadata lives in the `description` attribute:
 
-- `student1` has `description: vpn-student`
-- `dev-campus-student-01` has `description: campus-student-device`
-- `dev-campus-admin-01` has `description: campus-admin-device`
+- Student and professor identities map to campus student privileges and VPN student enrollment.
+- `squareone.admin@esi.dz` maps to the SquareOne admin role for campus NAC and is deliberately rejected by VPN.
 
 ## TACACS+ For Server SSH
 
@@ -33,8 +32,8 @@ Protected servers (`server-student-*`, `server-admin-*`, `server-hpc-*`) run PAM
 
 Resource mapping is enforced inside `tacacs_server.py`:
 
-- `students` → `student`, `hpc`
-- `admins` → `student`, `hpc`, `admin`, `core`
+- `students` / `student` -> `student`, `hpc`
+- `squareone-admins` / `admins` -> `student`, `hpc`, `admin`, `core`
 - `hpc-users` → `hpc`
 
 TACACS+ is therefore the user authorization layer. Reaching TCP/22 is not enough: the SSH login still has to pass LDAP password validation and a TACACS+ authorization decision for that server resource.
@@ -45,7 +44,7 @@ The TACACS+ PoC uses encrypted TACACS+ packet bodies with a shared lab secret. T
 
 The campus devices share one subnet (`192.168.110.0/24`). Instead of hardcoding IPs in the firewall, `campus-bp` now behaves like a small NAC enforcement point:
 
-1. Campus devices call the local HTTPS NAC portal/API (`campus-bp:8443`) with their device credentials.
+1. Campus devices call the local HTTPS NAC portal/API (`campus-bp:8443`) with ESI mail credentials.
 2. `campus-bp` authenticates to `auth-server` over RADIUS.
 3. RADIUS responses return a role (`campus-student` or `campus-admin`).
 4. `campus-bp` inserts the device IP into dynamic nftables role sets.
@@ -57,13 +56,13 @@ The protected servers intentionally do not encode `campus-student-01` or `campus
 
 | Device role at `campus-bp` | Dynamic set | Allowed SSH targets |
 | --- | --- | --- |
-| student device | `campus_students` | student pod and HPC pod |
-| admin device | `campus_admins` | student pod, HPC pod, and admin pod |
+| student or professor identity | `campus_students` | student pod, HPC pod, Moodle, Google demo, Jupyter |
+| SquareOne admin identity | `campus_admins` | student pod, HPC pod, admin pod, Moodle, Google demo, Jupyter |
 | unauthenticated campus node | no set | no internal SSH targets |
 
 This removes the same-subnet hardcoding while keeping the enforcement visible in ContainerLab. The remaining static addresses are service identities and test endpoints, not role membership.
 
-Unauthenticated campus clients may reach only the NAC portal itself. Internet web, DMZ web, DNS, Jupyter, and SSH paths are opened only after the device IP appears in a NAC role set.
+Unauthenticated campus clients may reach only the NAC portal itself. `www.google.com`, `moodle.esi.dz`, DNS, Jupyter, and SSH paths are opened only after the device IP appears in a NAC role set.
 
 For RADIUS, `campus-bp` deliberately uses `192.168.110.1` as the client source. The `10.200.0.0/30` link is only a routing transit to `leaf-01`; it is not trusted as an identity. Ring 1 and `auth-server` therefore accept campus RADIUS only from the NAC gateway address, which keeps the AAA trust boundary tied to the enforcement point instead of to a point-to-point transport IP.
 
@@ -73,7 +72,7 @@ A WireGuard-based VPN gateway lives in the DMZ (`vpn-gateway` at `198.51.100.20`
 
 1. The client posts credentials + its WireGuard public key to the enrollment API.
 2. The gateway authenticates against RADIUS on `auth-server`.
-3. Only `vpn-student` identities are accepted.
+3. Only student/professor identities returning `vpn-student` are accepted.
 4. The gateway adds the peer to `wg0` and NATs traffic toward the firewall.
 5. Firewall rules allow the gateway to reach student/HPC SSH and the Jupyter frontend only.
 
@@ -83,8 +82,9 @@ The VPN source seen by the firewall and workloads is the gateway DMZ address (`1
 
 | Remote identity | RADIUS role | VPN enrollment | Internal reachability |
 | --- | --- | --- | --- |
-| `student1` | `vpn-student` | accepted | SSH to student/HPC targets and HTTPS to Jupyter |
-| `admin1` | none for VPN | rejected | no tunnel peer is installed |
+| `amine.kadri@esi.dz` | `vpn-student` | accepted | SSH to student/HPC targets and HTTPS to Jupyter |
+| `nora.benali@esi.dz` | `vpn-student` | accepted | Same VPN privilege as a student |
+| `squareone.admin@esi.dz` | none for VPN | rejected | no tunnel peer is installed |
 
 ## Credential Protection By Hop
 

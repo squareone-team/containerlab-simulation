@@ -3,10 +3,10 @@ set -eu
 
 LDAP_BASE_DN="dc=esi,dc=internal"
 LDAP_BIND_DN="cn=admin,${LDAP_BASE_DN}"
-LDAP_BIND_PASSWORD="DirectoryAdmin@2026"
-RADIUS_SECRET_CAMPUS="CampusRadiusSecret@2026"
-RADIUS_SECRET_VPN="VpnRadiusSecret@2026"
-TACACS_SECRET="TacacsSecret@2026"
+LDAP_BIND_PASSWORD="EsiDirectoryRoot#2026"
+RADIUS_SECRET_CAMPUS="EsiCampusNacRadius#2026"
+RADIUS_SECRET_VPN="EsiVpnRadius#2026"
+TACACS_SECRET="SquareOneTacacs#2026"
 
 wait_for_iface() {
     iface="$1"
@@ -79,10 +79,11 @@ pkill slapd 2>/dev/null || true
 rm -rf /var/lib/openldap/openldap-data/*
 
 ROOTPW="$(slappasswd -s "${LDAP_BIND_PASSWORD}")"
-ADMINPW="$(slappasswd -s 'Admin@2026')"
-STUDENTPW="$(slappasswd -s 'Student@2026')"
-DEVICE_STUDENT_PW="$(slappasswd -s 'DeviceStudent@2026')"
-DEVICE_ADMIN_PW="$(slappasswd -s 'DeviceAdmin@2026')"
+SQUAREONE_ADMIN_PW="$(slappasswd -s 'SquareOneRoot#2026')"
+PROFESSOR_NORA_PW="$(slappasswd -s 'NoraTPs#2026')"
+STUDENT_AMINE_PW="$(slappasswd -s 'AmineLab#2026')"
+STUDENT_SELMA_PW="$(slappasswd -s 'SelmaLms#2026')"
+STUDENT_ILYES_PW="$(slappasswd -s 'IlyesVpn#2026')"
 
 cat > /etc/openldap/slapd.conf << EOF
 include         /etc/openldap/schema/core.schema
@@ -134,96 +135,165 @@ objectClass: top
 objectClass: organizationalUnit
 ou: Groups
 
-dn: ou=Devices,${LDAP_BASE_DN}
-objectClass: top
-objectClass: organizationalUnit
-ou: Devices
-
-dn: uid=admin1,ou=People,${LDAP_BASE_DN}
+dn: uid=squareone.admin@esi.dz,ou=People,${LDAP_BASE_DN}
 objectClass: top
 objectClass: account
 objectClass: posixAccount
 objectClass: shadowAccount
-cn: Campus Admin
-uid: admin1
+cn: SquareOne Network Admin
+uid: squareone.admin@esi.dz
 uidNumber: 2101
 gidNumber: 2101
-homeDirectory: /home/admin1
+homeDirectory: /home/squareone.admin
 loginShell: /bin/sh
-userPassword: ${ADMINPW}
+userPassword: ${SQUAREONE_ADMIN_PW}
+description: squareone-admin
 
-dn: uid=student1,ou=People,${LDAP_BASE_DN}
+dn: uid=squareone.admin,ou=People,${LDAP_BASE_DN}
 objectClass: top
 objectClass: account
 objectClass: posixAccount
 objectClass: shadowAccount
-cn: Campus Student
-uid: student1
+cn: SquareOne Network Admin
+uid: squareone.admin
+uidNumber: 2111
+gidNumber: 2101
+homeDirectory: /home/squareone.admin
+loginShell: /bin/sh
+userPassword: ${SQUAREONE_ADMIN_PW}
+description: squareone-admin-linux
+
+dn: uid=nora.benali@esi.dz,ou=People,${LDAP_BASE_DN}
+objectClass: top
+objectClass: account
+objectClass: posixAccount
+objectClass: shadowAccount
+cn: Nora Benali
+uid: nora.benali@esi.dz
 uidNumber: 2102
 gidNumber: 2102
-homeDirectory: /home/student1
+homeDirectory: /home/nora.benali
 loginShell: /bin/sh
-userPassword: ${STUDENTPW}
-description: vpn-student
+userPassword: ${PROFESSOR_NORA_PW}
+description: professor-student-privilege
 
-dn: uid=dev-campus-student-01,ou=Devices,${LDAP_BASE_DN}
+dn: uid=amine.kadri@esi.dz,ou=People,${LDAP_BASE_DN}
 objectClass: top
 objectClass: account
 objectClass: posixAccount
 objectClass: shadowAccount
-cn: Campus Student Device
-uid: dev-campus-student-01
+cn: Amine Kadri
+uid: amine.kadri@esi.dz
 uidNumber: 2201
-gidNumber: 2201
-homeDirectory: /dev/null
-loginShell: /sbin/nologin
-userPassword: ${DEVICE_STUDENT_PW}
-description: campus-student-device
+gidNumber: 2102
+homeDirectory: /home/amine.kadri
+loginShell: /bin/sh
+userPassword: ${STUDENT_AMINE_PW}
+description: student-vpn
 
-dn: uid=dev-campus-admin-01,ou=Devices,${LDAP_BASE_DN}
+dn: uid=amine.kadri,ou=People,${LDAP_BASE_DN}
 objectClass: top
 objectClass: account
 objectClass: posixAccount
 objectClass: shadowAccount
-cn: Campus Admin Device
-uid: dev-campus-admin-01
+cn: Amine Kadri
+uid: amine.kadri
 uidNumber: 2202
-gidNumber: 2202
-homeDirectory: /dev/null
-loginShell: /sbin/nologin
-userPassword: ${DEVICE_ADMIN_PW}
-description: campus-admin-device
+gidNumber: 2102
+homeDirectory: /home/amine.kadri
+loginShell: /bin/sh
+userPassword: ${STUDENT_AMINE_PW}
+description: student-linux
+
+dn: uid=selma.bouaziz@esi.dz,ou=People,${LDAP_BASE_DN}
+objectClass: top
+objectClass: account
+objectClass: posixAccount
+objectClass: shadowAccount
+cn: Selma Bouaziz
+uid: selma.bouaziz@esi.dz
+uidNumber: 2203
+gidNumber: 2102
+homeDirectory: /home/selma.bouaziz
+loginShell: /bin/sh
+userPassword: ${STUDENT_SELMA_PW}
+description: student-lms
+
+dn: uid=ilyes.rahmani@esi.dz,ou=People,${LDAP_BASE_DN}
+objectClass: top
+objectClass: account
+objectClass: posixAccount
+objectClass: shadowAccount
+cn: Ilyes Rahmani
+uid: ilyes.rahmani@esi.dz
+uidNumber: 2204
+gidNumber: 2102
+homeDirectory: /home/ilyes.rahmani
+loginShell: /bin/sh
+userPassword: ${STUDENT_ILYES_PW}
+description: student-vpn
 
 dn: cn=admins,ou=Groups,${LDAP_BASE_DN}
 objectClass: top
 objectClass: posixGroup
 cn: admins
 gidNumber: 2101
-memberUid: admin1
+memberUid: squareone.admin
+memberUid: squareone.admin@esi.dz
+
+dn: cn=squareone-admins,ou=Groups,${LDAP_BASE_DN}
+objectClass: top
+objectClass: posixGroup
+cn: squareone-admins
+gidNumber: 2110
+memberUid: squareone.admin
+memberUid: squareone.admin@esi.dz
 
 dn: cn=students,ou=Groups,${LDAP_BASE_DN}
 objectClass: top
 objectClass: posixGroup
 cn: students
 gidNumber: 2102
-memberUid: student1
+memberUid: nora.benali@esi.dz
+memberUid: amine.kadri@esi.dz
+memberUid: amine.kadri
+memberUid: selma.bouaziz@esi.dz
+memberUid: ilyes.rahmani@esi.dz
+
+dn: cn=student,ou=Groups,${LDAP_BASE_DN}
+objectClass: top
+objectClass: posixGroup
+cn: student
+gidNumber: 2105
+memberUid: nora.benali@esi.dz
+memberUid: amine.kadri@esi.dz
+memberUid: selma.bouaziz@esi.dz
+memberUid: ilyes.rahmani@esi.dz
+
+dn: cn=professors,ou=Groups,${LDAP_BASE_DN}
+objectClass: top
+objectClass: posixGroup
+cn: professors
+gidNumber: 2106
+memberUid: nora.benali@esi.dz
 
 dn: cn=hpc-users,ou=Groups,${LDAP_BASE_DN}
 objectClass: top
 objectClass: posixGroup
 cn: hpc-users
 gidNumber: 2103
-memberUid: student1
-memberUid: admin1
+memberUid: amine.kadri
+memberUid: squareone.admin
 EOF
 
 slapadd -f /etc/openldap/slapd.conf -l /etc/esi-auth/bootstrap.ldif >/var/log/esi-ldap-bootstrap.log 2>&1
 chown -R ldap:ldap /var/lib/openldap
 
-slapd -f /etc/openldap/slapd.conf -h "ldap://127.0.0.1:389/" -u ldap -g ldap
+nohup slapd -d 0 -f /etc/openldap/slapd.conf -h "ldap://127.0.0.1:389/" -u ldap -g ldap \
+    >/var/log/slapd.stdout 2>&1 &
 
 for _ in $(seq 1 20); do
-    if ldapsearch -x -H ldap://127.0.0.1:389 -D "${LDAP_BIND_DN}" -w "${LDAP_BIND_PASSWORD}" -b "${LDAP_BASE_DN}" "(uid=student1)" dn >/dev/null 2>&1; then
+    if ldapsearch -x -H ldap://127.0.0.1:389 -D "${LDAP_BIND_DN}" -w "${LDAP_BIND_PASSWORD}" -b "${LDAP_BASE_DN}" "(uid=amine.kadri@esi.dz)" dn >/dev/null 2>&1; then
         break
     fi
     sleep 1

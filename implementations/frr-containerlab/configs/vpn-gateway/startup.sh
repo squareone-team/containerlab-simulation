@@ -58,7 +58,7 @@ iptables -t nat -C POSTROUTING -s 10.250.200.0/24 -o eth1 -j MASQUERADE 2>/dev/n
 
 if [ -f /usr/local/bin/esi-vpn-enroll.py ]; then
   ESI_RADIUS_HOST="192.168.50.80" \
-  ESI_RADIUS_SECRET="VpnRadiusSecret@2026" \
+  ESI_RADIUS_SECRET="EsiVpnRadius#2026" \
   ESI_RADIUS_NAS_ID="vpn-gateway" \
   ESI_VPN_LISTEN="198.51.100.20" \
   ESI_VPN_PORT="$VPN_ENROLL_PORT" \

@@ -232,6 +232,7 @@ topology:
       binds:
         - configs/vpn-gateway/startup.sh:/startup.sh
         - configs/vpn-gateway/esi-vpn-enroll.py:/usr/local/bin/esi-vpn-enroll.py:ro
+        - ../../.codex/logo_esi.png:/opt/esi/logo_esi.png:ro
       exec:
         - sh /startup.sh
 
@@ -248,14 +249,6 @@ topology:
         - configs/vpn-client-01/startup.sh:/startup.sh
       exec:
         - sh /startup.sh
-
-    vpn-browser-01:
-      kind: linux
-      image: jlesage/firefox:latest
-      network-mode: container:clab-esi-datacenter-vpn-client-01
-      startup-delay: 15
-      exec:
-        - sh -lc "echo 'nameserver 1.1.1.1' > /etc/resolv.conf"
 
     server-student-01:
       kind: linux
@@ -416,6 +409,62 @@ topology:
         - sh /startup.sh
         - sh /ntp-client.sh
 
+    moodle-db:
+      kind: linux
+      image: bitnamilegacy/mariadb:11.4
+      user: root
+      startup-delay: 10
+      cap-add:
+        - NET_ADMIN
+        - NET_RAW
+      env:
+        MARIADB_ROOT_PASSWORD: "MoodleRootDb#2026"
+        MARIADB_DATABASE: moodle
+        MARIADB_USER: moodle_app
+        MARIADB_PASSWORD: "MoodleAppDb#2026"
+        MARIADB_CHARACTER_SET: utf8mb4
+        MARIADB_COLLATE: utf8mb4_unicode_ci
+      exec:
+        - sh -lc "command -v ip >/dev/null 2>&1 || install_packages iproute2
+          >/tmp/iproute2-install.log 2>&1"
+        - sh -lc "ip link set eth1 up && ip addr replace 198.51.100.31/24
+          dev eth1 && ip route del default 2>/dev/null || true; ip route add
+          default via 198.51.100.1 dev eth1 || true"
+
+    moodle:
+      kind: linux
+      image: bitnamilegacy/moodle:5.0.2
+      user: root
+      startup-delay: 75
+      cap-add:
+        - NET_ADMIN
+        - NET_RAW
+      env:
+        MOODLE_DATABASE_TYPE: mariadb
+        MOODLE_DATABASE_HOST: moodle-db
+        MOODLE_DATABASE_PORT_NUMBER: "3306"
+        MOODLE_DATABASE_NAME: moodle
+        MOODLE_DATABASE_USER: moodle_app
+        MOODLE_DATABASE_PASSWORD: "MoodleAppDb#2026"
+        MOODLE_USERNAME: squareone.admin
+        MOODLE_PASSWORD: "SquareOneMoodle#2026"
+        MOODLE_EMAIL: "squareone.admin@esi.dz"
+        MOODLE_SITE_NAME: "ESI Moodle TP"
+        MOODLE_HOST: "moodle.esi.dz"
+        APACHE_HTTP_PORT_NUMBER: "80"
+        APACHE_HTTPS_PORT_NUMBER: "8443"
+      binds:
+        - configs/moodle/bootstrap.sh:/opt/esi-moodle/bootstrap.sh:ro
+        - configs/moodle/seed-esi-course.php:/opt/esi-moodle/seed-esi-course.php:ro
+      exec:
+        - sh -lc "command -v ip >/dev/null 2>&1 || install_packages iproute2
+          >/tmp/iproute2-install.log 2>&1"
+        - sh -lc "ip link set eth1 up && ip addr replace 198.51.100.30/24
+          dev eth1 && ip route del default 2>/dev/null || true; ip route add
+          default via 198.51.100.1 dev eth1 || true"
+        - sh -lc "nohup sh /opt/esi-moodle/bootstrap.sh
+          >/tmp/esi-moodle-bootstrap.log 2>&1 &"
+
     firewall-01:
       kind: linux
       image: esi/alpine-firewall:3.20
@@ -513,10 +562,13 @@ topology:
       ports:
         - 3000:3000
       env:
-        GF_SECURITY_ADMIN_USER: admin
-        GF_SECURITY_ADMIN_PASSWORD: admin
+        GF_SECURITY_ADMIN_USER: squareone.admin
+        GF_SECURITY_ADMIN_PASSWORD: "SquareOneGrafana#2026"
         GF_USERS_ALLOW_SIGN_UP: "false"
         GF_METRICS_ENABLED: "true"
+        GF_ANALYTICS_REPORTING_ENABLED: "false"
+        GF_ANALYTICS_CHECK_FOR_UPDATES: "false"
+        GF_PLUGINS_PLUGIN_ADMIN_ENABLED: "false"
         GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /etc/grafana/provisioning/dashboards/json/esi-fabric-observability.json
       binds:
         - configs/grafana/provisioning:/etc/grafana/provisioning
@@ -556,6 +608,7 @@ topology:
         - configs/campus-bp/startup.sh:/startup.sh
         - configs/campus-bp/nftables.conf:/etc/nftables.conf:ro
         - configs/campus-bp/esi-nac-server.py:/usr/local/bin/esi-nac-server.py:ro
+        - ../../.codex/logo_esi.png:/opt/esi/logo_esi.png:ro
       exec:
         - sh /startup.sh
 
@@ -591,33 +644,6 @@ topology:
         - configs/common/esi-nac-client.py:/usr/local/bin/esi-nac-client.py:ro
       exec:
         - sh /startup.sh
-
-    campus-student-browser:
-      kind: linux
-      image: jlesage/firefox:latest
-      network-mode: container:clab-esi-datacenter-campus-student-01
-      startup-delay: 15
-      exec:
-        - sh -lc "{ echo 'search esi.internal'; echo 'nameserver 192.168.50.30';
-          } > /etc/resolv.conf"
-
-    campus-admin-browser:
-      kind: linux
-      image: jlesage/firefox:latest
-      network-mode: container:clab-esi-datacenter-campus-admin-01
-      startup-delay: 15
-      exec:
-        - sh -lc "{ echo 'search esi.internal'; echo 'nameserver 192.168.50.30';
-          } > /etc/resolv.conf"
-
-    campus-guest-browser:
-      kind: linux
-      image: jlesage/firefox:latest
-      network-mode: container:clab-esi-datacenter-student-bp-01
-      startup-delay: 15
-      exec:
-        - sh -lc "{ echo 'search esi.internal'; echo 'nameserver 192.168.50.30';
-          } > /etc/resolv.conf"
 
     oob-sw:
       kind: linux
@@ -694,6 +720,8 @@ topology:
     - endpoints: [ "leaf-07:eth3", "server-storage-01:eth1" ]
     - endpoints: [ "leaf-08:eth3", "server-storage-01:eth2" ]
     - endpoints: [ "leaf-01:eth7", "server-dmz-01:eth1" ]
+    - endpoints: [ "leaf-01:eth11", "moodle:eth1" ]
+    - endpoints: [ "leaf-01:eth12", "moodle-db:eth1" ]
     - endpoints: [ "leaf-01:eth6", "vpn-gateway:eth1" ]
     - endpoints: [ "leaf-04:eth6", "syslog-server:eth1" ]
     - endpoints: [ "campus-bp:eth3", "leaf-01:eth8" ]

@@ -46,10 +46,12 @@ bash implementations/frr-containerlab/configs/orientation-runbook.sh --deactivat
 
 | Command | Why you run it | Good sign |
 | --- | --- | --- |
-| `docker exec clab-esi-datacenter-campus-student-01 wget -qO- -T 5 http://internet.esi.dz/` | authenticated campus student can reach the simulated internet web server | returns `internet.esi.dz` |
-| `docker exec clab-esi-datacenter-campus-student-01 wget -qO- -T 5 http://esi.dz/` | authenticated campus student can reach the DMZ portal | returns `ESI.dz DMZ Portal` |
+| `docker exec clab-esi-datacenter-campus-student-01 wget -qO- -T 5 http://www.google.com/` | authenticated campus student can reach the simulated Google-like internet web server | returns `Google Search` |
+| `docker exec clab-esi-datacenter-campus-student-01 wget -qO- -T 8 http://moodle.esi.dz/` | authenticated campus student can reach the real Moodle container in the DMZ | returns `Moodle` |
+| `docker exec clab-esi-datacenter-campus-student-01 nslookup moodle.esi.dz 192.168.50.30` | confirms Moodle is published as the only public ESI web name, not `esi.internal` | `198.51.100.30` |
 | `docker exec clab-esi-datacenter-student-bp-01 timeout 4 nc -z -w2 198.18.3.10 80 || echo blocked` | unauthenticated campus client cannot reach Internet before NAC | prints `blocked` |
 | `docker exec clab-esi-datacenter-student-bp-01 timeout 4 nc -z -w2 198.51.100.10 80 || echo blocked` | unauthenticated campus client cannot reach DMZ before NAC | prints `blocked` |
+| `docker exec clab-esi-datacenter-student-bp-01 timeout 4 nc -z -w2 198.51.100.30 80 || echo blocked` | unauthenticated campus client cannot reach Moodle before NAC | prints `blocked` |
 | `docker exec clab-esi-datacenter-internet-client-01 ping -c2 -W2 198.51.100.10` | external client can reach the DMZ IP | succeeds |
 | `docker exec clab-esi-datacenter-server-dmz-01 ip -4 -o addr show dev eth1` | confirms the DMZ host uses public/testnet addressing | `198.51.100.10/24` |
 

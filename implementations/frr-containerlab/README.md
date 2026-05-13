@@ -56,7 +56,7 @@ The lab includes an engineer-focused monitoring profile for simulation telemetry
 
 - Prometheus: `http://localhost:9090`
 - Grafana: `http://localhost:3000`
-- Grafana credentials: `admin / admin`
+- Grafana credentials: `squareone.admin / SquareOneGrafana#2026`
 
 ### What Is Preconfigured
 
@@ -69,10 +69,10 @@ The lab includes an engineer-focused monitoring profile for simulation telemetry
 	- pod health degradation
 	- high simulated router CPU
 - Simulation telemetry includes BGP, EVPN VNI state, VRF route counts, pod health, and node resource metrics.
+- Browser-facing demos include NAC at `https://192.168.110.1:8443/`, VPN enrollment at `https://198.51.100.20:8448/`, `www.google.com` on the simulated Internet webserver, and Moodle at `http://moodle.esi.dz/`.
 
 ### Reconfigure After Monitoring Changes
 
 The baseline is considered ready only when the script reports:
 
 - `Phase 1 STABLE`
-

@@ -9,7 +9,7 @@ Use this page for SNMP, Zabbix, Prometheus, Grafana, and the fabric telemetry sc
 | Zabbix | `http://localhost:4000` | official web UI, login `Admin / zabbix`, provisioned `ESI Fabric NOC` dashboard |
 | `zabbix-server` | `192.168.50.50` | polls switch loopbacks with SNMP and runs local MariaDB |
 | Prometheus | `http://localhost:9090` | scrapes fabric telemetry and Grafana metrics |
-| Grafana | `http://localhost:3000` | dashboards, login `admin / admin` |
+| Grafana | `http://localhost:3000` | dashboards, login `squareone.admin / SquareOneGrafana#2026` |
 | `fabric-telemetry` | `fabric-telemetry:9342` inside the lab | serves generated telemetry from live `docker exec` lookups |
 
 ## SNMP And Zabbix

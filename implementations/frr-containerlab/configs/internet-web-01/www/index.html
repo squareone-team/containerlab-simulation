@@ -3,18 +3,148 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>internet.esi.dz</title>
+  <title>www.google.com</title>
   <style>
-    body { margin: 0; font-family: system-ui, sans-serif; background: #f6fbff; color: #14213d; }
-    main { max-width: 760px; margin: 10vh auto; padding: 32px; }
-    h1 { margin: 0 0 10px; font-size: 2rem; }
-    p { line-height: 1.55; }
+    :root {
+      color-scheme: light;
+      --blue: #4285f4;
+      --red: #ea4335;
+      --yellow: #fbbc05;
+      --green: #34a853;
+      --ink: #202124;
+      --muted: #5f6368;
+      --line: #dfe1e5;
+      font-family: Arial, Helvetica, sans-serif;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      color: var(--ink);
+      background: #fff;
+      display: flex;
+      flex-direction: column;
+    }
+    header {
+      display: flex;
+      justify-content: flex-end;
+      align-items: center;
+      gap: 18px;
+      padding: 16px 24px;
+      font-size: 14px;
+    }
+    header a { color: var(--ink); text-decoration: none; }
+    header a:hover { text-decoration: underline; }
+    .apps {
+      width: 34px;
+      height: 34px;
+      border: 0;
+      border-radius: 50%;
+      background: transparent;
+      display: grid;
+      grid-template-columns: repeat(3, 4px);
+      gap: 3px;
+      place-content: center;
+    }
+    .apps span { width: 4px; height: 4px; border-radius: 50%; background: #5f6368; }
+    main {
+      flex: 1;
+      display: grid;
+      align-content: start;
+      justify-items: center;
+      padding-top: 12vh;
+    }
+    .logo {
+      font-size: clamp(4rem, 13vw, 5.6rem);
+      line-height: 1;
+      font-weight: 500;
+      letter-spacing: 0;
+      margin-bottom: 28px;
+    }
+    .logo span:nth-child(1) { color: var(--blue); }
+    .logo span:nth-child(2) { color: var(--red); }
+    .logo span:nth-child(3) { color: var(--yellow); }
+    .logo span:nth-child(4) { color: var(--blue); }
+    .logo span:nth-child(5) { color: var(--green); }
+    .logo span:nth-child(6) { color: var(--red); }
+    form {
+      width: min(584px, calc(100vw - 36px));
+      display: grid;
+      gap: 22px;
+      justify-items: center;
+    }
+    .search {
+      width: 100%;
+      min-height: 46px;
+      border: 1px solid var(--line);
+      border-radius: 24px;
+      display: grid;
+      grid-template-columns: 44px 1fr 44px;
+      align-items: center;
+      padding: 0 8px;
+      box-shadow: 0 1px 6px rgba(32,33,36,.08);
+    }
+    .icon { color: var(--muted); text-align: center; font-size: 18px; }
+    input {
+      border: 0;
+      outline: 0;
+      font: 16px Arial, Helvetica, sans-serif;
+      color: var(--ink);
+    }
+    .buttons { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; }
+    button {
+      min-width: 128px;
+      border: 1px solid #f8f9fa;
+      border-radius: 4px;
+      background: #f8f9fa;
+      color: #3c4043;
+      font: 14px Arial, Helvetica, sans-serif;
+      padding: 10px 16px;
+    }
+    button:hover { border-color: #dadce0; box-shadow: 0 1px 1px rgba(0,0,0,.1); }
+    .note { margin-top: 26px; color: var(--muted); font-size: 13px; }
+    footer {
+      background: #f2f2f2;
+      color: var(--muted);
+      padding: 14px 24px;
+      font-size: 14px;
+      display: flex;
+      justify-content: space-between;
+      gap: 18px;
+      flex-wrap: wrap;
+    }
   </style>
 </head>
 <body>
+  <header>
+    <a href="#">Gmail</a>
+    <a href="#">Images</a>
+    <button class="apps" aria-label="Google apps">
+      <span></span><span></span><span></span>
+      <span></span><span></span><span></span>
+      <span></span><span></span><span></span>
+    </button>
+  </header>
   <main>
-    <h1>internet.esi.dz</h1>
-    <p>This public test site represents an Internet destination reachable only after campus NAC authorization.</p>
+    <div class="logo" aria-label="Google">
+      <span>G</span><span>o</span><span>o</span><span>g</span><span>l</span><span>e</span>
+    </div>
+    <form>
+      <div class="search">
+        <span class="icon">?</span>
+        <input aria-label="Search" autocomplete="off">
+        <span class="icon">mic</span>
+      </div>
+      <div class="buttons">
+        <button type="button">Google Search</button>
+        <button type="button">I'm Feeling Lucky</button>
+      </div>
+    </form>
+    <p class="note">Simulated Internet endpoint served from 198.18.3.10 for NAC browser tests.</p>
   </main>
+  <footer>
+    <span>Algeria</span>
+    <span>Advertising &nbsp; Business &nbsp; Privacy &nbsp; Terms</span>
+  </footer>
 </body>
 </html>

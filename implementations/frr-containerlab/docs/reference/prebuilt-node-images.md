@@ -37,6 +37,17 @@ not spend time running `apk update` and `apk add` during every deploy.
   - Packages the fabric telemetry scraper runtime:
     `busybox-extras`, `docker-cli`, `jq`, `iproute2`.
 
+- `esi/auth-server:3.20`
+  - Packages OpenLDAP clients, the custom RADIUS daemon, and the custom TACACS+ daemon.
+  - Rebuild this image whenever `images/auth-server/radius_server.py` or `images/auth-server/tacacs_server.py` changes.
+
+- `esi/vpn-node:3.20`
+  - Packages WireGuard tools and the VPN enrollment runtime.
+
+- `bitnamilegacy/moodle:5.0.2` and `bitnamilegacy/mariadb:11.4`
+  - Upstream lab-pinned Moodle/MariaDB stack for `moodle.esi.dz`.
+  - These are pulled, not locally built. The topology installs `iproute2` at first boot so the containers can receive DMZ data-plane addresses.
+
 ## Build
 
 From the repo root:

@@ -1,18 +1,11 @@
 # Reference Docs
 
-These pages are lower-churn references rather than day-to-day runbooks.
+These pages are stable references, not day-to-day runbooks.
 
-## Static References
+| Document | Use it for |
+| --- | --- |
+| [Credentials](./credentials.md) | Demo accounts, RADIUS/TACACS secrets, Moodle and Grafana logins. |
+| [Firewall communication matrix](./firewall-communication-matrix.md) | Allowed and denied traffic between security zones. |
+| [Prebuilt node images](./prebuilt-node-images.md) | Local image names and why each image exists. |
 
-- [Prebuilt node images](./prebuilt-node-images.md)
-- [Firewall communication matrix](./firewall-communication-matrix.md)
-- [Legacy context refined](./legacy-context-refined.md)
-
-## Long-Form Architecture
-
-- [Full architecture spec](../main/FULL_DOC.md)
-
-## Suggested Usage
-
-- Start in the practical runbooks when you are testing something live.
-- Open the references when you need the exact matrix, image rationale, or historical design context behind the current implementation.
+Historical dumps and shortcut documents were removed. If a new reference is needed, keep it narrow and link it from this file.

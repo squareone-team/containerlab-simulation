@@ -333,20 +333,20 @@ cmd_no_match "SERVICES-WEB NOT on border-leaf (leaf-01)" \
 echo
 cmd_match "authenticated campus student can reach internet-web-01" \
   "$C-campus-student-01 wget -qO- -T 5 http://198.18.3.10/" \
-  "internet\\.esi\\.dz"
+  "Google Search"
 
 echo
-cmd_match "authenticated campus student can reach server-dmz-01" \
-  "$C-campus-student-01 wget -qO- -T 5 http://198.51.100.10/" \
-  "ESI Datacenter DMZ test service is reachable"
+cmd_match "authenticated campus student resolves moodle.esi.dz via dns-server" \
+  "$C-campus-student-01 nslookup moodle.esi.dz 192.168.50.30" \
+  "Address: 198\\.51\\.100\\.30|Address.*198\\.51\\.100\\.30"
 
-cmd_match "authenticated campus student resolves esi.dz via dns-server" \
-  "$C-campus-student-01 nslookup esi.dz 192.168.50.30" \
-  "Address: 198\\.51\\.100\\.10|Address.*198\\.51\\.100\\.10"
+cmd_match "authenticated campus student resolves www.google.com via dns-server" \
+  "$C-campus-student-01 nslookup www.google.com 192.168.50.30" \
+  "Address: 198\\.18\\.3\\.10|Address.*198\\.18\\.3\\.10"
 
-cmd_match "authenticated campus student HTTP GET esi.dz returns expected page" \
-  "$C-campus-student-01 wget -qO- -T 5 http://esi.dz/" \
-  "ESI\\.dz DMZ Portal"
+cmd_match "authenticated campus student HTTP GET moodle.esi.dz reaches Moodle" \
+  "$C-campus-student-01 wget -qO- -T 8 http://moodle.esi.dz/" \
+  "Moodle|TP - NAC"
 
 test_banner "unauthenticated campus client cannot reach internet-web-01"
 info "command: $C-student-bp-01 timeout 4 nc -z -w2 198.18.3.10 80"

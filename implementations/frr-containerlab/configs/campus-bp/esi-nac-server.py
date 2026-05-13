@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import json
+import html
 import os
 import re
 import ssl
@@ -11,7 +12,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 RADIUS_HOST = os.environ.get("ESI_RADIUS_HOST", "192.168.50.80")
 RADIUS_PORT = int(os.environ.get("ESI_RADIUS_PORT", "1812"))
-RADIUS_SECRET = os.environ.get("ESI_RADIUS_SECRET", "CampusRadiusSecret@2026")
+RADIUS_SECRET = os.environ.get("ESI_RADIUS_SECRET", "EsiCampusNacRadius#2026")
 RADIUS_NAS_ID = os.environ.get("ESI_RADIUS_NAS_ID", "campus-nac")
 
 LISTEN_HOST = os.environ.get("ESI_NAC_LISTEN", "192.168.110.1")
@@ -27,42 +28,202 @@ ADMIN_SET = os.environ.get("ESI_NAC_ADMIN_SET", "campus_admins")
 ENTRY_TTL = int(os.environ.get("ESI_NAC_TTL", "1800"))
 
 LOG_FILE = os.environ.get("ESI_NAC_LOG", "/var/log/esi-nac.log")
+LOGO_PATH = os.environ.get("ESI_NAC_LOGO", "/opt/esi/logo_esi.png")
 
 ROLE_PATTERN = re.compile(r"Filter-Id\s*=\s*\"?([A-Za-z0-9_-]+)\"?")
 
 
-LOGIN_PAGE = """<!doctype html>
+PORTAL_CSS = """
+    :root {
+      color-scheme: light;
+      --esi-blue: #055bb5;
+      --esi-blue-dark: #034a92;
+      --esi-red: #c7102e;
+      --esi-gold: #f5a623;
+      --ink: #24313f;
+      --muted: #66727f;
+      --line: #d7dbdd;
+      --paper: #ffffff;
+      --canvas: #f4f6f8;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      background:
+        linear-gradient(135deg, rgba(5,91,181,.06), rgba(199,16,46,.05)),
+        var(--canvas);
+      color: var(--ink);
+      font-family: Arial, Helvetica, sans-serif;
+    }
+    .portal {
+      width: min(430px, calc(100vw - 28px));
+      border: 1px solid var(--line);
+      box-shadow: 0 18px 45px rgba(20, 37, 55, .18);
+      background: var(--paper);
+    }
+    .masthead {
+      background: var(--esi-blue);
+      color: #fff;
+      text-align: center;
+      padding: 20px 18px 18px;
+      border-bottom: 3px solid var(--esi-red);
+    }
+    .logo {
+      display: inline-grid;
+      place-items: center;
+      width: 58px;
+      height: 58px;
+      margin-bottom: 8px;
+      border-radius: 50%;
+      background: #fff;
+      border: 3px solid rgba(255,255,255,.7);
+      overflow: hidden;
+    }
+    .logo img { width: 100%; height: 100%; object-fit: contain; }
+    .logo-fallback { color: var(--esi-blue); font-weight: 800; font-size: 1.15rem; }
+    h1 { margin: 0; font-size: 1.55rem; font-weight: 700; text-shadow: 1px 2px 4px rgba(0,0,0,.25); }
+    .body { padding: 24px 26px 22px; }
+    .hint { margin: 0 0 16px; color: var(--muted); line-height: 1.45; font-size: .95rem; }
+    label { display: block; margin: 14px 0 6px; font-size: .86rem; font-weight: 700; color: #4a5561; }
+    input {
+      width: 100%;
+      padding: 11px 12px;
+      border: 1px solid var(--esi-gold);
+      border-radius: 6px;
+      font: inherit;
+      color: var(--ink);
+      background: #fff;
+    }
+    input:focus { outline: 2px solid rgba(245,166,35,.25); border-color: var(--esi-gold); }
+    button {
+      width: 100%;
+      margin-top: 18px;
+      border: 0;
+      border-radius: 4px;
+      padding: 12px 14px;
+      background: var(--esi-blue);
+      color: #fff;
+      font: inherit;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    button:hover { background: var(--esi-blue-dark); }
+    .demo-grid { display: grid; gap: 8px; margin: 18px 0 4px; }
+    .demo {
+      border-left: 4px solid var(--esi-gold);
+      background: #fbfbfd;
+      padding: 10px 12px;
+      font-size: .86rem;
+      line-height: 1.35;
+    }
+    .demo strong { display: block; color: var(--ink); margin-bottom: 2px; }
+    .links { display: grid; gap: 9px; margin-top: 18px; }
+    a { color: var(--esi-blue); font-weight: 700; text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    .status {
+      display: inline-block;
+      margin-bottom: 14px;
+      border-radius: 999px;
+      padding: 6px 11px;
+      font-size: .78rem;
+      font-weight: 800;
+      letter-spacing: .03em;
+      text-transform: uppercase;
+    }
+    .ok { background: #e6f6ed; color: #0f6f3d; }
+    .bad { background: #fdebed; color: #a50e26; }
+    .warn { background: #fff5df; color: #8a5b00; }
+    .foot { margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--line); color: var(--muted); font-size: .82rem; }
+"""
+
+
+def logo_markup():
+    return '<span class="logo"><img src="/logo.png" alt="ESI"></span>'
+
+
+def render_login_page():
+    return f"""<!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>ESI Campus Access</title>
-  <style>
-    :root { color-scheme: light dark; font-family: system-ui, sans-serif; }
-    body { margin: 0; min-height: 100vh; display: grid; place-items: center; background: #eef3f7; color: #17202a; }
-    main { width: min(420px, calc(100vw - 32px)); background: white; border: 1px solid #d8e0e8; border-radius: 8px; padding: 24px; box-shadow: 0 18px 48px rgba(23,32,42,.12); }
-    h1 { margin: 0 0 8px; font-size: 1.45rem; }
-    p { margin: 0 0 18px; color: #44515f; line-height: 1.45; }
-    label { display: block; margin: 14px 0 6px; font-weight: 650; }
-    input { width: 100%; box-sizing: border-box; padding: 11px 12px; border: 1px solid #aab6c2; border-radius: 6px; font: inherit; }
-    button { width: 100%; margin-top: 18px; border: 0; border-radius: 6px; padding: 12px; background: #005f73; color: white; font: inherit; font-weight: 700; cursor: pointer; }
-    .links { display: grid; gap: 8px; margin-top: 18px; }
-    a { color: #005f73; font-weight: 650; }
-    .note { font-size: .9rem; }
-  </style>
+  <title>Sign in to access this network</title>
+  <style>{PORTAL_CSS}</style>
 </head>
 <body>
-  <main>
-    <h1>ESI Campus Access</h1>
-    <p>Authenticate this device before browsing the Internet or datacenter services.</p>
-    <form method="post" action="/auth">
-      <label for="username">Device identity</label>
-      <input id="username" name="username" autocomplete="username" required>
+  <main class="portal">
+    <header class="masthead">
+      {logo_markup()}
+      <h1>Bienvenus au portail ESI</h1>
+    </header>
+    <section class="body">
+      <p class="hint">Authentifiez votre session pour acceder au reseau pedagogique, a Moodle et aux services autorises.</p>
+      <form method="post" action="/auth">
+      <label for="username">Identifiant ESI</label>
+      <input id="username" name="username" autocomplete="username" placeholder="prenom.nom@esi.dz" required>
       <label for="password">Password</label>
       <input id="password" name="password" type="password" autocomplete="current-password" required>
       <button type="submit">Sign in</button>
     </form>
-    <p class="note">Student demo: dev-campus-student-01. Admin demo: dev-campus-admin-01.</p>
+    <div class="demo-grid" aria-label="Demo accounts">
+      <div class="demo"><strong>Professor/student role</strong> nora.benali@esi.dz / NoraTPs#2026</div>
+      <div class="demo"><strong>Student role</strong> amine.kadri@esi.dz / AmineLab#2026</div>
+      <div class="demo"><strong>SquareOne admin</strong> squareone.admin@esi.dz / SquareOneRoot#2026</div>
+    </div>
+    <div class="foot"><a href="http://portail.esi-lan.dz/password">Changer le mot de passe</a></div>
+    </section>
+  </main>
+</body>
+</html>
+"""
+
+
+def render_status_page(kind, title, message, role="", username=""):
+    badge_class = {"ok": "ok", "bad": "bad", "warn": "warn"}.get(kind, "warn")
+    safe_title = html.escape(title)
+    safe_message = html.escape(message)
+    safe_role = html.escape(role)
+    safe_user = html.escape(username)
+    links = ""
+    if kind == "ok":
+        links = """
+        <div class="links">
+          <a href="http://www.google.com/">www.google.com</a>
+          <a href="http://moodle.esi.dz/">Moodle ESI</a>
+          <a href="https://hpc-jupyter.esi.internal:8080/hub/login">JupyterHub</a>
+          <a href="/logout">Sign out</a>
+        </div>
+        """
+    else:
+        links = '<div class="links"><a href="/">Try again</a></div>'
+    details = ""
+    if safe_role:
+        details += f"<p class=\"hint\">Role: <strong>{safe_role}</strong></p>"
+    if safe_user:
+        details += f"<p class=\"hint\">Identity: <strong>{safe_user}</strong></p>"
+    return f"""<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{safe_title}</title>
+  <style>{PORTAL_CSS}</style>
+</head>
+<body>
+  <main class="portal">
+    <header class="masthead">
+      {logo_markup()}
+      <h1>Bienvenus au portail ESI</h1>
+    </header>
+    <section class="body">
+      <span class="status {badge_class}">{safe_title}</span>
+      <p class="hint">{safe_message}</p>
+      {details}
+      {links}
+    </section>
   </main>
 </body>
 </html>
@@ -101,7 +262,7 @@ def run_radius(user, password, src_ip):
         output = (exc.stdout or "") + (exc.stderr or "")
         return False, "", (output.strip() or "radius_timeout")
     output = (proc.stdout or "") + (proc.stderr or "")
-    accepted = "Access-Accept" in output
+    accepted = re.search(r"Received\s+Access-Accept\b", output) is not None
     role = ""
     match = ROLE_PATTERN.search(output)
     if match:
@@ -134,6 +295,22 @@ def assign_role(ip_addr, role):
 
 
 class Handler(BaseHTTPRequestHandler):
+    def send_logo(self):
+        try:
+            with open(LOGO_PATH, "rb") as handle:
+                body = handle.read()
+        except OSError:
+            body = b"<svg xmlns='http://www.w3.org/2000/svg' width='80' height='80'><rect width='80' height='80' fill='white'/><text x='40' y='47' text-anchor='middle' font-size='24' font-family='Arial' fill='#055bb5' font-weight='700'>ESI</text></svg>"
+            content_type = "image/svg+xml"
+        else:
+            content_type = "image/png"
+        self.send_response(200)
+        self.send_header("Content-Type", content_type)
+        self.send_header("Cache-Control", "public, max-age=3600")
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
+
     def send_html(self, status, html):
         body = html.encode("utf-8")
         self.send_response(status)
@@ -151,26 +328,31 @@ class Handler(BaseHTTPRequestHandler):
         self.wfile.write(body)
 
     def do_GET(self):
+        if self.path == "/logo.png":
+            self.send_logo()
+            return
         if self.path in ("/", "/login"):
-            self.send_html(200, LOGIN_PAGE)
+            self.send_html(200, render_login_page())
+            return
+        if self.path.startswith("/logout"):
+            clear_ip(self.client_address[0])
+            self.send_html(200, render_status_page(
+                "warn",
+                "Signed out",
+                "Your NAC session was removed from the campus gateway.",
+            ))
             return
         if self.path.startswith("/granted"):
             query = urllib.parse.parse_qs(urllib.parse.urlsplit(self.path).query)
             role = query.get("role", ["authenticated"])[0]
-            self.send_html(200, f"""<!doctype html>
-<html lang="en">
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Access Granted</title></head>
-<body>
-  <h1>Access granted</h1>
-  <p>Role: <strong>{role}</strong></p>
-  <ul>
-    <li><a href="http://internet.esi.dz/">Internet test site</a></li>
-    <li><a href="http://esi.dz/">ESI.dz DMZ portal</a></li>
-    <li><a href="https://hpc-jupyter.esi.internal:8080/hub/login">JupyterHub</a></li>
-  </ul>
-</body>
-</html>
-""")
+            username = query.get("user", [""])[0]
+            self.send_html(200, render_status_page(
+                "ok",
+                "Access granted",
+                "Votre session est autorisee. Les services ci-dessous sont maintenant accessibles selon votre role.",
+                role=role,
+                username=username,
+            ))
             return
         self.send_error(404)
 
@@ -197,7 +379,11 @@ class Handler(BaseHTTPRequestHandler):
         username = str(data.get("username", "")).strip()
         password = str(data.get("password", "")).strip()
         if not username or not password:
-            self.send_error(400)
+            self.send_html(400, render_status_page(
+                "bad",
+                "Missing credentials",
+                "Please enter both your ESI identity and password.",
+            ))
             return
 
         accepted, role, detail = run_radius(username, password, src_ip)
@@ -223,10 +409,19 @@ class Handler(BaseHTTPRequestHandler):
             return
         if status == 200:
             self.send_response(303)
-            self.send_header("Location", f"/granted?role={urllib.parse.quote(role)}")
+            self.send_header(
+                "Location",
+                f"/granted?role={urllib.parse.quote(role)}&user={urllib.parse.quote(username)}",
+            )
             self.end_headers()
             return
-        self.send_html(403, "<!doctype html><title>Access denied</title><h1>Access denied</h1><p>Invalid device credentials.</p><p><a href=\"/\">Try again</a></p>")
+        self.send_html(403, render_status_page(
+            "bad",
+            "Access denied",
+            "The identity was not accepted by RADIUS or has no role on this gateway.",
+            role=role or "unknown",
+            username=username,
+        ))
 
     def log_message(self, fmt, *args):
         return

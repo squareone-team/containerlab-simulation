@@ -1,52 +1,40 @@
 # FRR ContainerLab Docs
 
-This folder is organized by intent so it is easier to jump between design notes and hands-on validation.
+The docs are now split by purpose instead of shortcut files. Start with the short runbooks, then open reference material only when you need tables or implementation details.
 
-## Sections
+## Structure
 
-- [Theory](./theory/topology-and-feature-map.md): topology, VRFs, security model, and where each feature lives.
-- [Identity and access](./theory/identity-and-access.md): TACACS+/LDAP flow, campus NAC, and VPN identity mapping.
-- [Practical](./practical/getting-started/lab-lifecycle-and-baseline.md): copy-paste commands for deploy, verification, and troubleshooting.
-- [Reference](./reference/README.md): static matrices, image notes, and long-form architecture material.
+| Area | Purpose | Best entry point |
+| --- | --- | --- |
+| `theory/` | Architecture, traffic model, identity model | [Topology and feature map](./theory/topology-and-feature-map.md) |
+| `practical/getting-started/` | Deploy, reconfigure, baseline checks | [Lab lifecycle and baseline](./practical/getting-started/lab-lifecycle-and-baseline.md) |
+| `practical/routing/` | Fabric, border, campus edge, DMZ paths | [Border routing and internet](./practical/routing/border-routing-and-internet.md) |
+| `practical/security/` | Firewall, identity, NAC, VPN, IDS | [Identity and access](./practical/security/identity-and-access.md) |
+| `practical/services/` | DNS, DHCP, NTP, Moodle, observability | [Moodle LMS](./practical/services/moodle-lms.md) |
+| `practical/operations/` | QoS and recovery exercises | [Resilience and recovery](./practical/operations/resilience-and-recovery.md) |
+| `reference/` | Stable matrices, credentials, image notes | [Credentials](./reference/credentials.md) |
 
-## Start Here
+## Daily Flow
 
-| If you want to... | Open this doc |
-| --- | --- |
-| Deploy the lab and run the first health checks | [Lab lifecycle and baseline](./practical/getting-started/lab-lifecycle-and-baseline.md) |
-| Check underlay, EVPN, VRFs, WiFi micro-VRF, and dual-homed hosts | [Fabric and VRFs](./practical/routing/fabric-and-vrfs.md) |
-| Check ISP peering, route filtering, DMZ reachability, and orientation mode | [Border routing and internet](./practical/routing/border-routing-and-internet.md) |
-| Check campus client access, WiFi management path, and DMZ web access | [Campus edge and DMZ](./practical/routing/campus-edge-and-dmz.md) |
-| Check Ring 1 firewall HA and policy behavior | [Firewall HA and policy](./practical/security/firewall-ha-and-policy.md) |
-| Check inline IDS/IPS DDoS prevention for the DMZ | [IDS/IPS DDoS prevention](./practical/security/ids-ips-ddos-prevention.md) |
-| Check DNS, DHCP, and NTP | [Core services](./practical/services/core-services.md) |
-| Check SNMP, Zabbix, Prometheus, Grafana, and exporter metrics | [Observability and monitoring](./practical/services/observability-and-monitoring.md) |
-| Check bastion SSH, control-plane filtering, host micro-segmentation, and central syslog | [Management access and logging](./practical/security/management-access-and-logging.md) |
-| Check TACACS+/LDAP, campus NAC roles, and VPN access | [Identity and access](./practical/security/identity-and-access.md) |
-| Manually try student/admin/VPN identity flows end to end | [Identity access manual lab](./practical/security/identity-access-manual-lab.md) |
-| Capture identity, VPN, SSH, RADIUS, TACACS+, and VXLAN traffic in Wireshark | [Packet capture and Wireshark](./practical/security/packet-capture-and-wireshark.md) |
-| Simulate node failures and verify recovery | [Resilience and recovery](./practical/operations/resilience-and-recovery.md) |
+1. Deploy or reconfigure from [Lab lifecycle and baseline](./practical/getting-started/lab-lifecycle-and-baseline.md).
+2. Validate browser-facing access with `scripts/tests/browser_pov_validation.sh`.
+3. Validate VPN with `scripts/tests/vpn_access_validation.sh`.
+4. Validate Moodle from [Moodle LMS](./practical/services/moodle-lms.md).
 
-## Quick Feature Map
+## Current User-Facing Services
 
-| Feature area | Main nodes | Automation you can run | Manual runbook |
-| --- | --- | --- | --- |
-| Fabric baseline | `spine-*`, `leaf-*` | `bash implementations/frr-containerlab/scripts/tests/phase1-verify.sh` | [Fabric and VRFs](./practical/routing/fabric-and-vrfs.md) |
-| Border routing and internet | `leaf-01`, `leaf-02`, `isp-router-*`, `internet-*` | `bash implementations/frr-containerlab/scripts/tests/theme-t1-border-routing-verify.sh` | [Border routing and internet](./practical/routing/border-routing-and-internet.md) |
-| Campus edge and DMZ | `campus-bp`, `student-bp-01`, `server-dmz-01`, `wifi-controller` | `bash implementations/frr-containerlab/scripts/tests/theme-t1-border-routing-verify.sh` | [Campus edge and DMZ](./practical/routing/campus-edge-and-dmz.md) |
-| Firewall HA and policy | `firewall-01`, `firewall-02`, `leaf-01`, `leaf-02` | `bash implementations/frr-containerlab/scripts/tests/theme-t3-ring1_all_validation.sh` | [Firewall HA and policy](./practical/security/firewall-ha-and-policy.md) |
-| IDS/IPS DDoS prevention | `ids-01`, `leaf-01`, `isp-router-01`, `internet-client-*`, `server-dmz-01` | `bash implementations/frr-containerlab/scripts/tests/ids_ips_ddos_validation.sh` | [IDS/IPS DDoS prevention](./practical/security/ids-ips-ddos-prevention.md) |
-| DNS | `dns-server` | `bash implementations/frr-containerlab/scripts/tests/dns_verify.sh` | [Core services](./practical/services/core-services.md) |
-| DHCP | `dhcp-server`, dual-homed servers | `bash implementations/frr-containerlab/scripts/tests/dhcp_verify.sh` | [Core services](./practical/services/core-services.md) |
-| NTP and no-PIM guard | `ntp-server`, all FRR nodes | `bash implementations/frr-containerlab/scripts/tests/ntp_verify.sh` | [Core services](./practical/services/core-services.md) |
-| SNMP and Zabbix | `zabbix-server`, FRR nodes | `bash implementations/frr-containerlab/scripts/tests/snmp_verify.sh` | [Observability and monitoring](./practical/services/observability-and-monitoring.md) |
-| Bastion and OOB | `bastion-01`, `oob-sw`, spines, leaves, `ftp-server` | `bash implementations/frr-containerlab/scripts/tests/theme-t3-ring4_test.sh` | [Management access and logging](./practical/security/management-access-and-logging.md) |
-| Host micro-segmentation | `ftp-server`, `dns-server`, workload hosts | `bash implementations/frr-containerlab/scripts/tests/theme-t3-ring5_verify.sh` | [Management access and logging](./practical/security/management-access-and-logging.md) |
-| Centralized logging | `syslog-server`, reachable workload nodes | `bash implementations/frr-containerlab/scripts/tests/theme-t3-ring6_verify.sh` | [Management access and logging](./practical/security/management-access-and-logging.md) |
-| Identity and access | `auth-server`, `campus-bp`, `vpn-gateway`, `server-*` | `bash implementations/frr-containerlab/scripts/tests/auth_fabric_validation.sh` + `bash implementations/frr-containerlab/scripts/tests/vpn_access_validation.sh` | [Identity and access](./practical/security/identity-and-access.md), [manual lab](./practical/security/identity-access-manual-lab.md), [Wireshark](./practical/security/packet-capture-and-wireshark.md) |
-| Failure simulation | Any node | `bash implementations/frr-containerlab/scripts/resiliancy/simulate_node_down.sh --node leaf-01` and `bash implementations/frr-containerlab/scripts/tests/resilience_postcheck.sh` | [Resilience and recovery](./practical/operations/resilience-and-recovery.md) |
+| Service | Name or URL | Notes |
+| --- | --- | --- |
+| NAC portal | `https://192.168.110.1:8443/` | ESI-styled captive portal, HTTP redirects to HTTPS. |
+| VPN platform | `https://198.51.100.20:8448/` | ESI-branded WireGuard enrollment with lab key generation. |
+| Internet demo | `http://www.google.com/` | DNS points to the simulated Internet webserver at `198.18.3.10`. |
+| Moodle LMS | `http://moodle.esi.dz/` | Real Moodle container at `198.51.100.30`. |
+| JupyterHub | `https://hpc-jupyter.esi.internal:8080/hub/login` | Internal service after NAC/VPN role admission. |
 
-## Notes
+The default topology is headless for 8 GB machines. Launch the optional GUI viewers only when you need them:
 
-- Older top-level markdown files in `docs/` are kept as compatibility shortcuts and now point into this structure.
-- The long-form architecture document still lives at [main/FULL_DOC.md](./main/FULL_DOC.md).
+```bash
+containerlab deploy -t esi-browser-viewers.clab.yml
+```
+
+Shortcut documents and old architecture dumps were removed. New docs should land inside one of the folders above, not at the top level.

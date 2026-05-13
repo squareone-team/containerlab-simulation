@@ -1,17 +1,19 @@
 #!/usr/bin/env python3
 import ipaddress
 import json
+import html
 import os
 import re
 import ssl
 import subprocess
 import time
+import urllib.parse
 from http.server import BaseHTTPRequestHandler, HTTPServer
 
 
 RADIUS_HOST = os.environ.get("ESI_RADIUS_HOST", "192.168.50.80")
 RADIUS_PORT = int(os.environ.get("ESI_RADIUS_PORT", "1812"))
-RADIUS_SECRET = os.environ.get("ESI_RADIUS_SECRET", "VpnRadiusSecret@2026")
+RADIUS_SECRET = os.environ.get("ESI_RADIUS_SECRET", "EsiVpnRadius#2026")
 RADIUS_NAS_ID = os.environ.get("ESI_RADIUS_NAS_ID", "vpn-gateway")
 
 LISTEN_HOST = os.environ.get("ESI_VPN_LISTEN", "198.51.100.20")
@@ -23,11 +25,202 @@ WG_INTERFACE = os.environ.get("ESI_WG_INTERFACE", "wg0")
 SERVER_PUB = os.environ.get("ESI_WG_SERVER_PUB", "/etc/wireguard/server.pub")
 STATE_FILE = os.environ.get("ESI_VPN_STATE", "/var/lib/esi-vpn/leases.json")
 LOG_FILE = os.environ.get("ESI_VPN_LOG", "/var/log/esi-vpn-auth.log")
+LOGO_PATH = os.environ.get("ESI_VPN_LOGO", "/opt/esi/logo_esi.png")
 
 POOL_START = os.environ.get("ESI_VPN_POOL_START", "10.250.200.10")
 POOL_END = os.environ.get("ESI_VPN_POOL_END", "10.250.200.200")
 
 ROLE_PATTERN = re.compile(r"Filter-Id\s*=\s*\"?([A-Za-z0-9_-]+)\"?")
+
+PORTAL_CSS = """
+    :root {
+      color-scheme: light;
+      --ink: #17202a;
+      --muted: #607080;
+      --line: #d9e1e8;
+      --blue: #063f7d;
+      --cyan: #00a0c8;
+      --green: #0f7b43;
+      --red: #b42335;
+      --paper: #ffffff;
+      --field: #f7fafc;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      color: var(--ink);
+      font-family: Inter, Arial, Helvetica, sans-serif;
+      background:
+        linear-gradient(120deg, rgba(6,63,125,.94), rgba(0,160,200,.72)),
+        #0b1f36;
+      display: grid;
+      place-items: center;
+      padding: 28px 14px;
+    }
+    main {
+      width: min(980px, 100%);
+      display: grid;
+      grid-template-columns: minmax(280px, .85fr) minmax(320px, 1.15fr);
+      background: var(--paper);
+      box-shadow: 0 24px 70px rgba(0,0,0,.28);
+      border: 1px solid rgba(255,255,255,.45);
+      min-height: 620px;
+    }
+    .brand {
+      color: #fff;
+      background:
+        linear-gradient(180deg, rgba(6,63,125,.92), rgba(6,63,125,.78)),
+        #063f7d;
+      padding: 34px 30px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+    .brand img {
+      width: 92px;
+      height: 92px;
+      object-fit: contain;
+      border-radius: 50%;
+      background: #fff;
+      padding: 6px;
+      border: 3px solid rgba(255,255,255,.7);
+    }
+    .brand h1 { margin: 28px 0 10px; font-size: 2rem; line-height: 1.05; }
+    .brand p { margin: 0; line-height: 1.55; color: rgba(255,255,255,.86); }
+    .panel { padding: 34px 36px; }
+    .status {
+      display: inline-block;
+      margin-bottom: 16px;
+      border-radius: 999px;
+      padding: 6px 11px;
+      font-size: .77rem;
+      font-weight: 800;
+      letter-spacing: .04em;
+      text-transform: uppercase;
+    }
+    .ok { color: var(--green); background: #e8f6ef; }
+    .bad { color: var(--red); background: #fdecee; }
+    h2 { margin: 0 0 8px; font-size: 1.55rem; }
+    .hint { margin: 0 0 18px; color: var(--muted); line-height: 1.5; }
+    label { display: block; margin: 14px 0 6px; font-weight: 750; font-size: .88rem; }
+    input, textarea {
+      width: 100%;
+      border: 1px solid var(--line);
+      background: var(--field);
+      border-radius: 7px;
+      padding: 11px 12px;
+      font: inherit;
+      color: var(--ink);
+    }
+    textarea { min-height: 76px; resize: vertical; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: .86rem; }
+    .actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 16px; }
+    button {
+      border: 0;
+      border-radius: 7px;
+      padding: 12px 14px;
+      font: inherit;
+      font-weight: 800;
+      cursor: pointer;
+      background: var(--blue);
+      color: #fff;
+    }
+    button.secondary { background: #eef4f8; color: var(--blue); border: 1px solid var(--line); }
+    pre {
+      white-space: pre-wrap;
+      word-break: break-word;
+      background: #0d1b2a;
+      color: #e7f7ff;
+      padding: 16px;
+      border-radius: 7px;
+      overflow: auto;
+      font-size: .86rem;
+    }
+    .demo { margin-top: 16px; padding: 12px; border: 1px solid var(--line); background: #fbfdff; font-size: .88rem; line-height: 1.45; }
+    a { color: var(--blue); font-weight: 800; text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    @media (max-width: 760px) {
+      main { grid-template-columns: 1fr; }
+      .brand { gap: 24px; }
+      .panel { padding: 26px 22px; }
+    }
+"""
+
+
+def render_shell(panel_html):
+    return f"""<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ESI VPN Platform</title>
+  <style>{PORTAL_CSS}</style>
+</head>
+<body>
+  <main>
+    <section class="brand">
+      <div>
+        <img src="/logo.png" alt="ESI logo">
+        <h1>ESI VPN Platform</h1>
+        <p>Remote access enrollment for lab users with WireGuard, RADIUS identity checks, and role-based internal reachability.</p>
+      </div>
+      <p>SquareOne operations profile - demo fabric gateway 198.51.100.20</p>
+    </section>
+    <section class="panel">{panel_html}</section>
+  </main>
+</body>
+</html>
+"""
+
+
+def render_home_page():
+    return render_shell("""
+      <span class="status ok">Enrollment portal</span>
+      <h2>Create a VPN lease</h2>
+      <p class="hint">Use an ESI identity, paste a WireGuard public key, or generate a lab keypair automatically.</p>
+      <form method="post" action="/enroll" id="enroll-form">
+        <label for="username">ESI identity</label>
+        <input id="username" name="username" autocomplete="username" placeholder="amine.kadri@esi.dz" required>
+        <label for="password">Password</label>
+        <input id="password" name="password" type="password" autocomplete="current-password" required>
+        <label for="public_key">WireGuard public key</label>
+        <textarea id="public_key" name="public_key" required></textarea>
+        <div class="actions">
+          <button type="submit">Enroll</button>
+          <button type="button" class="secondary" id="generate-key">Generate default VPN key</button>
+        </div>
+      </form>
+      <div class="demo"><strong>Student VPN demo</strong><br>amine.kadri@esi.dz / AmineLab#2026<br><strong>Professor same privilege</strong><br>nora.benali@esi.dz / NoraTPs#2026</div>
+      <pre id="generated-key" aria-live="polite"></pre>
+      <script>
+        const output = document.getElementById("generated-key");
+        document.getElementById("generate-key").addEventListener("click", async () => {
+          output.textContent = "Generating WireGuard keypair...";
+          const response = await fetch("/generate-key", { method: "POST" });
+          const payload = await response.json();
+          if (!payload.ok) {
+            output.textContent = payload.error || "key generation failed";
+            return;
+          }
+          document.getElementById("public_key").value = payload.public_key;
+          output.textContent = "PrivateKey = " + payload.private_key + "\\nPublicKey = " + payload.public_key;
+        });
+      </script>
+    """)
+
+
+def render_result_page(ok, title, message, config=None):
+    badge = "ok" if ok else "bad"
+    safe_title = html.escape(title)
+    safe_message = html.escape(message)
+    config_html = f"<pre>{html.escape(config)}</pre>" if config else ""
+    return render_shell(f"""
+      <span class="status {badge}">{safe_title}</span>
+      <h2>{safe_title}</h2>
+      <p class="hint">{safe_message}</p>
+      {config_html}
+      <div class="actions"><a href="/">Return to enrollment</a> <a href="/health">Health check</a></div>
+    """)
 
 
 def log_event(event):
@@ -101,7 +294,7 @@ def run_radius(user, password):
         return False, "", "", "radius_error"
 
     output = (proc.stdout or "") + (proc.stderr or "")
-    accepted = "Access-Accept" in output
+    accepted = re.search(r"Received\s+Access-Accept\b", output) is not None
     role = ""
     match = ROLE_PATTERN.search(output)
     if match:
@@ -144,7 +337,60 @@ def server_pubkey():
         return ""
 
 
+def generate_keypair():
+    try:
+        private_proc = subprocess.run(
+            ["wg", "genkey"],
+            text=True,
+            capture_output=True,
+            timeout=4,
+            check=True,
+        )
+        private_key = private_proc.stdout.strip()
+        public_proc = subprocess.run(
+            ["wg", "pubkey"],
+            input=private_key + "\n",
+            text=True,
+            capture_output=True,
+            timeout=4,
+            check=True,
+        )
+    except (FileNotFoundError, subprocess.SubprocessError):
+        return "", ""
+    return private_key, public_proc.stdout.strip()
+
+
+def config_text(private_key, address, server_key):
+    return "\n".join([
+        "[Interface]",
+        f"PrivateKey = {private_key or '<client-private-key>'}",
+        f"Address = {address}",
+        "",
+        "[Peer]",
+        f"PublicKey = {server_key}",
+        "Endpoint = 198.51.100.20:51820",
+        "AllowedIPs = 192.168.10.10/32,192.168.70.10/32,192.168.70.30/32",
+        "PersistentKeepalive = 25",
+    ])
+
+
 class Handler(BaseHTTPRequestHandler):
+    def _send_logo(self):
+        try:
+            with open(LOGO_PATH, "rb") as handle:
+                body = handle.read()
+        except OSError:
+            body = b"<svg xmlns='http://www.w3.org/2000/svg' width='92' height='92'><rect width='92' height='92' fill='white'/><text x='46' y='55' text-anchor='middle' font-size='28' font-family='Arial' fill='#063f7d' font-weight='700'>ESI</text></svg>"
+            content_type = "image/svg+xml"
+        else:
+            content_type = "image/png"
+        self.send_response(200)
+        self.send_header("Content-Type", content_type)
+        self.send_header("Cache-Control", "public, max-age=3600")
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
+
     def _send_json(self, status, payload):
         body = json.dumps(payload).encode("utf-8")
         self.send_response(status)
@@ -164,72 +410,11 @@ class Handler(BaseHTTPRequestHandler):
         self.wfile.write(body)
 
     def do_GET(self):
+        if self.path == "/logo.png":
+            self._send_logo()
+            return
         if self.path in ("/", "/index.html"):
-            html = """<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8" />
-  <title>ESI VPN Enrollment</title>
-  <style>
-    body { font-family: sans-serif; margin: 32px; line-height: 1.4; }
-    code, pre { background: #f4f4f4; padding: 2px 4px; }
-    pre { padding: 12px; }
-    label { display: block; margin: 10px 0 4px; }
-    input, textarea { width: 100%; max-width: 560px; }
-    button { margin-top: 12px; }
-    #output { white-space: pre-wrap; }
-  </style>
-</head>
-<body>
-  <h1>ESI VPN Enrollment</h1>
-  <p>This endpoint accepts JSON on <code>POST /enroll</code> and returns a WireGuard config.</p>
-  <p>Health check: <a href="/health">/health</a></p>
-
-  <h2>Manual test</h2>
-  <form id="enroll-form">
-    <label>Username</label>
-    <input id="username" required />
-    <label>Password</label>
-    <input id="password" type="password" required />
-    <label>WireGuard public key</label>
-    <textarea id="public_key" rows="3" required></textarea>
-    <button type="submit">Enroll</button>
-  </form>
-  <pre id="output"></pre>
-
-  <h2>CLI example</h2>
-  <pre>curl -ks -X POST -H "Content-Type: application/json" \
-  -d '{"username":"student1","password":"Student@2026","public_key":"PUBKEY"}' \
-  https://198.51.100.20:8448/enroll</pre>
-
-  <script>
-    const form = document.getElementById("enroll-form");
-    const output = document.getElementById("output");
-    form.addEventListener("submit", async (event) => {
-      event.preventDefault();
-      output.textContent = "Sending request...";
-      const payload = {
-        username: document.getElementById("username").value,
-        password: document.getElementById("password").value,
-        public_key: document.getElementById("public_key").value,
-      };
-      try {
-        const response = await fetch("/enroll", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-        });
-        const text = await response.text();
-        output.textContent = text;
-      } catch (err) {
-        output.textContent = String(err || "Request failed");
-      }
-    });
-  </script>
-</body>
-</html>
-"""
-            self._send_html(200, html)
+            self._send_html(200, render_home_page())
             return
 
         if self.path == "/health":
@@ -248,6 +433,14 @@ class Handler(BaseHTTPRequestHandler):
         self.send_error(404)
 
     def do_POST(self):
+        if self.path == "/generate-key":
+            private_key, public_key = generate_keypair()
+            if private_key and public_key:
+                self._send_json(200, {"ok": True, "private_key": private_key, "public_key": public_key})
+            else:
+                self._send_json(503, {"ok": False, "error": "wireguard_keygen_failed"})
+            return
+
         if self.path != "/enroll":
             self.send_error(404)
             return
@@ -258,17 +451,27 @@ class Handler(BaseHTTPRequestHandler):
             self.send_error(400)
             return
         payload = self.rfile.read(length).decode("utf-8", "replace")
-        try:
-            data = json.loads(payload)
-        except json.JSONDecodeError:
-            self.send_error(400)
-            return
+        content_type = self.headers.get("Content-Type", "")
+        wants_json = "application/json" in content_type or "application/json" in self.headers.get("Accept", "")
+        if "application/json" in content_type:
+            try:
+                data = json.loads(payload)
+            except json.JSONDecodeError:
+                self._send_json(400, {"ok": False, "error": "invalid_json"})
+                return
+        else:
+            parsed = urllib.parse.parse_qs(payload)
+            data = {key: values[0] for key, values in parsed.items() if values}
 
         username = str(data.get("username", "")).strip()
         password = str(data.get("password", "")).strip()
         peer_key = str(data.get("public_key", "")).strip()
+        private_key = str(data.get("private_key", "")).strip()
         if not username or not password or not peer_key:
-            self.send_error(400)
+            if wants_json:
+                self._send_json(400, {"ok": False, "error": "missing_fields"})
+            else:
+                self._send_html(400, render_result_page(False, "Missing fields", "Please provide an ESI identity, password, and public key."))
             return
 
         accepted, role, detail, error = run_radius(username, password)
@@ -280,7 +483,10 @@ class Handler(BaseHTTPRequestHandler):
                 "radius_result": "error",
                 "error": error,
             })
-            self._send_json(503, {"ok": False, "error": error})
+            if wants_json:
+                self._send_json(503, {"ok": False, "error": error})
+            else:
+                self._send_html(503, render_result_page(False, "Enrollment unavailable", f"RADIUS returned {error}."))
             return
         state = load_state()
         if accepted and role == "vpn-student":
@@ -318,7 +524,24 @@ class Handler(BaseHTTPRequestHandler):
             "radius_result": "accepted" if accepted else "rejected",
         })
 
-        self._send_json(status, response)
+        if wants_json:
+            self._send_json(status, response)
+            return
+
+        if status == 200:
+            config = config_text(private_key, response["address"], response["server_pubkey"])
+            self._send_html(200, render_result_page(
+                True,
+                "Enrollment accepted",
+                f"{username} received a WireGuard address {response['address']}.",
+                config=config,
+            ))
+        else:
+            self._send_html(403, render_result_page(
+                False,
+                "Enrollment denied",
+                f"{username} is not in the VPN student role. Returned role: {response.get('role', 'unknown')}.",
+            ))
 
     def log_message(self, fmt, *args):
         return
