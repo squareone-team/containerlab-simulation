@@ -133,16 +133,20 @@
           {{ vtep_table.stdout[0]
              if vtep_table.stdout[0] is mapping
              else vtep_table.stdout[0] | from_json }}
+        # EOS JSON differs by release: some images expose remote VTEPs at
+        # top-level .vteps, while others nest them under interfaces.Vxlan1.vteps.
+        # Check both before declaring EVPN type-3/IMET failure.
+        top_level_vteps: "{{ vtep_data.vteps | default({}) }}"
+        interface_vteps: "{{ vtep_data.interfaces.Vxlan1.vteps | default({}) }}"
+        vtep_count: "{{ (top_level_vteps | length) + (interface_vteps | length) }}"
       ansible.builtin.assert:
         that:
-          - vtep_data.vteps | length > 0
+          - vtep_count | int > 0
         fail_msg: >
-          VTEP table empty on {{ inventory_hostname }} —
-          EVPN type-3 routes not received
+          VTEP table empty on {{ inventory_hostname }} — checked both
+          vteps and interfaces.Vxlan1.vteps. Raw output: {{ vtep_data }}
         success_msg: >
-          {{ inventory_hostname }} has
-          {{ vtep_data.vteps | length }}
-          VTEP(s) in table
+          {{ inventory_hostname }} has {{ vtep_count }} VTEP(s) in table
       tags: [vtep]
 
 # -----------------------------------------------------------------------------
