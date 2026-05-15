@@ -26,6 +26,8 @@ HPC_01="clab-esi-datacenter-server-hpc-01"
 HPC_02="clab-esi-datacenter-server-hpc-02"
 HPC_JUPYTER="clab-esi-datacenter-server-hpc-jupyter"
 STORAGE="clab-esi-datacenter-server-storage-01"
+JUPYTER_TEST_USER="${JUPYTER_TEST_USER:-tati.youcef}"
+JUPYTER_PROF_USER="${JUPYTER_PROF_USER:-hamani.nacer}"
 
 log_pass() { echo -e "${GREEN}[PASS]${NC} $*"; }
 log_fail() { echo -e "${RED}[FAIL]${NC} $*"; exit 1; }
@@ -78,10 +80,10 @@ else
 fi
 
 # Check PAM users
-if docker exec "$ADMIN_POD" sh -c 'id student-01' >/dev/null 2>&1; then
-	log_pass "PAM user 'student-01' exists"
+if docker exec "$ADMIN_POD" sh -c "id '$JUPYTER_TEST_USER'" >/dev/null 2>&1; then
+	log_pass "PAM user '$JUPYTER_TEST_USER' exists"
 else
-	log_fail "PAM user 'student-01' not found"
+	log_fail "PAM user '$JUPYTER_TEST_USER' not found"
 fi
 
 if docker exec "$ADMIN_POD" sh -c 'grep -q "batchspawner.SlurmSpawner" /etc/jupyterhub/jupyterhub_config.py && ! grep -q "LocalProcessSpawner" /etc/jupyterhub/jupyterhub_config.py'; then
@@ -123,14 +125,14 @@ else
 fi
 
 for worker in "$HPC_01" "$HPC_02"; do
-	if docker exec "$worker" sh -c 'id student-01 >/dev/null 2>&1 && id researcher-02 >/dev/null 2>&1'; then
+	if docker exec "$worker" sh -c "id '$JUPYTER_TEST_USER' >/dev/null 2>&1 && id '$JUPYTER_PROF_USER' >/dev/null 2>&1"; then
 		log_pass "$worker has lab users for SLURM job launch"
 	else
 		log_fail "$worker is missing lab users required by slurmd"
 	fi
 done
 
-if docker exec "$ADMIN_POD" sh -c 'su - student-01 -c "test -r /etc/slurm/slurm.conf && squeue -h >/dev/null"'; then
+if docker exec "$ADMIN_POD" sh -c "su - '$JUPYTER_TEST_USER' -c 'test -r /etc/slurm/slurm.conf && squeue -h >/dev/null'"; then
 	log_pass "Normal users can read slurm.conf and run SLURM clients"
 else
 	log_fail "Normal users cannot read slurm.conf or run SLURM clients"
@@ -217,6 +219,6 @@ log_info "=== VERIFICATION COMPLETE ==="
 log_pass "All tests passed!"
 log_info "Next steps:"
 log_info "  1. Access JupyterHub: https://localhost:9000 (with self-signed cert)"
-log_info "  2. Login with: student-01 / student-01"
+log_info "  2. Login with: $JUPYTER_TEST_USER / TatiLab#2026"
 log_info "  3. Create a notebook and submit jobs to SLURM"
 log_info "  4. Notebooks are persisted on Storage pod"

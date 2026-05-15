@@ -127,24 +127,41 @@ is_mounted /shared || mount -t tmpfs tmpfs /shared
 # /home will contain per-user directories
 chown -R root:root /home || true
 chmod 755 /home || true
-mkdir -p /home/admin /home/administrator /home/researcher-01 /home/researcher-02 \
-	/home/student-01 /home/student-02 /home/student-03
-chown 1000:1000 /home/admin || true
-chown 1001:1001 /home/administrator || true
-chown 2001:2001 /home/researcher-01 || true
-chown 2002:2002 /home/researcher-02 || true
-chown 3001:3001 /home/student-01 || true
-chown 3002:3002 /home/student-02 || true
-chown 3003:3003 /home/student-03 || true
-chmod 755 /home/admin /home/administrator /home/researcher-01 /home/researcher-02 \
-	/home/student-01 /home/student-02 /home/student-03 || true
+mkdir -p \
+	/home/squareone.admin \
+	/home/nora.benali /home/hamani.nacer /home/amrouche.hakim \
+	/home/tati.youcef /home/kherroubi.amine /home/badaoui.ikram \
+	/home/zitouni.rania /home/mostefai.mounir /home/bousdjira.nadine \
+	/home/hassnaoui.sarah /home/amine.kadri /home/selma.bouaziz \
+	/home/ilyes.rahmani
+chown 3201:3201 /home/squareone.admin || true
+chown 3101:3101 /home/nora.benali || true
+chown 3102:3102 /home/hamani.nacer || true
+chown 3103:3103 /home/amrouche.hakim || true
+chown 3001:3001 /home/tati.youcef || true
+chown 3002:3002 /home/kherroubi.amine || true
+chown 3003:3003 /home/badaoui.ikram || true
+chown 3004:3004 /home/zitouni.rania || true
+chown 3005:3005 /home/mostefai.mounir || true
+chown 3006:3006 /home/bousdjira.nadine || true
+chown 3007:3007 /home/hassnaoui.sarah || true
+chown 3011:3011 /home/amine.kadri || true
+chown 3012:3012 /home/selma.bouaziz || true
+chown 3013:3013 /home/ilyes.rahmani || true
+chmod 755 \
+	/home/squareone.admin \
+	/home/nora.benali /home/hamani.nacer /home/amrouche.hakim \
+	/home/tati.youcef /home/kherroubi.amine /home/badaoui.ikram \
+	/home/zitouni.rania /home/mostefai.mounir /home/bousdjira.nadine \
+	/home/hassnaoui.sarah /home/amine.kadri /home/selma.bouaziz \
+	/home/ilyes.rahmani || true
 
 # Set up shared directories
 # /shared will contain course and team directories
 mkdir -p /shared/course-001 /shared/course-002 /shared/team-research
 chown -R root:root /shared || true
 chmod 755 /shared /shared/course-001 /shared/course-002 || true
-chown -R 2001:5002 /shared/team-research || true
+chown -R 3101:5002 /shared/team-research || true
 chmod 770 /shared/team-research || true
 
 log "NFS directories initialized"

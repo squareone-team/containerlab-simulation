@@ -481,8 +481,7 @@ fi
 # ─────────────────────────────────────────────────────────────────────────────
 # PHASE 9 — SNMP PRE-FLIGHT (informational, not fatal)
 # ─────────────────────────────────────────────────────────────────────────────
-log "=== PHASE 9: SNMP reachability check (waiting 15s for BGP convergence) ==="
-sleep 15
+log "=== PHASE 9: SNMP reachability check ==="
 
 SWITCH_LOOPBACKS="
 10.1.0.1   spine-01

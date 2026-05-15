@@ -16,7 +16,7 @@ discover_nodes() {
 
 wait_for_spine_sync() {
   local node="$1"
-  local retries="${NTP_SPINE_SYNC_RETRIES:-90}"
+  local retries="${NTP_SPINE_SYNC_RETRIES:-30}"
   local stratum=""
   while [ $retries -gt 0 ]; do
     if $C-$node chronyc sources 2>/dev/null | grep -qE '^\^\*.*192\.168\.50\.20'; then
@@ -26,7 +26,7 @@ wait_for_spine_sync() {
       fi
     fi
     retries=$((retries - 1))
-    sleep 2
+    sleep 1
   done
   return 1
 }

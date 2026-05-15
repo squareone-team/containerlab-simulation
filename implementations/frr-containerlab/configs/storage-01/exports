@@ -12,8 +12,8 @@
 /shared              192.168.50.0/24(fsid=2,rw,sync,no_subtree_check,no_root_squash,insecure)
 
 # Per-user homes if needed (alternative model)
-# /home/student-01   192.168.70.0/24(rw,no_subtree_check,no_root_squash)
-# /home/researcher-01 192.168.70.0/24(rw,no_subtree_check,no_root_squash)
+# /home/tati.youcef 192.168.70.0/24(rw,no_subtree_check,no_root_squash)
+# /home/hamani.nacer 192.168.70.0/24(rw,no_subtree_check,no_root_squash)
 
 # ============================================================================
 # Export Options Explanation:

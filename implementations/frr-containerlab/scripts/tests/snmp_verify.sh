@@ -59,7 +59,7 @@ api_post() {
 snmp_sysdescr() {
   local node="$1" ip="$2"
   chk "$node: SNMP sysDescr reachable at $ip" \
-    "$C-zabbix-server snmpget -v2c -c esi-read -t3 -r1 $ip 1.3.6.1.2.1.1.1.0" \
+    "$C-zabbix-server snmpget -v2c -c esi-read -t2 -r0 $ip 1.3.6.1.2.1.1.1.0" \
     "STRING:"
 }
 
@@ -67,7 +67,7 @@ snmp_bgp_state() {
   local node="$1" ip="$2" minimum="$3"
   local count established non_established
 
-  LAST_OUT=$($C-zabbix-server snmpwalk -v2c -c esi-read -t3 -r1 \
+  LAST_OUT=$($C-zabbix-server snmpwalk -v2c -c esi-read -t2 -r0 \
     "$ip" 1.3.6.1.2.1.15.3.1.2 2>/dev/null)
 
   count=$(echo "$LAST_OUT" | grep -c "INTEGER:")
@@ -203,7 +203,7 @@ while read -r node ip minimum; do
   [ -z "$node" ] && continue
 
   chk "$node: loopback ping reachable from zabbix-server" \
-    "$C-zabbix-server ping -c2 -W2 $ip" \
+    "$C-zabbix-server ping -c1 -W1 $ip" \
     "[1-9][0-9]* (packets )?received"
 
   snmp_sysdescr "$node" "$ip"

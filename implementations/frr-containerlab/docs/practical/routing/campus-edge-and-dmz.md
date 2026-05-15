@@ -13,7 +13,7 @@ This page is for the campus test segment, the WiFi management path, and the DMZ 
 | `wifi-controller` | `192.168.10.100/24` | target behind `VRF-WIFI-CTRL` |
 | `server-dmz-01` | `198.51.100.10/24` | DMZ web service |
 | `moodle` | `198.51.100.30/24` | Moodle LMS at `moodle.esi.dz` |
-| `moodle-db` | `198.51.100.31/24` | MariaDB backend for Moodle |
+| `moodle-db` | `192.168.80.31/24` on a storage-pod bond | MariaDB backend for Moodle, multihomed to `leaf-07`/`leaf-08` |
 | `leaf-01` | `10.200.0.1/30`, `192.168.1.252/24`, `VRF-WIFI-CTRL` | policy-routing pivot between campus, firewall, and WiFi path |
 
 ## Campus Client Checks

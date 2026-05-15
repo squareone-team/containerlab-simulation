@@ -413,7 +413,6 @@ topology:
       kind: linux
       image: bitnamilegacy/mariadb:11.4
       user: root
-      startup-delay: 10
       cap-add:
         - NET_ADMIN
         - NET_RAW
@@ -427,21 +426,27 @@ topology:
       exec:
         - sh -lc "command -v ip >/dev/null 2>&1 || install_packages iproute2
           >/tmp/iproute2-install.log 2>&1"
-        - sh -lc "ip link set eth1 up && ip addr replace 198.51.100.31/24
-          dev eth1 && ip route del default 2>/dev/null || true; ip route add
-          default via 198.51.100.1 dev eth1 || true"
+        - sh -lc "ip link add bond0 type bond mode active-backup miimon 100
+          primary eth1 2>/dev/null || true; ip addr flush dev eth1 2>/dev/null
+          || true; ip addr flush dev eth2 2>/dev/null || true; ip link set eth1
+          down 2>/dev/null || true; ip link set eth2 down 2>/dev/null || true;
+          ip link set eth1 master bond0 2>/dev/null || true; ip link set eth2
+          master bond0 2>/dev/null || true; ip link set eth1 up; ip link set
+          eth2 up; ip link set bond0 up; ip addr replace 192.168.80.31/24 dev
+          bond0; ip route del default 2>/dev/null || true; ip route add default
+          via 192.168.80.1 dev bond0 || true"
 
     moodle:
       kind: linux
       image: bitnamilegacy/moodle:5.0.2
       user: root
-      startup-delay: 75
+      startup-delay: 10
       cap-add:
         - NET_ADMIN
         - NET_RAW
       env:
         MOODLE_DATABASE_TYPE: mariadb
-        MOODLE_DATABASE_HOST: moodle-db
+        MOODLE_DATABASE_HOST: "192.168.80.31"
         MOODLE_DATABASE_PORT_NUMBER: "3306"
         MOODLE_DATABASE_NAME: moodle
         MOODLE_DATABASE_USER: moodle_app
@@ -537,7 +542,6 @@ topology:
     zabbix-server:
       kind: linux
       image: esi/alpine-zabbix:3.20
-      startup-delay: 60
       binds:
         - configs/zabbix-server/startup.sh:/startup.sh
         - configs/zabbix-server/provision_topology.py:/opt/zabbix/provision_topology.py:ro
@@ -719,9 +723,10 @@ topology:
     - endpoints: [ "leaf-06:eth5", "server-hpc-jupyter:eth2" ]
     - endpoints: [ "leaf-07:eth3", "server-storage-01:eth1" ]
     - endpoints: [ "leaf-08:eth3", "server-storage-01:eth2" ]
+    - endpoints: [ "leaf-07:eth4", "moodle-db:eth1" ]
+    - endpoints: [ "leaf-08:eth4", "moodle-db:eth2" ]
     - endpoints: [ "leaf-01:eth7", "server-dmz-01:eth1" ]
     - endpoints: [ "leaf-01:eth11", "moodle:eth1" ]
-    - endpoints: [ "leaf-01:eth12", "moodle-db:eth1" ]
     - endpoints: [ "leaf-01:eth6", "vpn-gateway:eth1" ]
     - endpoints: [ "leaf-04:eth6", "syslog-server:eth1" ]
     - endpoints: [ "campus-bp:eth3", "leaf-01:eth8" ]

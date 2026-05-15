@@ -134,15 +134,28 @@ function esi_page($course) {
     add_moduleinfo($page, $course);
 }
 
-$professor = esi_user('nora.benali@esi.dz', 'Nora', 'Benali', 'nora.benali@esi.dz', 'NoraTPs#2026');
+$professors = [
+    esi_user('nora.benali@esi.dz', 'Nora', 'Benali', 'nora.benali@esi.dz', 'NoraTPs#2026'),
+    esi_user('hamani.nacer@esi.dz', 'Hamani', 'Nacer', 'hamani.nacer@esi.dz', 'HamaniTPs#2026'),
+    esi_user('amrouche.hakim@esi.dz', 'Amrouche', 'Hakim', 'amrouche.hakim@esi.dz', 'AmroucheTPs#2026'),
+];
 $students = [
     esi_user('amine.kadri@esi.dz', 'Amine', 'Kadri', 'amine.kadri@esi.dz', 'AmineLab#2026'),
     esi_user('selma.bouaziz@esi.dz', 'Selma', 'Bouaziz', 'selma.bouaziz@esi.dz', 'SelmaLms#2026'),
     esi_user('ilyes.rahmani@esi.dz', 'Ilyes', 'Rahmani', 'ilyes.rahmani@esi.dz', 'IlyesVpn#2026'),
+    esi_user('tati.youcef@esi.dz', 'Tati', 'Youcef', 'tati.youcef@esi.dz', 'TatiLab#2026'),
+    esi_user('kherroubi.amine@esi.dz', 'Kherroubi', 'Amine', 'kherroubi.amine@esi.dz', 'KherroubiLab#2026'),
+    esi_user('badaoui.ikram@esi.dz', 'Badaoui', 'Ikram', 'badaoui.ikram@esi.dz', 'BadaouiLab#2026'),
+    esi_user('zitouni.rania@esi.dz', 'Zitouni', 'Rania', 'zitouni.rania@esi.dz', 'ZitouniLab#2026'),
+    esi_user('mostefai.mounir@esi.dz', 'Mostefai', 'Mounir', 'mostefai.mounir@esi.dz', 'MostefaiLab#2026'),
+    esi_user('bousdjira.nadine@esi.dz', 'Bousdjira', 'Nadine', 'bousdjira.nadine@esi.dz', 'BousdjiraLab#2026'),
+    esi_user('hassnaoui.sarah@esi.dz', 'Hassnaoui', 'Sarah', 'hassnaoui.sarah@esi.dz', 'HassnaouiLab#2026'),
 ];
 
 $course = esi_course();
-esi_enrol($course, $professor, 'editingteacher');
+foreach ($professors as $professor) {
+    esi_enrol($course, $professor, 'editingteacher');
+}
 foreach ($students as $student) {
     esi_enrol($course, $student, 'student');
 }

@@ -44,7 +44,7 @@ cleanup() {
 	if [ "$SPAWNED_SERVER" = true ] && [ -n "$JH_ADMIN_TOKEN" ]; then
 		curl -4 -k -sS -o /dev/null -X DELETE \
 			-H "Authorization: token $JH_ADMIN_TOKEN" \
-			"https://localhost:9000/hub/api/users/student-01/server" || true
+			"https://localhost:9000/hub/api/users/tati.youcef/server" || true
 	fi
 	rm -f "$COOKIE_JAR" "$LOGIN_PAGE" "$NOTEBOOK_PAYLOAD" "$NOTEBOOK_RESPONSE"
 }
@@ -63,7 +63,7 @@ wait_for_jupyter_server_ready() {
 
 	while [ "$retries" -gt 0 ]; do
 		body="$(curl -4 -k -sS -H "Authorization: token $JH_ADMIN_TOKEN" \
-			"https://localhost:9000/hub/api/users/student-01" || true)"
+			"https://localhost:9000/hub/api/users/tati.youcef" || true)"
 		if printf '%s' "$body" | grep -Eq '"ready"[[:space:]]*:[[:space:]]*true'; then
 			return 0
 		fi
@@ -79,19 +79,19 @@ stop_student_server_if_running() {
 
 	code="$(curl -4 -k -sS -o /dev/null -w "%{http_code}" -X DELETE \
 		-H "Authorization: token $JH_ADMIN_TOKEN" \
-		"https://localhost:9000/hub/api/users/student-01/server" || true)"
+		"https://localhost:9000/hub/api/users/tati.youcef/server" || true)"
 
 	case "$code" in
 		202|204|404)
 			;;
 		*)
-			log_fail "Unexpected status while stopping existing student-01 server: $code"
+			log_fail "Unexpected status while stopping existing tati.youcef server: $code"
 			;;
 	esac
 
 	for _ in $(seq 1 30); do
 		if curl -4 -k -sS -H "Authorization: token $JH_ADMIN_TOKEN" \
-			"https://localhost:9000/hub/api/users/student-01" | grep -Eq '"server"[[:space:]]*:[[:space:]]*null'; then
+			"https://localhost:9000/hub/api/users/tati.youcef" | grep -Eq '"server"[[:space:]]*:[[:space:]]*null'; then
 			return 0
 		fi
 		sleep 1
@@ -160,17 +160,17 @@ fi
 log_info "=== 3. COMPUTE & JOB SUBMISSION ==="
 
 # Submit test jobs as the real notebook user from the Admin pod.
-if docker exec "$ADMIN_POD" sh -c 'su - student-01 -c "srun -N 1 -p cpu echo SLURM_SRUN_STUDENT_SUCCESS"' | grep -q "SLURM_SRUN_STUDENT_SUCCESS"; then
-	log_pass "student-01 successfully executed a job via srun"
+if docker exec "$ADMIN_POD" sh -c 'su - tati.youcef -c "srun -N 1 -p cpu echo SLURM_SRUN_STUDENT_SUCCESS"' | grep -q "SLURM_SRUN_STUDENT_SUCCESS"; then
+	log_pass "tati.youcef successfully executed a job via srun"
 else
-	log_fail "student-01 failed to execute test job via srun"
+	log_fail "tati.youcef failed to execute test job via srun"
 fi
 
-if docker exec "$ADMIN_POD" sh -c 'printf "%s\n" "#!/bin/sh" "echo SLURM_SBATCH_STUDENT_SUCCESS" > /tmp/naas-sbatch-test.sh && chown student-01:student-01 /tmp/naas-sbatch-test.sh && su - student-01 -c "sbatch -p cpu --wait --output=/home/student-01/naas-sbatch-test.out /tmp/naas-sbatch-test.sh" >/tmp/naas-sbatch-submit.out && cat /home/student-01/naas-sbatch-test.out' | grep -q "SLURM_SBATCH_STUDENT_SUCCESS"; then
-	log_pass "student-01 successfully submitted and completed a job via sbatch"
-	docker exec "$ADMIN_POD" sh -c 'rm -f /tmp/naas-sbatch-test.sh /tmp/naas-sbatch-submit.out /home/student-01/naas-sbatch-test.out' 2>/dev/null || true
+if docker exec "$ADMIN_POD" sh -c 'printf "%s\n" "#!/bin/sh" "echo SLURM_SBATCH_STUDENT_SUCCESS" > /tmp/naas-sbatch-test.sh && chown tati.youcef:tati.youcef /tmp/naas-sbatch-test.sh && su - tati.youcef -c "sbatch -p cpu --wait --output=/home/tati.youcef/naas-sbatch-test.out /tmp/naas-sbatch-test.sh" >/tmp/naas-sbatch-submit.out && cat /home/tati.youcef/naas-sbatch-test.out' | grep -q "SLURM_SBATCH_STUDENT_SUCCESS"; then
+	log_pass "tati.youcef successfully submitted and completed a job via sbatch"
+	docker exec "$ADMIN_POD" sh -c 'rm -f /tmp/naas-sbatch-test.sh /tmp/naas-sbatch-submit.out /home/tati.youcef/naas-sbatch-test.out' 2>/dev/null || true
 else
-	log_fail "student-01 failed to submit or complete test job via sbatch"
+	log_fail "tati.youcef failed to submit or complete test job via sbatch"
 fi
 
 # ==============================================================================
@@ -178,7 +178,7 @@ fi
 # ==============================================================================
 log_info "=== 4. DISTRIBUTED STORAGE ==="
 
-TEST_FILE="/home/student-01/test_nfs_sync.txt"
+TEST_FILE="/home/tati.youcef/test_nfs_sync.txt"
 
 for node in "$ADMIN_POD" "$HPC_01" "$HPC_02"; do
 	for mount_path in /home /shared; do
@@ -190,14 +190,14 @@ for node in "$ADMIN_POD" "$HPC_01" "$HPC_02"; do
 	done
 done
 
-if docker exec "$ADMIN_POD" sh -c 'su - student-01 -c "test -r /etc/slurm/slurm.conf && squeue -h >/dev/null"'; then
-	log_pass "student-01 can read slurm.conf and run squeue as a normal user"
+if docker exec "$ADMIN_POD" sh -c 'su - tati.youcef -c "test -r /etc/slurm/slurm.conf && squeue -h >/dev/null"'; then
+	log_pass "tati.youcef can read slurm.conf and run squeue as a normal user"
 else
-	log_fail "student-01 cannot read slurm.conf or run squeue"
+	log_fail "tati.youcef cannot read slurm.conf or run squeue"
 fi
 
-# Write as student-01 from HPC-01 so UID/GID preservation is tested.
-docker exec "$HPC_01" sh -c "su - student-01 -c \"echo hello_from_hpc01 > $TEST_FILE\"" || log_fail "Could not write to NFS from HPC-01 as student-01"
+# Write as tati.youcef from HPC-01 so UID/GID preservation is tested.
+docker exec "$HPC_01" sh -c "su - tati.youcef -c \"echo hello_from_hpc01 > $TEST_FILE\"" || log_fail "Could not write to NFS from HPC-01 as tati.youcef"
 
 # Read from HPC-02
 if docker exec "$HPC_02" sh -c "cat $TEST_FILE" 2>/dev/null | grep -q "hello_from_hpc01"; then
@@ -207,13 +207,13 @@ else
 fi
 
 if docker exec "$STORAGE" sh -c "stat -c '%u:%g' $TEST_FILE" | grep -q '^3001:3001$'; then
-	log_pass "NFS preserves student-01 UID/GID on storage-backed files"
+	log_pass "NFS preserves tati.youcef UID/GID on storage-backed files"
 else
-	log_fail "NFS did not preserve student-01 UID/GID on storage-backed files"
+	log_fail "NFS did not preserve tati.youcef UID/GID on storage-backed files"
 fi
 
 # Cleanup
-docker exec "$HPC_01" sh -c "su - student-01 -c \"rm -f $TEST_FILE\"" 2>/dev/null || true
+docker exec "$HPC_01" sh -c "su - tati.youcef -c \"rm -f $TEST_FILE\"" 2>/dev/null || true
 
 # ==============================================================================
 # 5. JupyterHub Frontend & Backend
@@ -250,35 +250,35 @@ fi
 JH_ADMIN_TOKEN="${NAAS_VERIFIER_TOKEN:-naas-verifier-token}"
 if curl -4 -k -sS -o /dev/null -w "%{http_code}" \
 	-H "Authorization: token $JH_ADMIN_TOKEN" \
-	"https://localhost:9000/hub/api/users/student-01" | grep -q "200"; then
-	log_pass "Verifier service token can read student-01 Hub state"
+	"https://localhost:9000/hub/api/users/tati.youcef" | grep -q "200"; then
+	log_pass "Verifier service token can read tati.youcef Hub state"
 else
-	log_fail "Verifier service token cannot read student-01 Hub state"
+	log_fail "Verifier service token cannot read tati.youcef Hub state"
 fi
 
-JH_USER_TOKEN="$(docker exec "$ADMIN_POD" sh -c 'jupyterhub token student-01 --config /etc/jupyterhub/jupyterhub_config.py 2>/dev/null' | tail -n 1 | tr -d '\r')"
+JH_USER_TOKEN="$(docker exec "$ADMIN_POD" sh -c 'jupyterhub token tati.youcef --config /etc/jupyterhub/jupyterhub_config.py 2>/dev/null' | tail -n 1 | tr -d '\r')"
 if [ -n "$JH_USER_TOKEN" ]; then
-	log_pass "Generated JupyterHub API token for student-01"
+	log_pass "Generated JupyterHub API token for tati.youcef"
 else
-	log_fail "Could not generate JupyterHub API token for student-01"
+	log_fail "Could not generate JupyterHub API token for tati.youcef"
 fi
 
 if stop_student_server_if_running; then
-	log_pass "student-01 has no pre-existing notebook server"
+	log_pass "tati.youcef has no pre-existing notebook server"
 else
-	log_fail "Could not stop pre-existing student-01 notebook server"
+	log_fail "Could not stop pre-existing tati.youcef notebook server"
 fi
 
 SPAWN_CODE="$(curl -4 -k -sS -o "$NOTEBOOK_RESPONSE" -w "%{http_code}" -X POST \
 	-H "Authorization: token $JH_ADMIN_TOKEN" \
 	-H "Content-Type: application/json" \
 	-d '{"profile":"cpu"}' \
-	"https://localhost:9000/hub/api/users/student-01/server")"
+	"https://localhost:9000/hub/api/users/tati.youcef/server")"
 
 case "$SPAWN_CODE" in
 	201|202)
 		SPAWNED_SERVER=true
-		log_pass "JupyterHub accepted a student-01 notebook spawn request"
+		log_pass "JupyterHub accepted a tati.youcef notebook spawn request"
 		;;
 	*)
 		log_fail "JupyterHub spawn request failed with HTTP $SPAWN_CODE"
@@ -286,15 +286,15 @@ case "$SPAWN_CODE" in
 esac
 
 if wait_for_jupyter_server_ready; then
-	log_pass "JupyterHub-spawned student-01 notebook server became ready"
+	log_pass "JupyterHub-spawned tati.youcef notebook server became ready"
 else
 	log_fail "JupyterHub-spawned notebook server did not become ready"
 fi
 
-if docker exec "$ADMIN_POD" sh -c 'squeue -h -u student-01 -o "%j %P %T" | grep -E "jupyter|spawner" | grep -q "cpu"'; then
+if docker exec "$ADMIN_POD" sh -c 'squeue -h -u tati.youcef -o "%j %P %T" | grep -E "jupyter|spawner" | grep -q "cpu"'; then
 	log_pass "JupyterHub-spawned notebook server is running as a SLURM job on the cpu partition"
 else
-	log_fail "No active SLURM notebook job found for student-01"
+	log_fail "No active SLURM notebook job found for tati.youcef"
 fi
 
 cat > "$NOTEBOOK_PAYLOAD" <<'JSON'
@@ -322,7 +322,7 @@ NOTEBOOK_CODE="$(curl -4 -k -sS -o "$NOTEBOOK_RESPONSE" -w "%{http_code}" -X PUT
 	-H "Authorization: token $JH_USER_TOKEN" \
 	-H "Content-Type: application/json" \
 	--data-binary "@$NOTEBOOK_PAYLOAD" \
-	"https://localhost:9000/user/student-01/api/contents/$NOTEBOOK_NAME")"
+	"https://localhost:9000/user/tati.youcef/api/contents/$NOTEBOOK_NAME")"
 
 case "$NOTEBOOK_CODE" in
 	200|201)
@@ -333,15 +333,15 @@ case "$NOTEBOOK_CODE" in
 		;;
 esac
 
-if docker exec "$STORAGE" sh -c "test -f /home/student-01/$NOTEBOOK_NAME && stat -c '%u:%g' /home/student-01/$NOTEBOOK_NAME" | grep -q '^3001:3001$'; then
-	log_pass "Notebook file landed on storage-backed /home/student-01 with student UID/GID"
+if docker exec "$STORAGE" sh -c "test -f /home/tati.youcef/$NOTEBOOK_NAME && stat -c '%u:%g' /home/tati.youcef/$NOTEBOOK_NAME" | grep -q '^3001:3001$'; then
+	log_pass "Notebook file landed on storage-backed /home/tati.youcef with student UID/GID"
 else
-	log_fail "Notebook file was not found on storage-backed /home/student-01 with student UID/GID"
+	log_fail "Notebook file was not found on storage-backed /home/tati.youcef with student UID/GID"
 fi
 
 curl -4 -k -sS -o /dev/null -X DELETE \
 	-H "Authorization: token $JH_USER_TOKEN" \
-	"https://localhost:9000/user/student-01/api/contents/$NOTEBOOK_NAME" || true
+	"https://localhost:9000/user/tati.youcef/api/contents/$NOTEBOOK_NAME" || true
 
 # ==============================================================================
 # Summary

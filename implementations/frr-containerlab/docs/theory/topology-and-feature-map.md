@@ -7,10 +7,10 @@ This page is the shortest high-level map of what exists in `frr-containerlab` an
 | Block | Nodes | Why it exists |
 | --- | --- | --- |
 | Fabric core | `spine-01`, `spine-02` | eBGP underlay, EVPN reflection, reachability between all leaf pairs |
-| Border and public edge | `leaf-01`, `leaf-02`, `isp-router-01..04`, `internet-router-01..02`, `internet-client-*`, `internet-web-01`, `server-dmz-01`, `moodle`, `moodle-db` | Internet edge, default-route intake, DMZ, Moodle, campus service insertion, orientation path |
+| Border and public edge | `leaf-01`, `leaf-02`, `isp-router-01..04`, `internet-router-01..02`, `internet-client-*`, `internet-web-01`, `server-dmz-01`, `moodle` | Internet edge, default-route intake, DMZ, Moodle frontend, campus service insertion, orientation path |
 | Admin and service pod | `leaf-03`, `leaf-04`, `server-admin-*`, `dns-server`, `dhcp-server`, `ntp-server`, `syslog-server`, `zabbix-server` | Shared services, staff workloads, route-leak point for core tooling |
 | HPC pod | `leaf-05`, `leaf-06`, `server-hpc-*` | Staff VRF compute workloads |
-| Storage pod | `leaf-07`, `leaf-08`, `server-storage-01` | Shared storage services |
+| Storage pod | `leaf-07`, `leaf-08`, `server-storage-01`, `moodle-db` | Shared storage services and storage-backed Moodle database |
 | Student pod | `leaf-09`, `leaf-10`, `server-student-*` | Pedagogy VRF workloads, DHCP relay, dual-homing |
 | Security and management | `firewall-01`, `firewall-02`, `bastion-01`, `oob-sw`, `syslog-server` | Ring 1 HA firewall, Ring 4 OOB SSH, Ring 6 central logging |
 | Identity and access | `auth-server`, `campus-bp`, `vpn-gateway` | LDAP directory, TACACS+/RADIUS services, campus NAC edge, and remote access VPN |

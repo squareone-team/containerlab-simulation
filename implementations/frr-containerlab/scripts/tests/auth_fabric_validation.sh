@@ -165,6 +165,12 @@ else
   fail "OpenLDAP directory missing amine.kadri@esi.dz"
 fi
 
+if run_in "$AUTH_SERVER" "ldapsearch -x -H ldap://127.0.0.1:389 -b dc=esi,dc=internal '(uid=tati.youcef@esi.dz)' dn | grep -q 'uid=tati.youcef@esi.dz'"; then
+  ok "OpenLDAP directory contains tati.youcef@esi.dz"
+else
+  fail "OpenLDAP directory missing tati.youcef@esi.dz"
+fi
+
 if run_in "$AUTH_SERVER" "ldapsearch -x -H ldap://127.0.0.1:389 -b dc=esi,dc=internal '(cn=squareone-admins)' memberUid | grep -q 'memberUid: squareone.admin@esi.dz'"; then
   ok "OpenLDAP directory contains SquareOne admin group"
 else
@@ -176,6 +182,8 @@ wait_for_tcp "$SERVER_ADMIN" "$AUTH_IP" 49 "admin server to TACACS+"
 wait_for_tcp "$SERVER_HPC" "$AUTH_IP" 49 "HPC server to TACACS+"
 
 expect_radius_role "${CAMPUS_BP}" "amine.kadri@esi.dz" "AmineLab#2026" "campus-student" "campus student RADIUS returns student role"
+expect_radius_role "${CAMPUS_BP}" "tati.youcef@esi.dz" "TatiLab#2026" "campus-student" "new student RADIUS returns student role"
+expect_radius_role "${CAMPUS_BP}" "hamani.nacer@esi.dz" "HamaniTPs#2026" "campus-student" "new professor RADIUS returns student role"
 expect_radius_role "${CAMPUS_BP}" "squareone.admin@esi.dz" "SquareOneRoot#2026" "campus-admin" "campus SquareOne admin RADIUS returns admin role"
 
 wait_for_nac_set "${CAMPUS_BP}" "campus_students" "${NAC_STUDENT_IP}" "campus student registered in NAC set"

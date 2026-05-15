@@ -169,8 +169,8 @@ def render_login_page():
       <button type="submit">Sign in</button>
     </form>
     <div class="demo-grid" aria-label="Demo accounts">
-      <div class="demo"><strong>Professor/student role</strong> nora.benali@esi.dz / NoraTPs#2026</div>
-      <div class="demo"><strong>Student role</strong> amine.kadri@esi.dz / AmineLab#2026</div>
+      <div class="demo"><strong>Professor/student role</strong> hamani.nacer@esi.dz / HamaniTPs#2026</div>
+      <div class="demo"><strong>Student role</strong> tati.youcef@esi.dz / TatiLab#2026</div>
       <div class="demo"><strong>SquareOne admin</strong> squareone.admin@esi.dz / SquareOneRoot#2026</div>
     </div>
     <div class="foot"><a href="http://portail.esi-lan.dz/password">Changer le mot de passe</a></div>

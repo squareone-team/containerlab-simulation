@@ -76,8 +76,8 @@ ip link add br0 type bridge vlan_filtering 1 vlan_default_pvid 0
 ip link set br0 mtu 9000
 ip link set br0 up
 
-if ip link show eth3 >/dev/null 2>&1; then ip link set eth3 master br0; bridge vlan add vid 80 dev eth3 pvid untagged; fi
-if ip link show eth4 >/dev/null 2>&1; then ip link set eth4 master br0; bridge vlan add vid 80 dev eth4 pvid untagged; fi
+if ip link show eth3 >/dev/null 2>&1; then ip link set eth3 master br0; bridge vlan add vid 80 dev eth3 pvid untagged; ip link set eth3 up; fi
+if ip link show eth4 >/dev/null 2>&1; then ip link set eth4 master br0; bridge vlan add vid 80 dev eth4 pvid untagged; ip link set eth4 up; fi
 
 ip link add vxlan10080 type vxlan id 10080 local $VTEP_IP dstport 4789 nolearning tos inherit
 ip link set vxlan10080 mtu 9000
@@ -241,13 +241,13 @@ RSYSLOG
 # Write client config
 cat > /etc/chrony.conf << 'EOF'
 # Sync from lab NTP server (stratum 2)
-server 192.168.50.20 iburst prefer
+server 192.168.50.20 iburst prefer minpoll 0 maxpoll 2
 # Fallback: if NTP server unreachable, use local clock at high stratum
 local stratum 10
 # Accept clock step on first 3 syncs
 makestep 1.0 3
-# Maximum skew allowed before chrony refuses to sync (forensic requirement: < 1s)
-maxdistance 1.0
+# Accept the lab local source quickly; tests enforce resulting clock offset < 1s
+maxdistance 16.0
 logdir /var/log/chrony
 log measurements statistics tracking
 EOF

@@ -12,8 +12,8 @@ The goal is to show how identity drives policy at the border without pretending 
 
 The `auth-server` container runs OpenLDAP on loopback only. It contains:
 
-- People: `nora.benali@esi.dz`, `amine.kadri@esi.dz`, `selma.bouaziz@esi.dz`, `ilyes.rahmani@esi.dz`, `squareone.admin@esi.dz`
-- Linux SSH aliases: `amine.kadri`, `squareone.admin`
+- People: `nora.benali@esi.dz`, `hamani.nacer@esi.dz`, `amrouche.hakim@esi.dz`, `amine.kadri@esi.dz`, `selma.bouaziz@esi.dz`, `ilyes.rahmani@esi.dz`, `tati.youcef@esi.dz`, `kherroubi.amine@esi.dz`, `badaoui.ikram@esi.dz`, `zitouni.rania@esi.dz`, `mostefai.mounir@esi.dz`, `bousdjira.nadine@esi.dz`, `hassnaoui.sarah@esi.dz`, `squareone.admin@esi.dz`
+- Linux SSH aliases: `nora.benali`, `hamani.nacer`, `amrouche.hakim`, `amine.kadri`, `tati.youcef`, `kherroubi.amine`, `badaoui.ikram`, `zitouni.rania`, `mostefai.mounir`, `bousdjira.nadine`, `hassnaoui.sarah`, `squareone.admin`
 - Groups: `students`, `student`, `professors`, `squareone-admins`, `admins`, `hpc-users`
 
 Identity metadata lives in the `description` attribute:
@@ -84,6 +84,8 @@ The VPN source seen by the firewall and workloads is the gateway DMZ address (`1
 | --- | --- | --- | --- |
 | `amine.kadri@esi.dz` | `vpn-student` | accepted | SSH to student/HPC targets and HTTPS to Jupyter |
 | `nora.benali@esi.dz` | `vpn-student` | accepted | Same VPN privilege as a student |
+| `tati.youcef@esi.dz` | `vpn-student` | accepted | Same VPN privilege as a student |
+| `hamani.nacer@esi.dz` | `vpn-student` | accepted | Same VPN privilege as a student |
 | `squareone.admin@esi.dz` | none for VPN | rejected | no tunnel peer is installed |
 
 ## Credential Protection By Hop

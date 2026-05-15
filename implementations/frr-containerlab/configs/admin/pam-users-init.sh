@@ -6,8 +6,8 @@
 # Runs on server-admin-01 during startup
 # 
 # Creates:
-#  - user groups: students, researchers, gpu-users, admins
-#  - test users for each group
+#  - user groups: students, professors, gpu-users, admins
+#  - named lab users for JupyterHub/SLURM
 #  - consistent uid/gid across the infrastructure
 #
 # Idempotent: safe to run multiple times
@@ -32,9 +32,9 @@ log "Creating user groups..."
 group_exists students || \
 	groupadd -g 5001 students || die "Failed to create students group"
 
-# Researchers group: 5002
-group_exists researchers || \
-	groupadd -g 5002 researchers || die "Failed to create researchers group"
+# Professors group: 5002
+group_exists professors || \
+	groupadd -g 5002 professors || die "Failed to create professors group"
 
 # GPU users group: 5003 (subset of researchers/admins who can access GPU)
 group_exists gpu-users || \
@@ -47,14 +47,14 @@ group_exists admins || \
 log "Groups created/verified"
 
 # ============================================================================
-# 2. Create Test Users
+# 2. Create Named Lab Users
 # ============================================================================
 
-# Create a generic JupyterHub service account (admin)
 create_user_if_missing() {
   local username=$1
   local uid=$2
   local groups=$3
+  local password=$4
   local home="/home/${username}"
   
   if ! id "$username" >/dev/null 2>&1; then
@@ -75,37 +75,36 @@ create_user_if_missing() {
       fi
     done
   fi
-}
-
-set_lab_password() {
-  local username=$1
 
   if command -v chpasswd >/dev/null 2>&1; then
-    printf '%s:%s\n' "$username" "$username" | chpasswd
+    printf '%s:%s\n' "$username" "$password" | chpasswd
     log "Password set for: $username"
   else
     log "WARN: chpasswd not found; password not set for $username"
   fi
 }
 
-# Admin users: UID 1000+
-create_user_if_missing "admin"        1000 "admins gpu-users"
-create_user_if_missing "administrator" 1001 "admins"
+# Admin user: UID 3200+
+create_user_if_missing "squareone.admin" 3201 "admins gpu-users" "SquareOneRoot#2026"
 
-# Researcher users: UID 2000+
-create_user_if_missing "researcher-01" 2001 "researchers"
-create_user_if_missing "researcher-02" 2002 "researchers gpu-users"
+# Professor users: UID 3100+
+create_user_if_missing "nora.benali"     3101 "professors" "NoraTPs#2026"
+create_user_if_missing "hamani.nacer"    3102 "professors" "HamaniTPs#2026"
+create_user_if_missing "amrouche.hakim"  3103 "professors" "AmroucheTPs#2026"
 
 # Student users: UID 3000+
-create_user_if_missing "student-01" 3001 "students"
-create_user_if_missing "student-02" 3002 "students"
-create_user_if_missing "student-03" 3003 "students"
+create_user_if_missing "tati.youcef"       3001 "students" "TatiLab#2026"
+create_user_if_missing "kherroubi.amine"   3002 "students" "KherroubiLab#2026"
+create_user_if_missing "badaoui.ikram"     3003 "students" "BadaouiLab#2026"
+create_user_if_missing "zitouni.rania"     3004 "students" "ZitouniLab#2026"
+create_user_if_missing "mostefai.mounir"   3005 "students" "MostefaiLab#2026"
+create_user_if_missing "bousdjira.nadine"  3006 "students" "BousdjiraLab#2026"
+create_user_if_missing "hassnaoui.sarah"   3007 "students" "HassnaouiLab#2026"
+create_user_if_missing "amine.kadri"       3011 "students" "AmineLab#2026"
+create_user_if_missing "selma.bouaziz"     3012 "students" "SelmaLms#2026"
+create_user_if_missing "ilyes.rahmani"     3013 "students" "IlyesVpn#2026"
 
-for user in admin administrator researcher-01 researcher-02 student-01 student-02 student-03; do
-  set_lab_password "$user"
-done
-
-log "Test users created/verified"
+log "Named JupyterHub users created/verified"
 
 # ============================================================================
 # 3. Create /shared and /home directories with correct ownership
@@ -122,8 +121,8 @@ mkdir -p /shared/course-001
 mkdir -p /shared/course-002
 mkdir -p /shared/team-research
 
-# Set ownership to researchers for team directories
-chown -R 2001:5002 /shared/team-research || true
+# Set ownership to professors for team directories
+chown -R 3101:5002 /shared/team-research || true
 chmod -R 770 /shared/team-research || true
 
 chown -R root:root /shared/course-001 || true
@@ -154,10 +153,13 @@ log "Sudoers configured"
 
 log "Verification:"
 log "  Groups:"
-grep -E "^(students|researchers|gpu-users|admins):" /etc/group || true
+grep -E "^(students|professors|gpu-users|admins):" /etc/group || true
 
 log "  Users:"
-for user in admin researcher-01 researcher-02 student-01 student-02 student-03; do
+for user in squareone.admin nora.benali hamani.nacer amrouche.hakim \
+  tati.youcef kherroubi.amine badaoui.ikram zitouni.rania \
+  mostefai.mounir bousdjira.nadine hassnaoui.sarah \
+  amine.kadri selma.bouaziz ilyes.rahmani; do
   id "$user" 2>/dev/null | sed 's/^/    /' || log "    $user: NOT FOUND"
 done
 

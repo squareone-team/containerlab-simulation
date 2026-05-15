@@ -8,7 +8,7 @@ import ssl
 import subprocess
 import time
 import urllib.parse
-from http.server import BaseHTTPRequestHandler, HTTPServer
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 
 RADIUS_HOST = os.environ.get("ESI_RADIUS_HOST", "192.168.50.80")
@@ -31,6 +31,7 @@ POOL_START = os.environ.get("ESI_VPN_POOL_START", "10.250.200.10")
 POOL_END = os.environ.get("ESI_VPN_POOL_END", "10.250.200.200")
 
 ROLE_PATTERN = re.compile(r"Filter-Id\s*=\s*\"?([A-Za-z0-9_-]+)\"?")
+MAX_BODY_BYTES = int(os.environ.get("ESI_VPN_MAX_BODY", "8192"))
 
 PORTAL_CSS = """
     :root {
@@ -190,20 +191,24 @@ def render_home_page():
           <button type="button" class="secondary" id="generate-key">Generate default VPN key</button>
         </div>
       </form>
-      <div class="demo"><strong>Student VPN demo</strong><br>amine.kadri@esi.dz / AmineLab#2026<br><strong>Professor same privilege</strong><br>nora.benali@esi.dz / NoraTPs#2026</div>
+      <div class="demo"><strong>Student VPN demo</strong><br>tati.youcef@esi.dz / TatiLab#2026<br><strong>Professor same privilege</strong><br>hamani.nacer@esi.dz / HamaniTPs#2026</div>
       <pre id="generated-key" aria-live="polite"></pre>
       <script>
         const output = document.getElementById("generated-key");
         document.getElementById("generate-key").addEventListener("click", async () => {
           output.textContent = "Generating WireGuard keypair...";
-          const response = await fetch("/generate-key", { method: "POST" });
-          const payload = await response.json();
-          if (!payload.ok) {
-            output.textContent = payload.error || "key generation failed";
-            return;
+          try {
+            const response = await fetch("/generate-key", { method: "POST", cache: "no-store" });
+            const payload = await response.json();
+            if (!payload.ok) {
+              output.textContent = payload.error || "key generation failed";
+              return;
+            }
+            document.getElementById("public_key").value = payload.public_key;
+            output.textContent = "PrivateKey = " + payload.private_key + "\\nPublicKey = " + payload.public_key;
+          } catch (error) {
+            output.textContent = "key generation request failed";
           }
-          document.getElementById("public_key").value = payload.public_key;
-          output.textContent = "PrivateKey = " + payload.private_key + "\\nPublicKey = " + payload.public_key;
         });
       </script>
     """)
@@ -322,9 +327,10 @@ def add_peer(peer_key, address):
     try:
         subprocess.run(
             ["wg", "set", WG_INTERFACE, "peer", peer_key, "allowed-ips", f"{address}/32"],
-            check=False,
+            check=True,
+            timeout=4,
         )
-    except FileNotFoundError:
+    except (FileNotFoundError, subprocess.SubprocessError):
         return False
     return True
 
@@ -375,6 +381,12 @@ def config_text(private_key, address, server_key):
 
 
 class Handler(BaseHTTPRequestHandler):
+    server_version = "ESIVPNEnrollment/1.0"
+
+    def setup(self):
+        super().setup()
+        self.request.settimeout(15)
+
     def _send_logo(self):
         try:
             with open(LOGO_PATH, "rb") as handle:
@@ -449,6 +461,9 @@ class Handler(BaseHTTPRequestHandler):
             length = int(self.headers.get("Content-Length", "0"))
         except ValueError:
             self.send_error(400)
+            return
+        if length < 0 or length > MAX_BODY_BYTES:
+            self._send_json(413, {"ok": False, "error": "request_too_large"})
             return
         payload = self.rfile.read(length).decode("utf-8", "replace")
         content_type = self.headers.get("Content-Type", "")
@@ -547,8 +562,13 @@ class Handler(BaseHTTPRequestHandler):
         return
 
 
+class EnrollmentServer(ThreadingHTTPServer):
+    daemon_threads = True
+    request_queue_size = 64
+
+
 def main():
-    server = HTTPServer((LISTEN_HOST, LISTEN_PORT), Handler)
+    server = EnrollmentServer((LISTEN_HOST, LISTEN_PORT), Handler)
     if TLS_ENABLED:
         context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
         context.load_cert_chain(TLS_CERT, TLS_KEY)

@@ -10,7 +10,7 @@ Notebook profiles:
 
 Users:
   - students: cpu partition only
-  - researchers: cpu partition only
+  - professors: cpu partition only
   - admins: all partitions
   - gpu-users: gpu partition + cpu partition
 
@@ -194,18 +194,34 @@ c.Spawner.pre_spawn_hook = apply_slurm_profile
 # ============================================================================
 
 # Admins can manage JupyterHub
-c.Authenticator.admin_users = {
-    'admin',
-    'administrator',
+JUPYTER_ADMINS = {
+    'squareone.admin',
     'root',
 }
 
-# Allow specific users (created via PAM/useradd)
-c.Authenticator.allowed_users = {
-    'admin', 'administrator',
-    'student-01', 'student-02', 'student-03',
-    'researcher-01', 'researcher-02',
+JUPYTER_PROFESSORS = {
+    'nora.benali',
+    'hamani.nacer',
+    'amrouche.hakim',
 }
+
+JUPYTER_STUDENTS = {
+    'tati.youcef',
+    'kherroubi.amine',
+    'badaoui.ikram',
+    'zitouni.rania',
+    'mostefai.mounir',
+    'bousdjira.nadine',
+    'hassnaoui.sarah',
+    'amine.kadri',
+    'selma.bouaziz',
+    'ilyes.rahmani',
+}
+
+c.Authenticator.admin_users = JUPYTER_ADMINS
+
+# Allow specific users (created via PAM/useradd)
+c.Authenticator.allowed_users = JUPYTER_ADMINS | JUPYTER_PROFESSORS | JUPYTER_STUDENTS
 
 # ============================================================================
 # 6. Database Configuration (MariaDB)

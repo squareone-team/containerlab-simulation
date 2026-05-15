@@ -32,7 +32,9 @@ The NAC gateway is `campus-bp` at `192.168.110.1`. It authenticates ESI mail ide
 | Identity | Password | Expected set |
 | --- | --- | --- |
 | `amine.kadri@esi.dz` | `AmineLab#2026` | `campus_students` |
+| `tati.youcef@esi.dz` | `TatiLab#2026` | `campus_students` |
 | `nora.benali@esi.dz` | `NoraTPs#2026` | `campus_students` |
+| `hamani.nacer@esi.dz` | `HamaniTPs#2026` | `campus_students` |
 | `squareone.admin@esi.dz` | `SquareOneRoot#2026` | `campus_admins` |
 
 Manual role test:
@@ -41,6 +43,12 @@ Manual role test:
 docker exec clab-esi-datacenter-campus-bp sh -lc 'printf "User-Name = \"amine.kadri@esi.dz\"\nUser-Password = \"AmineLab#2026\"\nNAS-Identifier = \"campus-nac\"\n" | radclient -x 192.168.50.80:1812 auth EsiCampusNacRadius#2026'
 docker exec clab-esi-datacenter-campus-bp nft list set inet campus_nac campus_students
 docker exec clab-esi-datacenter-campus-bp nft list set inet campus_nac campus_admins
+```
+
+or from device terminal :
+
+```bash
+docker exec clab-esi-datacenter-campus-admin-01 -lc 'ESI_NAC_USER=squareone.admin@esi.dz ESI_NAC_PASSWORD=SquareOneRoot#2026 timeout 8 python3 /usr/local/bin/esi-nac-client.py || true'
 ```
 
 The unauthenticated browser at `192.168.110.30` should not appear in either set.
@@ -73,7 +81,8 @@ docker exec clab-esi-datacenter-vpn-client-01 sh -lc 'PUB=$(cat /tmp/vpn.pub); p
 
 Expected:
 
-- `amine.kadri@esi.dz` and `nora.benali@esi.dz` receive `vpn-student`.
+- Student identities such as `amine.kadri@esi.dz` and `tati.youcef@esi.dz` receive `vpn-student`.
+- Professor identities such as `nora.benali@esi.dz` and `hamani.nacer@esi.dz` receive `vpn-student`.
 - `squareone.admin@esi.dz` is rejected by VPN enrollment.
 - The gateway NATs tunnel clients behind `198.51.100.20`; `10.250.200.0/24` is not advertised to ISP/Internet routers.
 

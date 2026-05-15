@@ -24,6 +24,8 @@ topology context.
 - `cluster_public_dmz`: `198.51.100.0/24`
 - `cluster_lms_staff`: `192.168.30.0/24`
 - `core_infra_syslog`: `192.168.50.70`
+- `moodle_frontend`: `198.51.100.30`
+- `moodle_db_storage`: `192.168.80.31`
 
 ## Allowed New Flows (Stateful)
 
@@ -46,13 +48,17 @@ topology context.
   - UDP: `67, 68`
 - DMZ to centralized syslog
   - TCP: `514` only, for one-way log export
+- Moodle frontend to Moodle database
+  - Source: `198.51.100.30`
+  - Destination: `192.168.80.31`
+  - TCP: `3306` only
 
 ## Explicitly Blocked / Isolated Flows
 
 - Pedagogy to Admin: dropped (`cluster_1_pedagogy` -> `cluster_2_admin`)
 - Orientation isolation: all traffic to/from `192.168.90.0/24` dropped
 - DMZ isolation: explicit drops between `198.51.100.0/24` and all internal
-  clusters except the narrow syslog export exception above
+  clusters except the narrow syslog and Moodle database exceptions above
   - DMZ to Pedagogy/Admin/HPC/Storage dropped
   - Pedagogy/Admin/HPC/Storage to DMZ dropped
 

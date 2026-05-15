@@ -84,6 +84,15 @@ PROFESSOR_NORA_PW="$(slappasswd -s 'NoraTPs#2026')"
 STUDENT_AMINE_PW="$(slappasswd -s 'AmineLab#2026')"
 STUDENT_SELMA_PW="$(slappasswd -s 'SelmaLms#2026')"
 STUDENT_ILYES_PW="$(slappasswd -s 'IlyesVpn#2026')"
+STUDENT_TATI_YOUCEF_PW="$(slappasswd -s 'TatiLab#2026')"
+STUDENT_KHERROUBI_AMINE_PW="$(slappasswd -s 'KherroubiLab#2026')"
+STUDENT_BADAOUI_IKRAM_PW="$(slappasswd -s 'BadaouiLab#2026')"
+STUDENT_ZITOUNI_RANIA_PW="$(slappasswd -s 'ZitouniLab#2026')"
+STUDENT_MOSTEFAI_MOUNIR_PW="$(slappasswd -s 'MostefaiLab#2026')"
+STUDENT_BOUSDJIRA_NADINE_PW="$(slappasswd -s 'BousdjiraLab#2026')"
+STUDENT_HASSNAOUI_SARAH_PW="$(slappasswd -s 'HassnaouiLab#2026')"
+PROFESSOR_HAMANI_NACER_PW="$(slappasswd -s 'HamaniTPs#2026')"
+PROFESSOR_AMROUCHE_HAKIM_PW="$(slappasswd -s 'AmroucheTPs#2026')"
 
 cat > /etc/openldap/slapd.conf << EOF
 include         /etc/openldap/schema/core.schema
@@ -177,6 +186,20 @@ loginShell: /bin/sh
 userPassword: ${PROFESSOR_NORA_PW}
 description: professor-student-privilege
 
+dn: uid=nora.benali,ou=People,${LDAP_BASE_DN}
+objectClass: top
+objectClass: account
+objectClass: posixAccount
+objectClass: shadowAccount
+cn: Nora Benali
+uid: nora.benali
+uidNumber: 2322
+gidNumber: 2102
+homeDirectory: /home/nora.benali
+loginShell: /bin/sh
+userPassword: ${PROFESSOR_NORA_PW}
+description: professor-linux
+
 dn: uid=amine.kadri@esi.dz,ou=People,${LDAP_BASE_DN}
 objectClass: top
 objectClass: account
@@ -233,6 +256,258 @@ loginShell: /bin/sh
 userPassword: ${STUDENT_ILYES_PW}
 description: student-vpn
 
+dn: uid=tati.youcef@esi.dz,ou=People,${LDAP_BASE_DN}
+objectClass: top
+objectClass: account
+objectClass: posixAccount
+objectClass: shadowAccount
+cn: Tati Youcef
+uid: tati.youcef@esi.dz
+uidNumber: 2210
+gidNumber: 2102
+homeDirectory: /home/tati.youcef
+loginShell: /bin/sh
+userPassword: ${STUDENT_TATI_YOUCEF_PW}
+description: student-vpn
+
+dn: uid=tati.youcef,ou=People,${LDAP_BASE_DN}
+objectClass: top
+objectClass: account
+objectClass: posixAccount
+objectClass: shadowAccount
+cn: Tati Youcef
+uid: tati.youcef
+uidNumber: 2310
+gidNumber: 2102
+homeDirectory: /home/tati.youcef
+loginShell: /bin/sh
+userPassword: ${STUDENT_TATI_YOUCEF_PW}
+description: student-linux
+
+dn: uid=kherroubi.amine@esi.dz,ou=People,${LDAP_BASE_DN}
+objectClass: top
+objectClass: account
+objectClass: posixAccount
+objectClass: shadowAccount
+cn: Kherroubi Amine
+uid: kherroubi.amine@esi.dz
+uidNumber: 2211
+gidNumber: 2102
+homeDirectory: /home/kherroubi.amine
+loginShell: /bin/sh
+userPassword: ${STUDENT_KHERROUBI_AMINE_PW}
+description: student-vpn
+
+dn: uid=kherroubi.amine,ou=People,${LDAP_BASE_DN}
+objectClass: top
+objectClass: account
+objectClass: posixAccount
+objectClass: shadowAccount
+cn: Kherroubi Amine
+uid: kherroubi.amine
+uidNumber: 2311
+gidNumber: 2102
+homeDirectory: /home/kherroubi.amine
+loginShell: /bin/sh
+userPassword: ${STUDENT_KHERROUBI_AMINE_PW}
+description: student-linux
+
+dn: uid=badaoui.ikram@esi.dz,ou=People,${LDAP_BASE_DN}
+objectClass: top
+objectClass: account
+objectClass: posixAccount
+objectClass: shadowAccount
+cn: Badaoui Ikram
+uid: badaoui.ikram@esi.dz
+uidNumber: 2212
+gidNumber: 2102
+homeDirectory: /home/badaoui.ikram
+loginShell: /bin/sh
+userPassword: ${STUDENT_BADAOUI_IKRAM_PW}
+description: student-vpn
+
+dn: uid=badaoui.ikram,ou=People,${LDAP_BASE_DN}
+objectClass: top
+objectClass: account
+objectClass: posixAccount
+objectClass: shadowAccount
+cn: Badaoui Ikram
+uid: badaoui.ikram
+uidNumber: 2312
+gidNumber: 2102
+homeDirectory: /home/badaoui.ikram
+loginShell: /bin/sh
+userPassword: ${STUDENT_BADAOUI_IKRAM_PW}
+description: student-linux
+
+dn: uid=zitouni.rania@esi.dz,ou=People,${LDAP_BASE_DN}
+objectClass: top
+objectClass: account
+objectClass: posixAccount
+objectClass: shadowAccount
+cn: Zitouni Rania
+uid: zitouni.rania@esi.dz
+uidNumber: 2213
+gidNumber: 2102
+homeDirectory: /home/zitouni.rania
+loginShell: /bin/sh
+userPassword: ${STUDENT_ZITOUNI_RANIA_PW}
+description: student-vpn
+
+dn: uid=zitouni.rania,ou=People,${LDAP_BASE_DN}
+objectClass: top
+objectClass: account
+objectClass: posixAccount
+objectClass: shadowAccount
+cn: Zitouni Rania
+uid: zitouni.rania
+uidNumber: 2313
+gidNumber: 2102
+homeDirectory: /home/zitouni.rania
+loginShell: /bin/sh
+userPassword: ${STUDENT_ZITOUNI_RANIA_PW}
+description: student-linux
+
+dn: uid=mostefai.mounir@esi.dz,ou=People,${LDAP_BASE_DN}
+objectClass: top
+objectClass: account
+objectClass: posixAccount
+objectClass: shadowAccount
+cn: Mostefai Mounir
+uid: mostefai.mounir@esi.dz
+uidNumber: 2214
+gidNumber: 2102
+homeDirectory: /home/mostefai.mounir
+loginShell: /bin/sh
+userPassword: ${STUDENT_MOSTEFAI_MOUNIR_PW}
+description: student-vpn
+
+dn: uid=mostefai.mounir,ou=People,${LDAP_BASE_DN}
+objectClass: top
+objectClass: account
+objectClass: posixAccount
+objectClass: shadowAccount
+cn: Mostefai Mounir
+uid: mostefai.mounir
+uidNumber: 2314
+gidNumber: 2102
+homeDirectory: /home/mostefai.mounir
+loginShell: /bin/sh
+userPassword: ${STUDENT_MOSTEFAI_MOUNIR_PW}
+description: student-linux
+
+dn: uid=bousdjira.nadine@esi.dz,ou=People,${LDAP_BASE_DN}
+objectClass: top
+objectClass: account
+objectClass: posixAccount
+objectClass: shadowAccount
+cn: Bousdjira Nadine
+uid: bousdjira.nadine@esi.dz
+uidNumber: 2215
+gidNumber: 2102
+homeDirectory: /home/bousdjira.nadine
+loginShell: /bin/sh
+userPassword: ${STUDENT_BOUSDJIRA_NADINE_PW}
+description: student-vpn
+
+dn: uid=bousdjira.nadine,ou=People,${LDAP_BASE_DN}
+objectClass: top
+objectClass: account
+objectClass: posixAccount
+objectClass: shadowAccount
+cn: Bousdjira Nadine
+uid: bousdjira.nadine
+uidNumber: 2315
+gidNumber: 2102
+homeDirectory: /home/bousdjira.nadine
+loginShell: /bin/sh
+userPassword: ${STUDENT_BOUSDJIRA_NADINE_PW}
+description: student-linux
+
+dn: uid=hassnaoui.sarah@esi.dz,ou=People,${LDAP_BASE_DN}
+objectClass: top
+objectClass: account
+objectClass: posixAccount
+objectClass: shadowAccount
+cn: Hassnaoui Sarah
+uid: hassnaoui.sarah@esi.dz
+uidNumber: 2216
+gidNumber: 2102
+homeDirectory: /home/hassnaoui.sarah
+loginShell: /bin/sh
+userPassword: ${STUDENT_HASSNAOUI_SARAH_PW}
+description: student-vpn
+
+dn: uid=hassnaoui.sarah,ou=People,${LDAP_BASE_DN}
+objectClass: top
+objectClass: account
+objectClass: posixAccount
+objectClass: shadowAccount
+cn: Hassnaoui Sarah
+uid: hassnaoui.sarah
+uidNumber: 2316
+gidNumber: 2102
+homeDirectory: /home/hassnaoui.sarah
+loginShell: /bin/sh
+userPassword: ${STUDENT_HASSNAOUI_SARAH_PW}
+description: student-linux
+
+dn: uid=hamani.nacer@esi.dz,ou=People,${LDAP_BASE_DN}
+objectClass: top
+objectClass: account
+objectClass: posixAccount
+objectClass: shadowAccount
+cn: Hamani Nacer
+uid: hamani.nacer@esi.dz
+uidNumber: 2120
+gidNumber: 2102
+homeDirectory: /home/hamani.nacer
+loginShell: /bin/sh
+userPassword: ${PROFESSOR_HAMANI_NACER_PW}
+description: professor-student-privilege
+
+dn: uid=hamani.nacer,ou=People,${LDAP_BASE_DN}
+objectClass: top
+objectClass: account
+objectClass: posixAccount
+objectClass: shadowAccount
+cn: Hamani Nacer
+uid: hamani.nacer
+uidNumber: 2320
+gidNumber: 2102
+homeDirectory: /home/hamani.nacer
+loginShell: /bin/sh
+userPassword: ${PROFESSOR_HAMANI_NACER_PW}
+description: professor-linux
+
+dn: uid=amrouche.hakim@esi.dz,ou=People,${LDAP_BASE_DN}
+objectClass: top
+objectClass: account
+objectClass: posixAccount
+objectClass: shadowAccount
+cn: Amrouche Hakim
+uid: amrouche.hakim@esi.dz
+uidNumber: 2121
+gidNumber: 2102
+homeDirectory: /home/amrouche.hakim
+loginShell: /bin/sh
+userPassword: ${PROFESSOR_AMROUCHE_HAKIM_PW}
+description: professor-student-privilege
+
+dn: uid=amrouche.hakim,ou=People,${LDAP_BASE_DN}
+objectClass: top
+objectClass: account
+objectClass: posixAccount
+objectClass: shadowAccount
+cn: Amrouche Hakim
+uid: amrouche.hakim
+uidNumber: 2321
+gidNumber: 2102
+homeDirectory: /home/amrouche.hakim
+loginShell: /bin/sh
+userPassword: ${PROFESSOR_AMROUCHE_HAKIM_PW}
+description: professor-linux
+
 dn: cn=admins,ou=Groups,${LDAP_BASE_DN}
 objectClass: top
 objectClass: posixGroup
@@ -255,10 +530,29 @@ objectClass: posixGroup
 cn: students
 gidNumber: 2102
 memberUid: nora.benali@esi.dz
+memberUid: nora.benali
+memberUid: hamani.nacer@esi.dz
+memberUid: hamani.nacer
+memberUid: amrouche.hakim@esi.dz
+memberUid: amrouche.hakim
 memberUid: amine.kadri@esi.dz
 memberUid: amine.kadri
 memberUid: selma.bouaziz@esi.dz
 memberUid: ilyes.rahmani@esi.dz
+memberUid: tati.youcef@esi.dz
+memberUid: tati.youcef
+memberUid: kherroubi.amine@esi.dz
+memberUid: kherroubi.amine
+memberUid: badaoui.ikram@esi.dz
+memberUid: badaoui.ikram
+memberUid: zitouni.rania@esi.dz
+memberUid: zitouni.rania
+memberUid: mostefai.mounir@esi.dz
+memberUid: mostefai.mounir
+memberUid: bousdjira.nadine@esi.dz
+memberUid: bousdjira.nadine
+memberUid: hassnaoui.sarah@esi.dz
+memberUid: hassnaoui.sarah
 
 dn: cn=student,ou=Groups,${LDAP_BASE_DN}
 objectClass: top
@@ -266,9 +560,18 @@ objectClass: posixGroup
 cn: student
 gidNumber: 2105
 memberUid: nora.benali@esi.dz
+memberUid: hamani.nacer@esi.dz
+memberUid: amrouche.hakim@esi.dz
 memberUid: amine.kadri@esi.dz
 memberUid: selma.bouaziz@esi.dz
 memberUid: ilyes.rahmani@esi.dz
+memberUid: tati.youcef@esi.dz
+memberUid: kherroubi.amine@esi.dz
+memberUid: badaoui.ikram@esi.dz
+memberUid: zitouni.rania@esi.dz
+memberUid: mostefai.mounir@esi.dz
+memberUid: bousdjira.nadine@esi.dz
+memberUid: hassnaoui.sarah@esi.dz
 
 dn: cn=professors,ou=Groups,${LDAP_BASE_DN}
 objectClass: top
@@ -276,6 +579,11 @@ objectClass: posixGroup
 cn: professors
 gidNumber: 2106
 memberUid: nora.benali@esi.dz
+memberUid: nora.benali
+memberUid: hamani.nacer@esi.dz
+memberUid: hamani.nacer
+memberUid: amrouche.hakim@esi.dz
+memberUid: amrouche.hakim
 
 dn: cn=hpc-users,ou=Groups,${LDAP_BASE_DN}
 objectClass: top
@@ -283,6 +591,16 @@ objectClass: posixGroup
 cn: hpc-users
 gidNumber: 2103
 memberUid: amine.kadri
+memberUid: tati.youcef
+memberUid: kherroubi.amine
+memberUid: badaoui.ikram
+memberUid: zitouni.rania
+memberUid: mostefai.mounir
+memberUid: bousdjira.nadine
+memberUid: hassnaoui.sarah
+memberUid: nora.benali
+memberUid: hamani.nacer
+memberUid: amrouche.hakim
 memberUid: squareone.admin
 EOF
 

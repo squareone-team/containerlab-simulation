@@ -277,10 +277,10 @@ sleep 8
 # Create default accounting associations
 log "Creating SLURM associations..."
 sacctmgr -i add cluster esi-hpc 2>/dev/null || true
-sacctmgr -i add account admin,research,student Cluster=esi-hpc 2>/dev/null || true
-sacctmgr -i add user admin Account=admin Cluster=esi-hpc 2>/dev/null || true
-sacctmgr -i add user researcher-01,researcher-02 Account=research Cluster=esi-hpc 2>/dev/null || true
-sacctmgr -i add user student-01,student-02,student-03 Account=student Cluster=esi-hpc 2>/dev/null || true
+sacctmgr -i add account admin,professor,student Cluster=esi-hpc 2>/dev/null || true
+sacctmgr -i add user squareone.admin Account=admin Cluster=esi-hpc 2>/dev/null || true
+sacctmgr -i add user nora.benali,hamani.nacer,amrouche.hakim Account=professor Cluster=esi-hpc 2>/dev/null || true
+sacctmgr -i add user tati.youcef,kherroubi.amine,badaoui.ikram,zitouni.rania,mostefai.mounir,bousdjira.nadine,hassnaoui.sarah,amine.kadri,selma.bouaziz,ilyes.rahmani Account=student Cluster=esi-hpc 2>/dev/null || true
 
 # Start slurmctld (controller daemon)
 log "Starting slurmctld..."
