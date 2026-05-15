@@ -21,6 +21,10 @@ not spend time running `apk update` and `apk add` during every deploy.
     simple app nodes that need `chrony`, `nftables`, `rsyslog`, `openssh`, or
     `iptables`.
 
+- `esi/fabric-browser:3.23`
+  - Base for fabric-attached GUI client nodes: `guest-01`, `student-01`, `admin-01`, and `vpn-client-01`.
+  - Extends the Firefox/noVNC image with CLI validation tools, WireGuard, and the VPN client helper used for same-container browser tunnel install.
+
 - `esi/alpine-services:3.20`
   - Extends `esi/alpine-host:3.20` with service packages used by DNS and DHCP:
     `unbound`, `kea`, `bind-tools`.

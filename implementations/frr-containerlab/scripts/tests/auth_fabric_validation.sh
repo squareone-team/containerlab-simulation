@@ -6,9 +6,9 @@ CLAB_PREFIX="clab-${LAB}"
 
 AUTH_SERVER="${CLAB_PREFIX}-auth-server"
 CAMPUS_BP="${CLAB_PREFIX}-campus-bp"
-CAMPUS_STUDENT="${CLAB_PREFIX}-campus-student-01"
-CAMPUS_ADMIN="${CLAB_PREFIX}-campus-admin-01"
-STUDENT_BP="${CLAB_PREFIX}-student-bp-01"
+CAMPUS_STUDENT="${CLAB_PREFIX}-student-01"
+CAMPUS_ADMIN="${CLAB_PREFIX}-admin-01"
+GUEST_CLIENT="${CLAB_PREFIX}-guest-01"
 SERVER_STUDENT="${CLAB_PREFIX}-server-student-01"
 SERVER_ADMIN="${CLAB_PREFIX}-server-admin-01"
 SERVER_HPC="${CLAB_PREFIX}-server-hpc-01"
@@ -19,6 +19,8 @@ HPC_TARGET="192.168.70.10"
 JUPYTER_TARGET="192.168.70.30"
 AUTH_IP="192.168.50.80"
 RADIUS_SECRET_CAMPUS="EsiCampusNacRadius#2026"
+NAC_AUTH_URL="https://192.168.110.1:8443/auth"
+NAC_LOGOUT_URL="https://192.168.110.1:8443/logout"
 
 NAC_STUDENT_IP="192.168.110.31"
 NAC_ADMIN_IP="192.168.110.32"
@@ -81,6 +83,65 @@ expect_nac_absent() {
   else
     ok "$label"
   fi
+}
+
+nac_login() {
+  local node="$1" user="$2" password="$3" expected_role="$4" label="$5"
+  local output
+  local i
+  for i in $(seq 1 10); do
+    output="$(docker exec -i "$node" python3 - "$NAC_AUTH_URL" "$user" "$password" <<'PY' 2>&1 || true
+import json
+import ssl
+import sys
+import urllib.request
+
+ctx = ssl._create_unverified_context()
+payload = json.dumps({"username": sys.argv[2], "password": sys.argv[3]}).encode()
+req = urllib.request.Request(
+    sys.argv[1],
+    data=payload,
+    headers={"Content-Type": "application/json", "Accept": "application/json"},
+)
+with urllib.request.urlopen(req, context=ctx, timeout=8) as response:
+    sys.stdout.write(response.read().decode("utf-8", "replace"))
+PY
+)"
+    if echo "$output" | grep -q '"ok": true' && echo "$output" | grep -q "\"role\": \"$expected_role\""; then
+      ok "$label"
+      return 0
+    fi
+    sleep 2
+  done
+  fail "$label failed: ${output}"
+  return 1
+}
+
+nac_logout() {
+  local node="$1" label="$2"
+  local output
+  output="$(docker exec -i "$node" python3 - "$NAC_LOGOUT_URL" <<'PY' 2>&1 || true
+import ssl
+import sys
+import urllib.request
+
+ctx = ssl._create_unverified_context()
+req = urllib.request.Request(sys.argv[1], data=b"", headers={"Accept": "application/json"}, method="POST")
+with urllib.request.urlopen(req, context=ctx, timeout=8) as response:
+    sys.stdout.write(response.read().decode("utf-8", "replace"))
+PY
+)"
+  if echo "$output" | grep -q '"ok": true'; then
+    ok "$label"
+  else
+    fail "$label failed: ${output}"
+  fi
+}
+
+clear_nac_roles() {
+  for ip in "$NAC_STUDENT_IP" "$NAC_ADMIN_IP" "$NAC_ATTACKER_IP"; do
+    run_in "$CAMPUS_BP" "nft delete element inet campus_nac campus_students { ${ip} } 2>/dev/null || true; nft delete element inet campus_nac campus_admins { ${ip} } 2>/dev/null || true" >/dev/null 2>&1 || true
+  done
 }
 
 expect_tcp_blocked() {
@@ -151,7 +212,7 @@ expect_ssh_denied() {
 echo "=== Fabric Authentication and Authorization Validation ==="
 echo "Lab: ${LAB}"
 
-for node in "$AUTH_SERVER" "$CAMPUS_BP" "$CAMPUS_STUDENT" "$CAMPUS_ADMIN" "$STUDENT_BP" "$SERVER_STUDENT" "$SERVER_ADMIN" "$SERVER_HPC"; do
+for node in "$AUTH_SERVER" "$CAMPUS_BP" "$CAMPUS_STUDENT" "$CAMPUS_ADMIN" "$GUEST_CLIENT" "$SERVER_STUDENT" "$SERVER_ADMIN" "$SERVER_HPC"; do
   if docker inspect "$node" >/dev/null 2>&1; then
     ok "$node exists"
   else
@@ -186,10 +247,19 @@ expect_radius_role "${CAMPUS_BP}" "tati.youcef@esi.dz" "TatiLab#2026" "campus-st
 expect_radius_role "${CAMPUS_BP}" "hamani.nacer@esi.dz" "HamaniTPs#2026" "campus-student" "new professor RADIUS returns student role"
 expect_radius_role "${CAMPUS_BP}" "squareone.admin@esi.dz" "SquareOneRoot#2026" "campus-admin" "campus SquareOne admin RADIUS returns admin role"
 
+clear_nac_roles
+expect_nac_absent "${CAMPUS_BP}" "campus_students" "${NAC_STUDENT_IP}" "student device starts without NAC student access"
+expect_nac_absent "${CAMPUS_BP}" "campus_admins" "${NAC_ADMIN_IP}" "admin device starts without NAC admin access"
+expect_nac_absent "${CAMPUS_BP}" "campus_students" "${NAC_ATTACKER_IP}" "guest not registered as campus student"
+expect_nac_absent "${CAMPUS_BP}" "campus_admins" "${NAC_ATTACKER_IP}" "guest not registered as campus admin"
+expect_tcp_blocked "$CAMPUS_STUDENT" "$JUPYTER_TARGET" 8080 "student starts blocked from Jupyter before NAC login"
+expect_tcp_blocked "$CAMPUS_ADMIN" "$ADMIN_TARGET" 22 "admin starts blocked from admin SSH before NAC login"
+expect_tcp_blocked "$GUEST_CLIENT" "198.18.3.10" 80 "guest starts blocked from Internet web"
+
+nac_login "$CAMPUS_STUDENT" "amine.kadri@esi.dz" "AmineLab#2026" "campus-student" "student explicit NAC login accepted"
+nac_login "$CAMPUS_ADMIN" "squareone.admin@esi.dz" "SquareOneRoot#2026" "campus-admin" "admin explicit NAC login accepted"
 wait_for_nac_set "${CAMPUS_BP}" "campus_students" "${NAC_STUDENT_IP}" "campus student registered in NAC set"
 wait_for_nac_set "${CAMPUS_BP}" "campus_admins" "${NAC_ADMIN_IP}" "campus admin registered in NAC set"
-expect_nac_absent "${CAMPUS_BP}" "campus_students" "${NAC_ATTACKER_IP}" "student-bp not registered as campus student"
-expect_nac_absent "${CAMPUS_BP}" "campus_admins" "${NAC_ATTACKER_IP}" "student-bp not registered as campus admin"
 
 expect_runtime_rule "$SERVER_STUDENT" "ip saddr 192.168.110.0/24 tcp dport 22" "student server trusts campus subnet behind NAC, not fixed device IPs"
 expect_runtime_rule "$SERVER_ADMIN" "ip saddr 192.168.110.0/24 tcp dport 22" "admin server trusts campus subnet behind NAC, not fixed admin IP"
@@ -219,13 +289,13 @@ wait_for_tcp "$CAMPUS_ADMIN" "$HPC_TARGET" 22 "campus admin to HPC pod SSH"
 wait_for_tcp "$CAMPUS_ADMIN" "$JUPYTER_TARGET" 8080 "campus admin to Jupyter frontend after NAC"
 wait_for_tcp "$CAMPUS_ADMIN" "$ADMIN_TARGET" 22 "campus admin to admin pod SSH"
 
-expect_tcp_blocked "$STUDENT_BP" "198.18.3.10" 80 "unauthenticated campus device to Internet web"
-expect_tcp_blocked "$STUDENT_BP" "198.51.100.10" 80 "unauthenticated campus device to DMZ web"
-expect_tcp_blocked "$STUDENT_BP" "$JUPYTER_TARGET" 8080 "unauthenticated campus device to Jupyter frontend"
-expect_tcp_blocked "$STUDENT_BP" "$STUDENT_TARGET" 22 "student-bp attacker to student pod SSH"
-expect_tcp_blocked "$STUDENT_BP" "$HPC_TARGET" 22 "student-bp attacker to HPC pod SSH"
-expect_tcp_blocked "$STUDENT_BP" "$ADMIN_TARGET" 22 "student-bp attacker to admin pod SSH"
-expect_tcp_blocked "$STUDENT_BP" "$AUTH_IP" 49 "student-bp attacker to TACACS+"
+expect_tcp_blocked "$GUEST_CLIENT" "198.18.3.10" 80 "unauthenticated campus device to Internet web"
+expect_tcp_blocked "$GUEST_CLIENT" "198.51.100.10" 80 "unauthenticated campus device to DMZ web"
+expect_tcp_blocked "$GUEST_CLIENT" "$JUPYTER_TARGET" 8080 "unauthenticated campus device to Jupyter frontend"
+expect_tcp_blocked "$GUEST_CLIENT" "$STUDENT_TARGET" 22 "guest attacker to student pod SSH"
+expect_tcp_blocked "$GUEST_CLIENT" "$HPC_TARGET" 22 "guest attacker to HPC pod SSH"
+expect_tcp_blocked "$GUEST_CLIENT" "$ADMIN_TARGET" 22 "guest attacker to admin pod SSH"
+expect_tcp_blocked "$GUEST_CLIENT" "$AUTH_IP" 49 "guest attacker to TACACS+"
 expect_tcp_blocked "$CAMPUS_STUDENT" "$AUTH_IP" 49 "campus student direct TACACS+ probing"
 expect_tcp_blocked "$CAMPUS_STUDENT" "$AUTH_IP" 389 "campus student direct LDAP probing"
 
@@ -258,6 +328,13 @@ fi
 
 info "Recent TACACS+ decisions:"
 docker exec "$AUTH_SERVER" sh -lc "tail -n 20 /var/log/esi-tacacs.log 2>/dev/null || true"
+
+nac_logout "$CAMPUS_STUDENT" "student NAC logout accepted"
+nac_logout "$CAMPUS_ADMIN" "admin NAC logout accepted"
+expect_nac_absent "${CAMPUS_BP}" "campus_students" "${NAC_STUDENT_IP}" "student removed from NAC set after logout"
+expect_nac_absent "${CAMPUS_BP}" "campus_admins" "${NAC_ADMIN_IP}" "admin removed from NAC set after logout"
+expect_tcp_blocked "$CAMPUS_STUDENT" "$JUPYTER_TARGET" 8080 "student blocked from Jupyter after NAC logout"
+expect_tcp_blocked "$CAMPUS_ADMIN" "$ADMIN_TARGET" 22 "admin blocked from admin SSH after NAC logout"
 
 if [ "$failures" -eq 0 ]; then
   echo "RESULT: PASS"

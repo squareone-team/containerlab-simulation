@@ -78,10 +78,17 @@ parse_json() {
   python3 - <<'PY' "$1" "$2"
 import json
 import sys
-payload = json.loads(sys.argv[1])
+try:
+    payload = json.loads(sys.argv[1])
+except json.JSONDecodeError:
+    print("")
+    raise SystemExit(0)
 key = sys.argv[2]
 value = payload.get(key, "")
-print(value)
+if isinstance(value, bool):
+    print("true" if value else "false")
+else:
+    print(value)
 PY
 }
 
@@ -143,6 +150,52 @@ if echo "$RESP_ADMIN" | grep -q '"ok": false'; then
 else
   fail "admin VPN enrollment unexpectedly accepted: ${RESP_ADMIN}"
 fi
+
+RESP_LOGOUT=$(run_in "$VPN_CLIENT" "PUB=\$(cat /tmp/vpn-client.pub); curl -ks -X POST -H 'Content-Type: application/json' -d '{\"public_key\":\"'\"\${PUB}\"'\"}' https://198.51.100.20:8448/logout" 2>/dev/null || true)
+if echo "$RESP_LOGOUT" | grep -q '"ok": true'; then
+  ok "student VPN logout accepted"
+else
+  fail "student VPN logout rejected: ${RESP_LOGOUT}"
+fi
+run_in "$VPN_CLIENT" "ip link del wg0 2>/dev/null || true" >/dev/null 2>&1 || true
+expect_tcp_blocked "$VPN_CLIENT" "192.168.70.30" "8080" "VPN client cannot reach Jupyter after logout"
+
+RESP_IMPLICIT=""
+for attempt in 1 2 3 4 5; do
+  RESP_IMPLICIT=$(run_in "$VPN_CLIENT" "curl -ks -X POST -H 'Content-Type: application/json' -d '{\"username\":\"amine.kadri@esi.dz\",\"password\":\"AmineLab#2026\"}' ${VPN_ENDPOINT}" 2>/dev/null || true)
+  if echo "$RESP_IMPLICIT" | grep -q '"ok": true'; then
+    break
+  fi
+  sleep 2
+done
+
+IMPLICIT_PUB=$(parse_json "$RESP_IMPLICIT" "client_public_key")
+IMPLICIT_PRIVATE=$(parse_json "$RESP_IMPLICIT" "client_private_key")
+IMPLICIT_GENERATED=$(parse_json "$RESP_IMPLICIT" "generated_key")
+IMPLICIT_INSTALLED=$(parse_json "$RESP_IMPLICIT" "client_installed")
+
+if [ -n "$IMPLICIT_PUB" ] && [ -n "$IMPLICIT_PRIVATE" ] && [ "$IMPLICIT_GENERATED" = "true" ]; then
+  ok "student VPN enrollment generates a keypair implicitly"
+else
+  fail "student VPN implicit key enrollment incomplete: ${RESP_IMPLICIT}"
+fi
+
+if [ "$IMPLICIT_INSTALLED" = "true" ] && run_in "$VPN_CLIENT" "ip link show wg0 >/dev/null 2>&1 && ip route get 192.168.70.30 2>/dev/null | grep -q wg0"; then
+  ok "student VPN implicit browser-style enrollment auto-installs client tunnel"
+else
+  fail "student VPN implicit browser-style enrollment did not install client tunnel: ${RESP_IMPLICIT}"
+fi
+
+expect_tcp "$VPN_CLIENT" "192.168.70.30" "8080" "VPN client can reach Jupyter after implicit browser-style enrollment"
+
+RESP_IMPLICIT_LOGOUT=$(run_in "$VPN_CLIENT" "curl -ks -X POST -H 'Content-Type: application/json' -d '{\"public_key\":\"${IMPLICIT_PUB}\"}' https://198.51.100.20:8448/logout" 2>/dev/null || true)
+if echo "$RESP_IMPLICIT_LOGOUT" | grep -q '"ok": true'; then
+  ok "student VPN implicit lease logout accepted"
+else
+  fail "student VPN implicit lease logout rejected: ${RESP_IMPLICIT_LOGOUT}"
+fi
+run_in "$VPN_CLIENT" "ip link del wg0 2>/dev/null || true" >/dev/null 2>&1 || true
+expect_tcp_blocked "$VPN_CLIENT" "192.168.70.30" "8080" "VPN client cannot reach Jupyter after implicit VPN logout"
 
 for node in "${INTERNET_ROUTERS[@]}"; do
   expect_no_private_routes "$node"

@@ -14,7 +14,7 @@ This page is the shortest high-level map of what exists in `frr-containerlab` an
 | Student pod | `leaf-09`, `leaf-10`, `server-student-*` | Pedagogy VRF workloads, DHCP relay, dual-homing |
 | Security and management | `firewall-01`, `firewall-02`, `bastion-01`, `oob-sw`, `syslog-server` | Ring 1 HA firewall, Ring 4 OOB SSH, Ring 6 central logging |
 | Identity and access | `auth-server`, `campus-bp`, `vpn-gateway` | LDAP directory, TACACS+/RADIUS services, campus NAC edge, and remote access VPN |
-| Campus edge | `campus-bp`, `campus-student-01`, `campus-admin-01`, `student-bp-01`, `campus-*-browser`, `wifi-controller` | Campus test subnet, NAC role separation, browser POV sidecars on real campus devices, WiFi management micro-VRF |
+| Campus edge | `campus-bp`, `student-01`, `admin-01`, `guest-01`, `vpn-client-01`, `wifi-controller` | Campus test subnet, NAC role separation, fabric-attached browser clients, WiFi management micro-VRF |
 | Observability | `fabric-telemetry`, `prometheus`, `grafana`, `zabbix-server` | Metrics, alerts, dashboards, SNMP polling |
 
 ## VRFs And Main Segments

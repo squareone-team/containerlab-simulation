@@ -208,20 +208,20 @@ check "storage pod reaches its anycast gateway" \
   "ping -c2 -W2 192.168.80.1 >/dev/null"
 
 
-check_blocked "unauthenticated student-bp cannot resolve DMZ name through core DNS" \
-  "student-bp-01" \
+check_blocked "unauthenticated guest cannot resolve DMZ name through core DNS" \
+  "guest-01" \
   "nslookup dmz-server-01.esi.internal 192.168.50.30 >/dev/null 2>&1"
 
-check_blocked "unauthenticated student-bp cannot reach DMZ HTTP service" \
-  "student-bp-01" \
+check_blocked "unauthenticated guest cannot reach DMZ HTTP service" \
+  "guest-01" \
   "nc -z -w2 198.51.100.10 80"
 
-check_blocked "unauthenticated student-bp cannot reach WiFi controller through campus path" \
-  "student-bp-01" \
+check_blocked "unauthenticated guest cannot reach WiFi controller through campus path" \
+  "guest-01" \
   "ping -c2 -W2 192.168.10.100 >/dev/null"
 
-check_blocked "unauthenticated student-bp cannot reach Jupyter frontend" \
-  "student-bp-01" \
+check_blocked "unauthenticated guest cannot reach Jupyter frontend" \
+  "guest-01" \
   "nc -z -w2 192.168.70.30 8080"
 
 check "campus-bp reaches WiFi controller" \

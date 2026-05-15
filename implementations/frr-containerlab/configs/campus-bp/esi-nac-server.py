@@ -336,6 +336,7 @@ class Handler(BaseHTTPRequestHandler):
             return
         if self.path.startswith("/logout"):
             clear_ip(self.client_address[0])
+            log_event({"client": self.client_address[0], "event": "nac_logout"})
             self.send_html(200, render_status_page(
                 "warn",
                 "Signed out",
@@ -357,6 +358,21 @@ class Handler(BaseHTTPRequestHandler):
         self.send_error(404)
 
     def do_POST(self):
+        if self.path == "/logout":
+            src_ip = self.client_address[0]
+            wants_json = "application/json" in self.headers.get("Accept", "")
+            clear_ip(src_ip)
+            log_event({"client": src_ip, "event": "nac_logout"})
+            if wants_json:
+                self.send_json(200, {"ok": True, "ip": src_ip, "event": "logout"})
+            else:
+                self.send_html(200, render_status_page(
+                    "warn",
+                    "Signed out",
+                    "Your NAC session was removed from the campus gateway.",
+                ))
+            return
+
         if self.path != "/auth":
             self.send_error(404)
             return
@@ -440,15 +456,45 @@ class RedirectHandler(BaseHTTPRequestHandler):
         return
 
 
+class NACServer(ThreadingHTTPServer):
+    daemon_threads = True
+    request_queue_size = 64
+
+    def __init__(self, server_address, request_handler, tls_context=None):
+        self.tls_context = tls_context
+        super().__init__(server_address, request_handler)
+
+    def get_request(self):
+        while True:
+            sock, addr = self.socket.accept()
+            sock.settimeout(10)
+            if not self.tls_context:
+                return sock, addr
+            try:
+                tls_sock = self.tls_context.wrap_socket(
+                    sock,
+                    server_side=True,
+                    do_handshake_on_connect=False,
+                )
+                tls_sock.settimeout(10)
+                return tls_sock, addr
+            except (OSError, ssl.SSLError, TimeoutError) as exc:
+                log_event({"event": "tls_handshake_failed", "client": addr[0], "error": str(exc)})
+                try:
+                    sock.close()
+                except OSError:
+                    pass
+
+
 def main():
-    server = ThreadingHTTPServer((LISTEN_HOST, LISTEN_PORT), Handler)
-    if REDIRECT_PORT > 0:
-        redirect = ThreadingHTTPServer((LISTEN_HOST, REDIRECT_PORT), RedirectHandler)
-        threading.Thread(target=redirect.serve_forever, daemon=True).start()
+    context = None
     if TLS_ENABLED:
         context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
         context.load_cert_chain(TLS_CERT, TLS_KEY)
-        server.socket = context.wrap_socket(server.socket, server_side=True)
+    server = NACServer((LISTEN_HOST, LISTEN_PORT), Handler, tls_context=context)
+    if REDIRECT_PORT > 0:
+        redirect = NACServer((LISTEN_HOST, REDIRECT_PORT), RedirectHandler)
+        threading.Thread(target=redirect.serve_forever, daemon=True).start()
     log_event({"event": "nac_start", "listen": f"{LISTEN_HOST}:{LISTEN_PORT}", "redirect": REDIRECT_PORT, "tls": TLS_ENABLED})
     server.serve_forever()
 

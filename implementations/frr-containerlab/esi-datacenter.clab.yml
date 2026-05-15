@@ -238,15 +238,18 @@ topology:
 
     vpn-client-01:
       kind: linux
-      image: esi/vpn-node:3.20
+      image: esi/fabric-browser:3.23
       cap-add:
         - NET_ADMIN
         - NET_RAW
         - SYS_MODULE
+      env:
+        FF_OPEN_URL: "https://198.51.100.20:8448/"
       ports:
         - 127.0.0.1:5814:5800
       binds:
         - configs/vpn-client-01/startup.sh:/startup.sh
+        - configs/vpn-client-01/esi-vpn-client-agent.py:/usr/local/bin/esi-vpn-client-agent.py:ro
       exec:
         - sh /startup.sh
 
@@ -616,35 +619,52 @@ topology:
       exec:
         - sh /startup.sh
 
-    student-bp-01:
+    guest-01:
       kind: linux
-      image: nicolaka/netshoot
+      image: esi/fabric-browser:3.23
+      cap-add:
+        - NET_ADMIN
+        - NET_RAW
+        - SYS_MODULE
       binds:
-        - configs/student-bp-01/startup.sh:/startup.sh
-      cmd: sleep infinity
+        - configs/guest-01/startup.sh:/startup.sh
+      env:
+        FF_OPEN_URL: "https://192.168.110.1:8443/"
       ports:
         - 127.0.0.1:5813:5800
       exec:
         - sh /startup.sh
 
-    campus-student-01:
+    student-01:
       kind: linux
-      image: esi/alpine-host:3.20
+      image: esi/fabric-browser:3.23
+      cap-add:
+        - NET_ADMIN
+        - NET_RAW
+        - SYS_MODULE
+      env:
+        FF_OPEN_URL: "https://192.168.110.1:8443/"
       ports:
         - 127.0.0.1:5811:5800
       binds:
-        - configs/campus-student-01/startup.sh:/startup.sh
+        - configs/student-01/startup.sh:/startup.sh
         - configs/common/esi-nac-client.py:/usr/local/bin/esi-nac-client.py:ro
       exec:
         - sh /startup.sh
 
-    campus-admin-01:
+    admin-01:
       kind: linux
-      image: esi/alpine-host:3.20
+      image: esi/fabric-browser:3.23
+      cap-add:
+        - NET_ADMIN
+        - NET_RAW
+        - SYS_MODULE
+      env:
+        FF_OPEN_URL: "https://192.168.110.1:8443/"
       ports:
         - 127.0.0.1:5812:5800
       binds:
-        - configs/campus-admin-01/startup.sh:/startup.sh
+        - configs/admin-01/startup.sh:/startup.sh
         - configs/common/esi-nac-client.py:/usr/local/bin/esi-nac-client.py:ro
       exec:
         - sh /startup.sh
@@ -731,9 +751,9 @@ topology:
     - endpoints: [ "leaf-04:eth6", "syslog-server:eth1" ]
     - endpoints: [ "campus-bp:eth3", "leaf-01:eth8" ]
     - endpoints: [ "wifi-controller:eth1", "leaf-01:eth14" ]
-    - endpoints: [ "campus-bp:eth4", "student-bp-01:eth1" ]
-    - endpoints: [ "campus-bp:eth5", "campus-student-01:eth1" ]
-    - endpoints: [ "campus-bp:eth6", "campus-admin-01:eth1" ]
+    - endpoints: [ "campus-bp:eth4", "guest-01:eth1" ]
+    - endpoints: [ "campus-bp:eth5", "student-01:eth1" ]
+    - endpoints: [ "campus-bp:eth6", "admin-01:eth1" ]
     - endpoints: [ "firewall-01:eth3", "firewall-02:eth3" ]
     - endpoints: [ "bastion-01:eth1", "oob-sw:eth1" ]
     - endpoints: [ "prometheus:eth1", "fabric-telemetry:eth1" ]

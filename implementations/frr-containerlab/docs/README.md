@@ -26,15 +26,20 @@ The docs are now split by purpose instead of shortcut files. Start with the shor
 | Service | Name or URL | Notes |
 | --- | --- | --- |
 | NAC portal | `https://192.168.110.1:8443/` | ESI-styled captive portal, HTTP redirects to HTTPS. |
-| VPN platform | `https://198.51.100.20:8448/` | ESI-branded WireGuard enrollment with lab key generation. |
+| VPN platform | `https://198.51.100.20:8448/` | ESI-branded WireGuard enrollment with implicit lab key generation and browser-client tunnel install. |
 | Internet demo | `http://www.google.com/` | DNS points to the simulated Internet webserver at `198.18.3.10`. |
 | Moodle LMS | `http://moodle.esi.dz/` | Real Moodle container at `198.51.100.30`. |
 | JupyterHub | `https://hpc-jupyter.esi.internal:8080/hub/login` | Internal service after NAC/VPN role admission. |
 
-The default topology is headless for 8 GB machines. Launch the optional GUI viewers only when you need them:
+The default topology includes fabric-attached browser clients. Open them from the host without deploying a second viewer lab:
 
-```bash
-containerlab deploy -t esi-browser-viewers.clab.yml
-```
+| Client | Host URL | Initial page |
+| --- | --- | --- |
+| `guest-01` | `http://127.0.0.1:5813` | NAC portal |
+| `student-01` | `http://127.0.0.1:5811` | NAC portal |
+| `admin-01` | `http://127.0.0.1:5812` | NAC portal |
+| `vpn-client-01` | `http://127.0.0.1:5814` | VPN portal |
+
+Successful VPN login from `vpn-client-01` now installs `wg0` in that same container through the local lab helper, so the GUI browser and CLI checks see the same VPN state. The `/logout` action removes the gateway lease and tears down the client tunnel.
 
 Shortcut documents and old architecture dumps were removed. New docs should land inside one of the folders above, not at the top level.

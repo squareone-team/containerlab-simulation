@@ -21,7 +21,7 @@ This page covers the shared infra services on `192.168.50.0/24`: DNS, DHCP, and 
 | `docker exec clab-esi-datacenter-dns-server ip route show default` | confirms the default gateway | via `192.168.50.1` |
 | `docker exec clab-esi-datacenter-server-admin-01 nslookup spine-01.esi.internal 192.168.50.30` | checks internal view | returns `10.1.0.1` |
 | `docker exec clab-esi-datacenter-server-admin-01 nslookup ntp-server.esi.internal 192.168.50.30` | checks shared service records | returns `192.168.50.20` |
-| `docker exec clab-esi-datacenter-campus-student-01 nslookup dmz-server-01.esi.internal 192.168.50.30` | checks authenticated campus clients can resolve published DMZ records | returns `198.51.100.10` |
+| `docker exec clab-esi-datacenter-student-01 nslookup dmz-server-01.esi.internal 192.168.50.30` | checks authenticated campus clients can resolve published DMZ records | returns `198.51.100.10` |
 | `docker exec clab-esi-datacenter-dns-server grep -A12 'name: \"dmz\"' /etc/unbound/unbound.conf` | checks split-horizon policy without needing a live DMZ-to-DNS path | `refuse` for `esi.internal` |
 | `docker exec clab-esi-datacenter-dns-server nft list ruleset` | checks Ring 5 host policy | `policy drop`, bastion SSH, DNS `dport 53` |
 

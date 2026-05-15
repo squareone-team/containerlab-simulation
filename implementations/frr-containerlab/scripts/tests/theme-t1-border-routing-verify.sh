@@ -176,10 +176,47 @@ check_container() {
   fi
 }
 
+nac_login_student() {
+  local output=""
+  local i=1
+  while [ "$i" -le "$RETRIES" ]; do
+    output=$(docker exec -i "clab-${LAB}-student-01" python3 - "https://192.168.110.1:8443/auth" <<'PY' 2>&1 || true
+import json
+import ssl
+import sys
+import urllib.error
+import urllib.request
+
+ctx = ssl._create_unverified_context()
+payload = json.dumps({"username": "amine.kadri@esi.dz", "password": "AmineLab#2026"}).encode()
+req = urllib.request.Request(
+    sys.argv[1],
+    data=payload,
+    headers={"Content-Type": "application/json", "Accept": "application/json"},
+)
+try:
+    with urllib.request.urlopen(req, context=ctx, timeout=8) as response:
+        sys.stdout.write(response.read().decode("utf-8", "replace"))
+except urllib.error.HTTPError as exc:
+    sys.stdout.write(exc.read().decode("utf-8", "replace"))
+PY
+)
+    if echo "$output" | grep -q '"ok": true' && echo "$output" | grep -q '"role": "campus-student"'; then
+      ok "student explicit NAC login for internet tests"
+      return 0
+    fi
+    sleep "$DELAY"
+    i=$((i + 1))
+  done
+  fail "student explicit NAC login for internet tests"
+  echo "$output" | sed 's/^/    /'
+  return 0
+}
+
 echo "=== ESI Theme T1 Verification (Border Routing & Internet) ==="
 
 echo
-for node in campus-bp student-bp-01 internet-router-01 internet-web-01 internet-client-01 server-dmz-01 leaf-01; do
+for node in campus-bp guest-01 internet-router-01 internet-web-01 internet-client-01 server-dmz-01 leaf-01; do
   check_container "$node"
 done
 
@@ -331,34 +368,36 @@ cmd_no_match "SERVICES-WEB NOT on border-leaf (leaf-01)" \
 # 8) Intuitive Objective: True Internet Reachability (Behavioral E2E)
 # ---------------------------------------------------------------------------
 echo
+nac_login_student
+
 cmd_match "authenticated campus student can reach internet-web-01" \
-  "$C-campus-student-01 wget -qO- -T 5 http://198.18.3.10/" \
+  "$C-student-01 wget -qO- -T 5 http://198.18.3.10/" \
   "Google Search"
 
 echo
 cmd_match "authenticated campus student resolves moodle.esi.dz via dns-server" \
-  "$C-campus-student-01 nslookup moodle.esi.dz 192.168.50.30" \
+  "$C-student-01 nslookup moodle.esi.dz 192.168.50.30" \
   "Address: 198\\.51\\.100\\.30|Address.*198\\.51\\.100\\.30"
 
 cmd_match "authenticated campus student resolves www.google.com via dns-server" \
-  "$C-campus-student-01 nslookup www.google.com 192.168.50.30" \
+  "$C-student-01 nslookup www.google.com 192.168.50.30" \
   "Address: 198\\.18\\.3\\.10|Address.*198\\.18\\.3\\.10"
 
 cmd_match "authenticated campus student HTTP GET moodle.esi.dz reaches Moodle" \
-  "$C-campus-student-01 wget -qO- -T 8 http://moodle.esi.dz/" \
+  "$C-student-01 wget -qO- -T 8 http://moodle.esi.dz/" \
   "Moodle|TP - NAC"
 
 test_banner "unauthenticated campus client cannot reach internet-web-01"
-info "command: $C-student-bp-01 timeout 4 nc -z -w2 198.18.3.10 80"
-if $C-student-bp-01 timeout 4 nc -z -w2 198.18.3.10 80 >/dev/null 2>&1; then
+info "command: $C-guest-01 timeout 4 nc -z -w2 198.18.3.10 80"
+if $C-guest-01 timeout 4 nc -z -w2 198.18.3.10 80 >/dev/null 2>&1; then
   fail "unauthenticated campus client cannot reach internet-web-01"
 else
   ok "unauthenticated campus client cannot reach internet-web-01"
 fi
 
 test_banner "unauthenticated campus client cannot reach server-dmz-01"
-info "command: $C-student-bp-01 timeout 4 nc -z -w2 198.51.100.10 80"
-if $C-student-bp-01 timeout 4 nc -z -w2 198.51.100.10 80 >/dev/null 2>&1; then
+info "command: $C-guest-01 timeout 4 nc -z -w2 198.51.100.10 80"
+if $C-guest-01 timeout 4 nc -z -w2 198.51.100.10 80 >/dev/null 2>&1; then
   fail "unauthenticated campus client cannot reach server-dmz-01"
 else
   ok "unauthenticated campus client cannot reach server-dmz-01"

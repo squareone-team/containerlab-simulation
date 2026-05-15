@@ -1,10 +1,9 @@
 #!/bin/sh
 set -eu
 
-hostname student-bp-01
-
+hostname admin-01
 ip link set eth1 up
-ip addr replace 192.168.110.30/24 dev eth1
+ip addr replace 192.168.110.32/24 dev eth1
 ip route del default 2>/dev/null || true
 ip route add default via 192.168.110.1 dev eth1
 

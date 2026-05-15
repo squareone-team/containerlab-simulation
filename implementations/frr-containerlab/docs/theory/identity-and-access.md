@@ -52,7 +52,7 @@ The campus devices share one subnet (`192.168.110.0/24`). Instead of hardcoding 
 
 This mirrors the control-plane intent of NAC without claiming switchport 802.1X support.
 
-The protected servers intentionally do not encode `campus-student-01` or `campus-admin-01` addresses as the role boundary. They accept the campus subnet as a possible SSH source, and `campus-bp` decides which current campus IP may reach which target:
+The protected servers intentionally do not encode `student-01` or `admin-01` addresses as the role boundary. They accept the campus subnet as a possible SSH source, and `campus-bp` decides which current campus IP may reach which target:
 
 | Device role at `campus-bp` | Dynamic set | Allowed SSH targets |
 | --- | --- | --- |
@@ -70,13 +70,14 @@ For RADIUS, `campus-bp` deliberately uses `192.168.110.1` as the client source. 
 
 A WireGuard-based VPN gateway lives in the DMZ (`vpn-gateway` at `198.51.100.20`). Enrollment is identity-driven:
 
-1. The client posts credentials + its WireGuard public key to the enrollment API.
+1. The client posts credentials to the enrollment API; the browser portal can generate a lab WireGuard keypair implicitly.
 2. The gateway authenticates against RADIUS on `auth-server`.
 3. Only student/professor identities returning `vpn-student` are accepted.
-4. The gateway adds the peer to `wg0` and NATs traffic toward the firewall.
-5. Firewall rules allow the gateway to reach student/HPC SSH and the Jupyter frontend only.
+4. The gateway adds the peer to `wg0`; if the request came from `vpn-client-01`, it asks that same container's lab helper to bring up the client-side `wg0`.
+5. The gateway NATs traffic toward the firewall.
+6. Firewall rules allow the gateway to reach student/HPC SSH and the Jupyter frontend only.
 
-Admins are intentionally rejected at the VPN enrollment step.
+Admins are intentionally rejected at the VPN enrollment step. `/logout` removes the WireGuard peer and lease state, and disconnects the browser client tunnel when it was installed by the helper, so repeated browser tests start from a clean remote-access state.
 
 The VPN source seen by the firewall and workloads is the gateway DMZ address (`198.51.100.20`), not a tunnel-client private address. The tunnel pool (`10.250.200.0/24`) stays behind NAT on `vpn-gateway`, so private VPN client space is not advertised into the public/ISP side.
 

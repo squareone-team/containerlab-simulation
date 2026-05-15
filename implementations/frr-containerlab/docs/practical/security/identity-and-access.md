@@ -48,19 +48,21 @@ docker exec clab-esi-datacenter-campus-bp nft list set inet campus_nac campus_ad
 or from device terminal :
 
 ```bash
-docker exec clab-esi-datacenter-campus-admin-01 -lc 'ESI_NAC_USER=squareone.admin@esi.dz ESI_NAC_PASSWORD=SquareOneRoot#2026 timeout 8 python3 /usr/local/bin/esi-nac-client.py || true'
+docker exec clab-esi-datacenter-admin-01 sh -lc 'ESI_NAC_USER=squareone.admin@esi.dz ESI_NAC_PASSWORD=SquareOneRoot#2026 timeout 8 python3 /usr/local/bin/esi-nac-client.py || true'
 ```
 
-The unauthenticated browser at `192.168.110.30` should not appear in either set.
+`student-01`, `admin-01`, and `guest-01` start unauthenticated. They should not appear in either set until a portal or explicit CLI login succeeds. A user can log out with `https://192.168.110.1:8443/logout`, which removes that source IP from the nftables role set.
 
 ## Browser POV
 
-| Browser node | Host URL | Shares network with | Expected behavior |
-| --- | --- | --- | --- |
-| `campus-guest-browser` | `http://127.0.0.1:5813` | `student-bp-01` | NAC portal only. |
-| `campus-student-browser` | `http://127.0.0.1:5811` | `campus-student-01` | Student access after NAC. |
-| `campus-admin-browser` | `http://127.0.0.1:5812` | `campus-admin-01` | Admin access after NAC. |
-| `vpn-browser-01` | `http://127.0.0.1:5814` | `vpn-client-01` | External/VPN-side view. |
+| Fabric browser node | Host URL | Expected behavior |
+| --- | --- | --- |
+| `guest-01` | `http://127.0.0.1:5813` | NAC portal only. |
+| `student-01` | `http://127.0.0.1:5811` | Student access after NAC. |
+| `admin-01` | `http://127.0.0.1:5812` | Admin access after NAC. |
+| `vpn-client-01` | `http://127.0.0.1:5814` | External/VPN-side view with same-container tunnel install after VPN login. |
+
+These are not sidecar namespaces: each browser runs in the same container that is cabled into the fabric.
 
 Open `https://192.168.110.1:8443/` for the NAC portal. After student or professor login, these URLs should work:
 
@@ -72,7 +74,7 @@ The SquareOne admin can also open admin SSH transport. Student/professor roles c
 
 ## VPN Enrollment
 
-The VPN portal is `https://198.51.100.20:8448/`. The web UI can generate a lab WireGuard keypair, or you can enroll by API:
+The VPN portal is `https://198.51.100.20:8448/`. The web UI generates a lab WireGuard keypair implicitly during login when no public key is supplied. From `vpn-client-01`, a successful browser login also installs `wg0` inside that same container, so the browser reaches internal VPN targets without a sidecar namespace or manual CLI step. `/logout` removes the gateway lease and disconnects the client helper when the lease was browser-installed. You can still enroll by API:
 
 ```bash
 docker exec clab-esi-datacenter-vpn-client-01 sh -lc 'umask 077; wg genkey | tee /tmp/vpn.key | wg pubkey > /tmp/vpn.pub'
@@ -91,8 +93,8 @@ Expected:
 Linux SSH tests use local-safe aliases:
 
 ```bash
-docker exec clab-esi-datacenter-campus-student-01 sh -lc 'sshpass -p "AmineLab#2026" ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o PreferredAuthentications=keyboard-interactive -o KbdInteractiveAuthentication=yes -o PasswordAuthentication=no -o PubkeyAuthentication=no -o NumberOfPasswordPrompts=1 amine.kadri@192.168.10.10 "cat /etc/esi-auth-resource"'
-docker exec clab-esi-datacenter-campus-admin-01 sh -lc 'sshpass -p "SquareOneRoot#2026" ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o PreferredAuthentications=keyboard-interactive -o KbdInteractiveAuthentication=yes -o PasswordAuthentication=no -o PubkeyAuthentication=no -o NumberOfPasswordPrompts=1 squareone.admin@192.168.50.10 "cat /etc/esi-auth-resource"'
+docker exec clab-esi-datacenter-student-01 sh -lc 'sshpass -p "AmineLab#2026" ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o PreferredAuthentications=keyboard-interactive -o KbdInteractiveAuthentication=yes -o PasswordAuthentication=no -o PubkeyAuthentication=no -o NumberOfPasswordPrompts=1 amine.kadri@192.168.10.10 "cat /etc/esi-auth-resource"'
+docker exec clab-esi-datacenter-admin-01 sh -lc 'sshpass -p "SquareOneRoot#2026" ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o PreferredAuthentications=keyboard-interactive -o KbdInteractiveAuthentication=yes -o PasswordAuthentication=no -o PubkeyAuthentication=no -o NumberOfPasswordPrompts=1 squareone.admin@192.168.50.10 "cat /etc/esi-auth-resource"'
 ```
 
 See [Credentials](../../reference/credentials.md) for the complete credential table.

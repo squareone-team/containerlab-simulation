@@ -3,29 +3,27 @@ set -u
 
 LAB="${LAB:-esi-datacenter}"
 CLAB_PREFIX="clab-${LAB}"
-BROWSER_LAB="${BROWSER_LAB:-esi-browser-viewers}"
-BROWSER_PREFIX="clab-${BROWSER_LAB}"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+WEBDRIVER_PROBE="${SCRIPT_DIR}/browser_webdriver_probe.py"
 
 CAMPUS_BP="${CLAB_PREFIX}-campus-bp"
-GUEST_VIEWER="${BROWSER_PREFIX}-campus-guest-browser"
-STUDENT_VIEWER="${BROWSER_PREFIX}-campus-student-browser"
-ADMIN_VIEWER="${BROWSER_PREFIX}-campus-admin-browser"
-VPN_VIEWER="${BROWSER_PREFIX}-vpn-browser-01"
-GUEST_CLIENT="${CLAB_PREFIX}-student-bp-01"
-STUDENT_CLIENT="${CLAB_PREFIX}-campus-student-01"
-ADMIN_CLIENT="${CLAB_PREFIX}-campus-admin-01"
-VPN_CLIENT="${CLAB_PREFIX}-vpn-client-01"
+GUEST_BROWSER="${CLAB_PREFIX}-guest-01"
+STUDENT_BROWSER="${CLAB_PREFIX}-student-01"
+ADMIN_BROWSER="${CLAB_PREFIX}-admin-01"
+VPN_BROWSER="${CLAB_PREFIX}-vpn-client-01"
+VPN_CLIENT="$VPN_BROWSER"
 VPN_GATEWAY="${CLAB_PREFIX}-vpn-gateway"
 
 NAC_URL="https://192.168.110.1:8443/"
-NAC_AUTH_URL="https://192.168.110.1:8443/auth"
+NAC_LOGOUT_URL="https://192.168.110.1:8443/logout"
 INTERNET_URL="http://www.google.com/"
 MOODLE_URL="http://moodle.esi.dz/"
 JUPYTER_URL="https://hpc-jupyter.esi.internal:8080/hub/login"
 JUPYTER_IP_URL="https://192.168.70.30:8080/hub/login"
 VPN_ENROLL_HOST="198.51.100.20"
 VPN_ENROLL_PORT="8448"
-VPN_ENDPOINT="https://198.51.100.20:8448/enroll"
+VPN_URL="https://198.51.100.20:8448/"
+VPN_LOGOUT_URL="https://198.51.100.20:8448/logout"
 VPN_HEALTH_URL="https://198.51.100.20:8448/health"
 WG_ALLOWED="192.168.10.10/32,192.168.70.10/32,192.168.70.30/32"
 
@@ -39,51 +37,14 @@ container_exists() {
   docker inspect "$1" >/dev/null 2>&1
 }
 
-select_pov_node() {
-  local viewer="$1" client="$2"
-  if container_exists "$viewer"; then
-    echo "$viewer"
-  else
-    echo "$client"
-  fi
-}
-
 run_in() {
   docker exec "$1" sh -lc "$2"
 }
 
-fetch_url() {
-  local node="$1" url="$2"
-  docker exec -i "$node" python3 - "$url" <<'PY'
-import ssl
-import sys
-import urllib.request
-
-ctx = ssl._create_unverified_context()
-req = urllib.request.Request(sys.argv[1], headers={"User-Agent": "ESI-Browser-POV/1.0"})
-with urllib.request.urlopen(req, context=ctx, timeout=12) as response:
-    sys.stdout.write(response.read().decode("utf-8", "replace"))
-PY
-}
-
-post_login() {
-  local node="$1" user="$2" password="$3"
-  docker exec -i "$node" python3 - "$NAC_AUTH_URL" "$user" "$password" <<'PY'
-import ssl
-import sys
-import urllib.parse
-import urllib.request
-
-ctx = ssl._create_unverified_context()
-data = urllib.parse.urlencode({"username": sys.argv[2], "password": sys.argv[3]}).encode()
-req = urllib.request.Request(
-    sys.argv[1],
-    data=data,
-    headers={"Content-Type": "application/x-www-form-urlencoded"},
-)
-with urllib.request.urlopen(req, context=ctx, timeout=12) as response:
-    sys.stdout.write(response.read().decode("utf-8", "replace"))
-PY
+webdriver() {
+  local node="$1"
+  shift
+  docker exec -i "$node" python3 - "$@" < "$WEBDRIVER_PROBE"
 }
 
 parse_json() {
@@ -91,26 +52,60 @@ parse_json() {
 import json
 import sys
 payload = json.loads(sys.argv[1])
-print(payload.get(sys.argv[2], ""))
+value = payload.get(sys.argv[2], "")
+if isinstance(value, bool):
+    print("true" if value else "false")
+else:
+    print(value)
 PY
 }
 
-expect_page() {
+expect_browser_page() {
   local node="$1" url="$2" pattern="$3" label="$4"
-  local output
-  if output="$(fetch_url "$node" "$url" 2>&1)" && echo "$output" | grep -Eq "$pattern"; then
+  local output=""
+  local attempt
+  for attempt in 1 2 3; do
+    if output="$(webdriver "$node" page "$url" "$pattern" 2>&1)"; then
+      ok "$label"
+      return 0
+    fi
+    sleep 3
+  done
+  fail "$label"
+  echo "$output" | sed -n '1,10p' | sed 's/^/  /'
+  return 1
+}
+
+expect_browser_nac_login() {
+  local node="$1" user="$2" password="$3" expected_role="$4" label="$5"
+  local output=""
+  local attempt
+  for attempt in 1 2 3; do
+    if output="$(webdriver "$node" nac-login "$NAC_URL" "$user" "$password" "$expected_role" 2>&1)"; then
+      ok "$label"
+      return 0
+    fi
+    sleep 3
+  done
+  fail "$label"
+  echo "$output" | sed -n '1,10p' | sed 's/^/  /'
+  return 1
+}
+
+expect_browser_ui() {
+  local node="$1" port="$2" label="$3"
+  if run_in "$node" "ss -lnt 2>/dev/null | grep -q ':5800 '" && docker port "$node" 5800/tcp 2>/dev/null | grep -q "127.0.0.1:${port}"; then
     ok "$label"
   else
     fail "$label"
-    echo "$output" | sed -n '1,8p' | sed 's/^/  /'
   fi
 }
 
 wait_for_vpn_health() {
   local label="$1"
-  local output
+  local output=""
   local attempt
-  for attempt in 1 2 3 4 5; do
+  for attempt in 1 2 3 4 5 6; do
     output="$(run_in "$VPN_CLIENT" "curl -ks ${VPN_HEALTH_URL}" 2>/dev/null || true)"
     if echo "$output" | grep -q '"ok": true'; then
       ok "$label"
@@ -178,67 +173,115 @@ expect_nac_member() {
   fi
 }
 
+expect_nac_absent() {
+  local set_name="$1" ip="$2" label="$3"
+  if run_in "$CAMPUS_BP" "nft list set inet campus_nac ${set_name} 2>/dev/null | grep -q '${ip}'"; then
+    fail "$label"
+  else
+    ok "$label"
+  fi
+}
+
 clear_browser_roles() {
   for ip in 192.168.110.30 192.168.110.31 192.168.110.32; do
     run_in "$CAMPUS_BP" "nft delete element inet campus_nac campus_students { ${ip} } 2>/dev/null || true; nft delete element inet campus_nac campus_admins { ${ip} } 2>/dev/null || true" >/dev/null 2>&1 || true
   done
 }
 
-setup_vpn_tunnel() {
-  local response vpn_addr server_pub attempt
-  local enroll_ok=0
+nac_logout() {
+  local node="$1" label="$2"
+  local output
+  if output="$(webdriver "$node" page "$NAC_LOGOUT_URL" "Signed out|NAC session was removed" 2>&1)"; then
+    ok "$label"
+  else
+    fail "$label"
+    echo "$output" | sed -n '1,8p' | sed 's/^/  /'
+  fi
+}
 
-  run_in "$VPN_CLIENT" "ip link del wg0 2>/dev/null || true; rm -f /tmp/browser-vpn.key /tmp/browser-vpn.pub" >/dev/null 2>&1 || true
-  run_in "$VPN_GATEWAY" "wg show wg0 peers 2>/dev/null | while read peer; do wg set wg0 peer \"\$peer\" remove; done" >/dev/null 2>&1 || true
-  run_in "$VPN_CLIENT" "umask 077; wg genkey | tee /tmp/browser-vpn.key | wg pubkey > /tmp/browser-vpn.pub" >/dev/null 2>&1 || true
+vpn_logout() {
+  local public_key="$1"
+  local label="$2"
+  local output
+  output="$(docker exec -i "$VPN_CLIENT" python3 - "$VPN_LOGOUT_URL" "$public_key" <<'PY' 2>&1 || true
+import json
+import ssl
+import sys
+import urllib.request
 
-  for attempt in 1 2 3 4 5; do
-    response=$(run_in "$VPN_CLIENT" "PUB=\$(cat /tmp/browser-vpn.pub); curl -ks -X POST -H 'Content-Type: application/json' -d '{\"username\":\"amine.kadri@esi.dz\",\"password\":\"AmineLab#2026\",\"public_key\":\"'\"\${PUB}\"'\"}' ${VPN_ENDPOINT}" 2>/dev/null || true)
-    if echo "$response" | grep -q '"ok": true'; then
-      enroll_ok=1
-      break
-    fi
-    sleep 2
+ctx = ssl._create_unverified_context()
+payload = json.dumps({"public_key": sys.argv[2]}).encode()
+req = urllib.request.Request(
+    sys.argv[1],
+    data=payload,
+    headers={"Content-Type": "application/json", "Accept": "application/json"},
+)
+with urllib.request.urlopen(req, context=ctx, timeout=8) as response:
+    sys.stdout.write(response.read().decode("utf-8", "replace"))
+PY
+)"
+  if echo "$output" | grep -q '"ok": true'; then
+    ok "$label"
+  else
+    fail "$label"
+    echo "$output" | sed -n '1,6p' | sed 's/^/  /'
+  fi
+}
+
+setup_vpn_tunnel_from_browser() {
+  local response private_key vpn_addr server_pub client_pub client_installed
+
+  run_in "$VPN_CLIENT" "ip link del wg0 2>/dev/null || true; rm -f /tmp/browser-vpn.key" >/dev/null 2>&1 || true
+  run_in "$VPN_GATEWAY" "wg show wg0 peers 2>/dev/null | while read peer; do wg set wg0 peer \"\$peer\" remove; done; rm -f /var/lib/esi-vpn/leases.json" >/dev/null 2>&1 || true
+
+  local attempt
+  for attempt in 1 2 3; do
+    response="$(webdriver "$VPN_BROWSER" vpn-login "$VPN_URL" "amine.kadri@esi.dz" "AmineLab#2026" 2>&1)" && break
+    sleep 3
   done
-  if [ "$enroll_ok" -ne 1 ]; then
-    fail "student VPN enrollment for browser rejected"
+  if ! echo "$response" | python3 -m json.tool >/dev/null 2>&1; then
+    fail "VPN browser enrollment with implicit key generation accepted"
+    echo "$response" | sed -n '1,12p' | sed 's/^/  /'
+    return 1
+  fi
+  ok "VPN browser enrollment with implicit key generation accepted"
+
+  private_key="$(parse_json "$response" "private_key")"
+  vpn_addr="$(parse_json "$response" "address")"
+  server_pub="$(parse_json "$response" "server_pubkey")"
+  client_pub="$(parse_json "$response" "client_public_key")"
+  client_installed="$(parse_json "$response" "client_installed")"
+  if [ -z "$private_key" ] || [ -z "$vpn_addr" ] || [ -z "$server_pub" ] || [ -z "$client_pub" ]; then
+    fail "VPN browser enrollment returned complete WireGuard config"
     echo "$response" | sed -n '1,4p' | sed 's/^/  /'
     return 1
   fi
+  ok "VPN browser enrollment returned complete WireGuard config"
 
-  vpn_addr=$(parse_json "$response" "address")
-  server_pub=$(parse_json "$response" "server_pubkey")
-  if [ -z "$vpn_addr" ] || [ -z "$server_pub" ]; then
-    fail "student VPN enrollment for browser returned incomplete tunnel config"
+  if [ "$client_installed" != "true" ]; then
+    fail "VPN browser enrollment auto-installed the tunnel in vpn-client-01"
+    echo "$response" | sed -n '1,4p' | sed 's/^/  /'
     return 1
   fi
+  ok "VPN browser enrollment auto-installed the tunnel in vpn-client-01"
 
-  run_in "$VPN_CLIENT" "ip link add wg0 type wireguard 2>/dev/null || true"
-  run_in "$VPN_CLIENT" "ip addr replace ${vpn_addr} dev wg0"
-  run_in "$VPN_CLIENT" "wg set wg0 private-key /tmp/browser-vpn.key peer ${server_pub} endpoint 198.51.100.20:51820 allowed-ips ${WG_ALLOWED} persistent-keepalive 25"
-  run_in "$VPN_CLIENT" "ip link set wg0 up"
-  run_in "$VPN_CLIENT" "ip route replace 192.168.10.10/32 dev wg0"
-  run_in "$VPN_CLIENT" "ip route replace 192.168.70.10/32 dev wg0"
-  run_in "$VPN_CLIENT" "ip route replace 192.168.70.30/32 dev wg0"
-  ok "student VPN enrollment for browser installed tunnel"
+  local attempt
+  for attempt in 1 2 3 4 5; do
+    if run_in "$VPN_CLIENT" "ip link show wg0 >/dev/null 2>&1 && ip route get 192.168.70.30 2>/dev/null | grep -q wg0"; then
+      ok "VPN browser-installed WireGuard tunnel is active on the same fabric client"
+      VPN_BROWSER_PUBLIC_KEY="$client_pub"
+      return 0
+    fi
+    sleep 1
+  done
+
+  fail "VPN browser-installed WireGuard tunnel is active on the same fabric client"
+  return 1
 }
 
-echo "=== Browser POV NAC Validation ==="
+echo "=== Browser POV Validation ==="
 
-GUEST_BROWSER="$(select_pov_node "$GUEST_VIEWER" "$GUEST_CLIENT")"
-STUDENT_BROWSER="$(select_pov_node "$STUDENT_VIEWER" "$STUDENT_CLIENT")"
-ADMIN_BROWSER="$(select_pov_node "$ADMIN_VIEWER" "$ADMIN_CLIENT")"
-VPN_BROWSER="$(select_pov_node "$VPN_VIEWER" "$VPN_CLIENT")"
-
-for viewer in "$GUEST_VIEWER" "$STUDENT_VIEWER" "$ADMIN_VIEWER" "$VPN_VIEWER"; do
-  if container_exists "$viewer"; then
-    info "using GUI browser container $viewer"
-  else
-    info "$viewer not running; using its client namespace instead"
-  fi
-done
-
-for node in "$CAMPUS_BP" "$GUEST_BROWSER" "$STUDENT_BROWSER" "$ADMIN_BROWSER" "$VPN_BROWSER" "$VPN_CLIENT" "$VPN_GATEWAY"; do
+for node in "$CAMPUS_BP" "$GUEST_BROWSER" "$STUDENT_BROWSER" "$ADMIN_BROWSER" "$VPN_BROWSER" "$VPN_GATEWAY"; do
   if container_exists "$node"; then
     ok "$node exists"
   else
@@ -246,39 +289,59 @@ for node in "$CAMPUS_BP" "$GUEST_BROWSER" "$STUDENT_BROWSER" "$ADMIN_BROWSER" "$
   fi
 done
 
+for node in "$GUEST_BROWSER" "$STUDENT_BROWSER" "$ADMIN_BROWSER" "$VPN_BROWSER"; do
+  if run_in "$node" "command -v firefox >/dev/null && command -v geckodriver >/dev/null && command -v ip >/dev/null"; then
+    ok "$node has Firefox, geckodriver, and fabric tools"
+  else
+    fail "$node missing browser validation tools"
+  fi
+done
+
+expect_browser_ui "$STUDENT_BROWSER" 5811 "student browser UI is served by the fabric-connected student-01 container"
+expect_browser_ui "$ADMIN_BROWSER" 5812 "admin browser UI is served by the fabric-connected admin-01 container"
+expect_browser_ui "$GUEST_BROWSER" 5813 "guest browser UI is served by the fabric-connected guest-01 container"
+expect_browser_ui "$VPN_BROWSER" 5814 "VPN browser UI is served by the fabric-connected vpn-client-01 container"
+
 clear_browser_roles
 
-expect_page "$GUEST_BROWSER" "$NAC_URL" "Bienvenus au portail ESI|Sign in to access this network" "unauthenticated browser can load NAC portal"
-expect_tcp "$GUEST_BROWSER" "192.168.110.1" 80 "unauthenticated browser can reach NAC HTTP redirect"
+expect_browser_page "$GUEST_BROWSER" "$NAC_URL" "Bienvenus au portail ESI|Sign in to access this network" "guest browser can load NAC portal"
+expect_tcp "$GUEST_BROWSER" "192.168.110.1" 80 "guest browser can reach NAC HTTP redirect"
 expect_plain_http_auth_rejected "$GUEST_BROWSER" "NAC rejects credential POST over plain HTTP"
-expect_tcp_blocked "$GUEST_BROWSER" "198.18.3.10" 80 "unauthenticated browser cannot reach Internet web"
-expect_tcp_blocked "$GUEST_BROWSER" "198.51.100.30" 80 "unauthenticated browser cannot reach Moodle"
-expect_tcp_blocked "$GUEST_BROWSER" "192.168.70.30" 8080 "unauthenticated browser cannot reach Jupyter"
+expect_tcp_blocked "$GUEST_BROWSER" "198.18.3.10" 80 "guest browser starts without Internet access"
+expect_tcp_blocked "$GUEST_BROWSER" "198.51.100.30" 80 "guest browser starts without Moodle access"
+expect_tcp_blocked "$GUEST_BROWSER" "192.168.70.30" 8080 "guest browser starts without Jupyter access"
+expect_tcp_blocked "$STUDENT_BROWSER" "192.168.70.30" 8080 "student browser starts unauthenticated"
+expect_tcp_blocked "$ADMIN_BROWSER" "192.168.50.10" 22 "admin browser starts unauthenticated"
 
-if post_login "$STUDENT_BROWSER" "amine.kadri@esi.dz" "AmineLab#2026" | grep -q "campus-student"; then
-  ok "student browser login accepted by NAC"
-else
-  fail "student browser login rejected by NAC"
-fi
+expect_browser_nac_login "$STUDENT_BROWSER" "amine.kadri@esi.dz" "AmineLab#2026" "campus-student" "student browser login accepted by NAC"
 expect_nac_member "campus_students" "192.168.110.31" "student browser appears in NAC student set"
-expect_page "$STUDENT_BROWSER" "$INTERNET_URL" "Google Search" "student browser can load www.google.com after NAC"
-expect_page "$STUDENT_BROWSER" "$MOODLE_URL" "Moodle|TP - NAC" "student browser can load Moodle after NAC"
-expect_page "$STUDENT_BROWSER" "$JUPYTER_URL" "JupyterHub|jupyterhub" "student browser can load JupyterHub after NAC"
+expect_browser_page "$STUDENT_BROWSER" "$INTERNET_URL" "Google Search" "student browser can load www.google.com after NAC"
+expect_browser_page "$STUDENT_BROWSER" "$MOODLE_URL" "Moodle|TP - NAC" "student browser can load Moodle after NAC"
+expect_browser_page "$STUDENT_BROWSER" "$JUPYTER_URL" "JupyterHub|jupyterhub" "student browser can load JupyterHub after NAC"
 expect_tcp_blocked "$STUDENT_BROWSER" "192.168.50.10" 22 "student browser cannot open admin SSH"
 
-if post_login "$ADMIN_BROWSER" "squareone.admin@esi.dz" "SquareOneRoot#2026" | grep -q "campus-admin"; then
-  ok "admin browser login accepted by NAC"
-else
-  fail "admin browser login rejected by NAC"
-fi
+expect_browser_nac_login "$ADMIN_BROWSER" "squareone.admin@esi.dz" "SquareOneRoot#2026" "campus-admin" "admin browser login accepted by NAC"
 expect_nac_member "campus_admins" "192.168.110.32" "admin browser appears in NAC admin set"
-expect_page "$ADMIN_BROWSER" "$JUPYTER_URL" "JupyterHub|jupyterhub" "admin browser can load JupyterHub after NAC"
+expect_browser_page "$ADMIN_BROWSER" "$JUPYTER_URL" "JupyterHub|jupyterhub" "admin browser can load JupyterHub after NAC"
 expect_tcp "$ADMIN_BROWSER" "192.168.50.10" 22 "admin browser can open admin SSH transport"
 
+nac_logout "$STUDENT_BROWSER" "student browser logout accepted by NAC"
+expect_nac_absent "campus_students" "192.168.110.31" "student browser removed from NAC set after logout"
+expect_tcp_blocked "$STUDENT_BROWSER" "192.168.70.30" 8080 "student browser is blocked after NAC logout"
+nac_logout "$ADMIN_BROWSER" "admin browser logout accepted by NAC"
+expect_nac_absent "campus_admins" "192.168.110.32" "admin browser removed from NAC set after logout"
+expect_tcp_blocked "$ADMIN_BROWSER" "192.168.50.10" 22 "admin browser is blocked after NAC logout"
+
 expect_tcp "$VPN_BROWSER" "$VPN_ENROLL_HOST" "$VPN_ENROLL_PORT" "VPN browser can reach HTTPS enrollment portal"
-wait_for_vpn_health "VPN enrollment portal health is OK"
-if setup_vpn_tunnel; then
-  expect_page "$VPN_BROWSER" "$JUPYTER_IP_URL" "JupyterHub|jupyterhub" "VPN browser can load JupyterHub after WireGuard enrollment"
+wait_for_vpn_health "VPN enrollment portal health is OK before browser enrollment"
+if setup_vpn_tunnel_from_browser; then
+  wait_for_vpn_health "VPN enrollment portal remains healthy after browser enrollment"
+  sleep 5
+  wait_for_vpn_health "VPN enrollment portal remains healthy after idle browser session"
+  expect_browser_page "$VPN_BROWSER" "$JUPYTER_IP_URL" "JupyterHub|jupyterhub" "VPN browser can load JupyterHub after browser WireGuard enrollment"
+  vpn_logout "$VPN_BROWSER_PUBLIC_KEY" "VPN browser logout removed WireGuard lease"
+  run_in "$VPN_CLIENT" "ip link del wg0 2>/dev/null || true" >/dev/null 2>&1 || true
+  expect_tcp_blocked "$VPN_BROWSER" "192.168.70.30" 8080 "VPN browser is blocked after VPN logout and tunnel removal"
 fi
 
 if [ "$failures" -eq 0 ]; then

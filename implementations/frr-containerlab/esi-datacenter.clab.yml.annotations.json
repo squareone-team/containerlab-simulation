@@ -1483,7 +1483,7 @@
       }
     },
     {
-      "id": "student-bp-01",
+      "id": "guest-01",
       "position": {
         "x": -500,
         "y": 120
@@ -1520,7 +1520,7 @@
       "iconCornerRadius": 0
     },
     {
-      "id": "campus-admin-01",
+      "id": "admin-01",
       "position": {
         "x": -240,
         "y": -20
@@ -1530,7 +1530,7 @@
       "iconCornerRadius": 7
     },
     {
-      "id": "campus-student-01",
+      "id": "student-01",
       "position": {
         "x": -340,
         "y": 40

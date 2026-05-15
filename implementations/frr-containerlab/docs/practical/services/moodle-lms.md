@@ -38,8 +38,8 @@ The bootstrap script creates the ESI demo accounts, enrolls the professors as ed
 ## Verification
 
 ```bash
-docker exec clab-esi-datacenter-campus-student-01 nslookup moodle.esi.dz 192.168.50.30
-docker exec clab-esi-datacenter-campus-student-01 wget -qO- -T 8 http://moodle.esi.dz/ | grep -Ei 'Moodle|TP - NAC'
+docker exec clab-esi-datacenter-student-01 nslookup moodle.esi.dz 192.168.50.30
+docker exec clab-esi-datacenter-student-01 wget -qO- -T 8 http://moodle.esi.dz/ | grep -Ei 'Moodle|TP - NAC'
 docker exec clab-esi-datacenter-moodle sh -lc '/opt/bitnami/php/bin/php /opt/bitnami/moodle/admin/cli/cfg.php --name=wwwroot'
 ```
 
@@ -51,7 +51,7 @@ bash implementations/frr-containerlab/scripts/tests/browser_pov_validation.sh
 
 ## Demo Flow
 
-1. Open the campus student browser at `http://127.0.0.1:5811` after deploying `esi-browser-viewers.clab.yml`, or use `campus-student-01` for headless tests.
+1. Open the fabric-attached student browser at `http://127.0.0.1:5811`, or use `student-01` for headless tests.
 2. Authenticate at NAC as `hamani.nacer@esi.dz` / `HamaniTPs#2026`.
 3. Browse to `http://moodle.esi.dz/`.
 4. Log in to Moodle as `hamani.nacer@esi.dz` / `HamaniTPs#2026`.
