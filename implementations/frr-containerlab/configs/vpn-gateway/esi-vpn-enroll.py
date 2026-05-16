@@ -6,6 +6,7 @@ import os
 import re
 import ssl
 import subprocess
+import threading
 import time
 import urllib.parse
 import urllib.error
@@ -30,12 +31,21 @@ LOG_FILE = os.environ.get("ESI_VPN_LOG", "/var/log/esi-vpn-auth.log")
 LOGO_PATH = os.environ.get("ESI_VPN_LOGO", "/opt/esi/logo_esi.png")
 CLIENT_AGENT_PORT = int(os.environ.get("ESI_VPN_CLIENT_AGENT_PORT", "15814"))
 CLIENT_AGENT_ENABLED = os.environ.get("ESI_VPN_CLIENT_AGENT", "1") == "1"
+VPN_ALLOWED_IPS = [
+    item.strip()
+    for item in os.environ.get(
+        "ESI_VPN_ALLOWED_IPS",
+        "192.168.50.30/32,192.168.10.10/32,192.168.70.10/32,192.168.70.30/32,198.51.100.30/32",
+    ).split(",")
+    if item.strip()
+]
 
 POOL_START = os.environ.get("ESI_VPN_POOL_START", "10.250.200.10")
 POOL_END = os.environ.get("ESI_VPN_POOL_END", "10.250.200.200")
 
 ROLE_PATTERN = re.compile(r"Filter-Id\s*=\s*\"?([A-Za-z0-9_-]+)\"?")
 MAX_BODY_BYTES = int(os.environ.get("ESI_VPN_MAX_BODY", "8192"))
+STATE_LOCK = threading.Lock()
 
 PORTAL_CSS = """
     :root {
@@ -307,8 +317,10 @@ def load_state():
 def save_state(state):
     try:
         os.makedirs(os.path.dirname(STATE_FILE), exist_ok=True)
-        with open(STATE_FILE, "w", encoding="utf-8") as handle:
+        tmp_file = f"{STATE_FILE}.tmp"
+        with open(tmp_file, "w", encoding="utf-8") as handle:
             json.dump(state, handle, sort_keys=True, indent=2)
+        os.replace(tmp_file, STATE_FILE)
     except OSError as exc:
         log_event({"event": "vpn_state_save_failed", "error": str(exc)})
         return False
@@ -393,6 +405,18 @@ def remove_peer(peer_key):
     return True
 
 
+def restore_peers():
+    state = load_state()
+    restored = 0
+    for peer_key, entry in list(state.items()):
+        address = str(entry.get("ip", "")).strip()
+        if not peer_key or not address:
+            continue
+        if add_peer(peer_key, address):
+            restored += 1
+    log_event({"event": "vpn_peers_restored", "count": restored})
+
+
 def client_agent_url(client_ip, path):
     return f"http://{client_ip}:{CLIENT_AGENT_PORT}{path}"
 
@@ -441,7 +465,8 @@ def install_client_tunnel(client_ip, private_key, address, server_key):
         "address": address,
         "server_pubkey": server_key,
         "endpoint": "198.51.100.20:51820",
-        "allowed_ips": ["192.168.10.10/32", "192.168.70.10/32", "192.168.70.30/32"],
+        "allowed_ips": VPN_ALLOWED_IPS,
+        "dns": "192.168.50.30",
     }
     return call_client_agent(client_ip, "/connect", payload)
 
@@ -490,7 +515,8 @@ def config_text(private_key, address, server_key):
         "[Peer]",
         f"PublicKey = {server_key}",
         "Endpoint = 198.51.100.20:51820",
-        "AllowedIPs = 192.168.10.10/32,192.168.70.10/32,192.168.70.30/32",
+        "AllowedIPs = " + ",".join(VPN_ALLOWED_IPS),
+        "DNS = 192.168.50.30",
         "PersistentKeepalive = 25",
     ])
 
@@ -606,19 +632,29 @@ class Handler(BaseHTTPRequestHandler):
             username = str(data.get("username", "")).strip()
             password = str(data.get("password", "")).strip()
             removed = []
-            state = load_state()
+            with STATE_LOCK:
+                state = load_state()
 
-            if peer_key:
-                if peer_key in state:
-                    entry = state[peer_key]
-                    if remove_peer(peer_key):
-                        removed.append({"public_key": peer_key, "ip": entry.get("ip", "")})
-                    if entry.get("client_installed") and entry.get("client_ip"):
-                        disconnect_client_tunnel(entry.get("client_ip", ""))
-                    state.pop(peer_key, None)
+                if peer_key:
+                    if peer_key in state:
+                        entry = state[peer_key]
+                        if remove_peer(peer_key):
+                            removed.append({"public_key": peer_key, "ip": entry.get("ip", "")})
+                        if entry.get("client_installed") and entry.get("client_ip"):
+                            disconnect_client_tunnel(entry.get("client_ip", ""))
+                        state.pop(peer_key, None)
+                    else:
+                        remove_peer(peer_key)
+                elif username and password:
+                    pass
                 else:
-                    remove_peer(peer_key)
-            elif username and password:
+                    if wants_json:
+                        self._send_json(400, {"ok": False, "error": "missing_logout_identity"})
+                    else:
+                        self._send_html(400, render_result_page(False, "Missing logout identity", "Provide a public key or ESI credentials."))
+                    return
+
+            if not peer_key and username and password:
                 accepted, role, detail, error = run_radius(username, password)
                 if error:
                     if wants_json:
@@ -632,21 +668,18 @@ class Handler(BaseHTTPRequestHandler):
                     else:
                         self._send_html(403, render_result_page(False, "Logout denied", "The identity was not accepted for VPN lease management."))
                     return
-                for key, entry in list(state.items()):
-                    if entry.get("user") == username:
-                        if remove_peer(key):
-                            removed.append({"public_key": key, "ip": entry.get("ip", "")})
-                        if entry.get("client_installed") and entry.get("client_ip"):
-                            disconnect_client_tunnel(entry.get("client_ip", ""))
-                        state.pop(key, None)
-            else:
-                if wants_json:
-                    self._send_json(400, {"ok": False, "error": "missing_logout_identity"})
-                else:
-                    self._send_html(400, render_result_page(False, "Missing logout identity", "Provide a public key or ESI credentials."))
-                return
+                with STATE_LOCK:
+                    state = load_state()
+                    for key, entry in list(state.items()):
+                        if entry.get("user") == username:
+                            if remove_peer(key):
+                                removed.append({"public_key": key, "ip": entry.get("ip", "")})
+                            if entry.get("client_installed") and entry.get("client_ip"):
+                                disconnect_client_tunnel(entry.get("client_ip", ""))
+                            state.pop(key, None)
 
-            save_state(state)
+            with STATE_LOCK:
+                save_state(state)
             log_event({"event": "vpn_logout", "user": username or "", "removed": len(removed)})
             if wants_json:
                 self._send_json(200, {"ok": True, "removed": removed})
@@ -690,43 +723,45 @@ class Handler(BaseHTTPRequestHandler):
             else:
                 self._send_html(503, render_result_page(False, "Enrollment unavailable", f"RADIUS returned {error}."))
             return
-        state = load_state()
         if accepted and role == "vpn-student":
-            address = allocate_ip(state, peer_key)
-            if not address:
-                self._send_json(503, {"ok": False, "error": "ip_pool_exhausted"})
-                return
-            if not add_peer(peer_key, address):
-                self._send_json(503, {"ok": False, "error": "wg_peer_failed"})
-                return
-            pubkey = server_pubkey()
-            if not pubkey:
-                self._send_json(503, {"ok": False, "error": "server_key_missing"})
-                return
-            client_installed = False
-            client_install_error = ""
-            if private_key:
-                client_installed, client_install_error = install_client_tunnel(
-                    self.client_address[0],
-                    private_key,
-                    f"{address}/32",
-                    pubkey,
-                )
-            state[peer_key] = {
-                "user": username,
-                "ip": address,
-                "client_ip": self.client_address[0],
-                "client_installed": client_installed,
-            }
-            if not save_state(state):
-                self._send_json(503, {"ok": False, "error": "state_save_failed"})
-                return
+            with STATE_LOCK:
+                state = load_state()
+                address = allocate_ip(state, peer_key)
+                if not address:
+                    self._send_json(503, {"ok": False, "error": "ip_pool_exhausted"})
+                    return
+                if not add_peer(peer_key, address):
+                    self._send_json(503, {"ok": False, "error": "wg_peer_failed"})
+                    return
+                pubkey = server_pubkey()
+                if not pubkey:
+                    self._send_json(503, {"ok": False, "error": "server_key_missing"})
+                    return
+                client_installed = False
+                client_install_error = ""
+                if private_key:
+                    client_installed, client_install_error = install_client_tunnel(
+                        self.client_address[0],
+                        private_key,
+                        f"{address}/32",
+                        pubkey,
+                    )
+                state[peer_key] = {
+                    "user": username,
+                    "ip": address,
+                    "client_ip": self.client_address[0],
+                    "client_installed": client_installed,
+                }
+                if not save_state(state):
+                    self._send_json(503, {"ok": False, "error": "state_save_failed"})
+                    return
             response = {
                 "ok": True,
                 "address": f"{address}/32",
                 "endpoint": "198.51.100.20:51820",
                 "server_pubkey": pubkey,
-                "allowed_ips": ["192.168.10.10/32", "192.168.70.10/32", "192.168.70.30/32"],
+                "allowed_ips": VPN_ALLOWED_IPS,
+                "dns": "192.168.50.30",
                 "client_public_key": peer_key,
                 "generated_key": generated_key,
                 "client_installed": client_installed,
@@ -808,6 +843,7 @@ def main():
     if TLS_ENABLED:
         context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
         context.load_cert_chain(TLS_CERT, TLS_KEY)
+    restore_peers()
     server = EnrollmentServer((LISTEN_HOST, LISTEN_PORT), Handler, tls_context=context)
     log_event({"event": "vpn_enroll_start", "listen": f"{LISTEN_HOST}:{LISTEN_PORT}", "tls": TLS_ENABLED})
     server.serve_forever()

@@ -12,7 +12,7 @@ This page is the shortest high-level map of what exists in `frr-containerlab` an
 | HPC pod | `leaf-05`, `leaf-06`, `server-hpc-*` | Staff VRF compute workloads |
 | Storage pod | `leaf-07`, `leaf-08`, `server-storage-01`, `moodle-db` | Shared storage services and storage-backed Moodle database |
 | Student pod | `leaf-09`, `leaf-10`, `server-student-*` | Pedagogy VRF workloads, DHCP relay, dual-homing |
-| Security and management | `firewall-01`, `firewall-02`, `bastion-01`, `oob-sw`, `syslog-server` | Ring 1 HA firewall, Ring 4 OOB SSH, Ring 6 central logging |
+| Security and management | `firewall-01`, `firewall-02`, `bastion-01`, `syslog-server` | Ring 1 HA firewall, Ring 4 OOB SSH over containerlab management, Ring 6 central logging |
 | Identity and access | `auth-server`, `campus-bp`, `vpn-gateway` | LDAP directory, TACACS+/RADIUS services, campus NAC edge, and remote access VPN |
 | Campus edge | `campus-bp`, `student-01`, `admin-01`, `guest-01`, `vpn-client-01`, `wifi-controller` | Campus test subnet, NAC role separation, fabric-attached browser clients, WiFi management micro-VRF |
 | Observability | `fabric-telemetry`, `prometheus`, `grafana`, `zabbix-server` | Metrics, alerts, dashboards, SNMP polling |
@@ -27,7 +27,7 @@ This page is the shortest high-level map of what exists in `frr-containerlab` an
 | `VRF-PUBLIC` | `50040` | `10100` DMZ web, Moodle, VPN gateway | `leaf-01`, `leaf-02` |
 | `VRF-ORIENTATION` | `50050` | `10090` orientation segment | `leaf-01`, `leaf-02` |
 | `VRF-WIFI-CTRL` | `50060` | `10120` WiFi controller management | `leaf-01` |
-| OOB bridge | n/a | `172.16.0.0/24` | `oob-sw`, `bastion-01` |
+| OOB management | n/a | `172.16.0.0/24` | secondary addresses on containerlab `eth0`, `bastion-01` |
 
 ## Feature Ownership
 
@@ -39,9 +39,9 @@ This page is the shortest high-level map of what exists in `frr-containerlab` an
 | DHCP relay | `configs/common/esi-dhcp-relay.py`, leaf startup scripts | `udhcpc` on a dual-homed host |
 | Border route filtering | `configs/leaf-01/frr.conf`, `configs/leaf-02/frr.conf` | check only `0.0.0.0/0` learned from ISP neighbors |
 | Orientation activation | `configs/orientation-runbook.sh`, `leaf-01` | `ip route show vrf VRF-ORIENTATION` before and after activation |
-| Ring 1 firewall | `configs/firewall-*` + border leaf policy routes | VIP on exactly one firewall, nftables counters move |
+| Ring 1 firewall | `configs/firewall-*` + border leaf policy routes + firewall transit VNI `10199` | VIP on exactly one firewall, nftables counters move |
 | Ring 3 control-plane protection | leaf/spine `iptables` startup blocks | unauthorized `nc` to TCP/179 or UDP/4789 times out |
-| Ring 4 bastion SSH | `bastion-01`, `oob-sw`, SSH hardening in nodes | bastion can SSH to `172.16.0.x`; non-bastion should not |
+| Ring 4 bastion SSH | `bastion-01`, OOB addresses on `eth0`, SSH hardening in nodes | bastion can SSH to `172.16.0.x`; non-bastion should not |
 | Ring 5 host micro-segmentation | host startup scripts using `nftables` | workloads accept only the service ports they own |
 | Ring 6 central logging | `syslog-server`, rsyslog config on nodes | `logger` from a reachable node appears on syslog server |
 | Identity and access | `auth-server`, `campus-bp`, `vpn-gateway`, TACACS+/RADIUS scripts | `tail /var/log/esi-tacacs.log` on auth-server and `nft list set inet campus_nac campus_students` on campus-bp |

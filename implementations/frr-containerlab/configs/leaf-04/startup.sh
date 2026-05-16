@@ -250,7 +250,7 @@ ip link set eth9 up 2>/dev/null || true
 ip link set eth11 up 2>/dev/null || true
 
 # Ring 4: OOB management for bastion-only SSH
-OOB_IF="eth10"
+OOB_IF="eth0"
 ip addr replace 172.16.0.24/24 dev "$OOB_IF"
 ip link set "$OOB_IF" up
 

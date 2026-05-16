@@ -82,7 +82,7 @@ ip link add VRF-ORIENTATION type vrf table 50
 ip link set VRF-ORIENTATION up
 ip link add VRF-WIFI-CTRL type vrf table 60
 ip link set VRF-WIFI-CTRL up
-for IFACE in eth3 eth4 eth5 eth6 eth7 eth8 eth9 eth11 eth12; do
+for IFACE in eth3 eth4 eth5 eth6 eth7 eth8 eth11 eth12; do
   ip link set dev $IFACE mtu 9000 || true
 done
 
@@ -133,14 +133,18 @@ ip link set eth8 master VRF-WIFI-CTRL
 ip addr add 10.200.0.1/30 dev eth8
 ip link set eth8 up
 
-ip link add br-fw-ha type bridge vlan_filtering 1 vlan_default_pvid 1
+ip link add br-fw-ha type bridge
 ip link set br-fw-ha mtu 9000
 ip link set br-fw-ha up
+ip link add vxlan10199 type vxlan id 10199 local $VTEP_IP dstport 4789 nolearning tos inherit 2>/dev/null || true
+ip link set vxlan10199 mtu 9000
+ip link set vxlan10199 master br-fw-ha
+ip link set vxlan10199 up
+bridge vlan add vid 1 dev vxlan10199 pvid untagged 2>/dev/null || true
+bridge vlan add vid 1 dev br-fw-ha self 2>/dev/null || true
 ip link set eth5 master br-fw-ha
-ip link set eth9 master br-fw-ha
 ip link set eth5 up
-ip link set eth9 up
-ip addr add 192.168.1.252/24 dev br-fw-ha
+ip addr replace 192.168.1.252/24 dev br-fw-ha
 
 # Policy routing for packets returning from the firewall transit segment.
 ip rule add iif br-fw-ha to 192.168.10.0/24 lookup 30 prio 10000 || true
@@ -282,6 +286,7 @@ start_l3vni_rmac_seed_loop() {
   (
     sleep 8
     while true; do
+      seed_l2vni_macs 10199 1 vxlan10199 br-fw-ha
       seed_l2vni_macs 10090 90 vxlan10090 vlan90
       seed_l2vni_macs 10100 100 vxlan10100 vlan100
       seed_l2vni_macs 10120 120 vxlan10120 vlan120
@@ -368,6 +373,11 @@ for SUBNET in $FW_INTERNAL_SUBNETS; do
   PREF=$((PREF + 1))
 done
 
+# Return traffic for border-leaf NATed Internet sessions must go back to
+# VRF-WIFI-CTRL. DMZ/Moodle return traffic still hairpins through Ring 1.
+ip rule add pref 68 from 198.18.0.0/15 iif VRF-PUBLIC to 192.168.110.0/24 lookup 60 2>/dev/null || true
+ip rule add pref 69 from 198.18.0.0/15 iif eth3 to 192.168.110.0/24 lookup 60 2>/dev/null || true
+
 # Campus traffic keeps its dedicated micro-VRF uplink, but only the shared
 # service IPs, auth proof targets, and the explicit DMZ test subnet are steered through Ring 1.
 # No broader internal prefixes leak.
@@ -388,6 +398,11 @@ FW_CAMPUS_SERVICE_IPS="
 for SUBNET in $FW_CAMPUS_SERVICE_IPS; do
   ip route replace table "$FW_CAMPUS_TABLE" "$SUBNET" via 192.168.1.254 dev br-fw-ha
 done
+
+# Authenticated campus users reach the simulated Internet through the border
+# leaf public VRF and border-leaf NAT. The campus gateway still has no ISP link.
+ip rule add pref 64 iif VRF-WIFI-CTRL to 198.18.0.0/15 lookup 40 2>/dev/null || true
+ip rule add pref 65 iif eth8 to 198.18.0.0/15 lookup 40 2>/dev/null || true
 
 PREF=80
 for SUBNET in $FW_CAMPUS_SERVICE_IPS; do
@@ -411,6 +426,8 @@ ip rule add pref 90 iif eth3 to 198.51.100.0/24 lookup 40 2>/dev/null || true
 # Inbound internet return traffic to student subnets must use VRF-PEDAGOGY.
 ip rule add pref 100 iif eth3 to 192.168.10.0/24 lookup 30 2>/dev/null || true
 ip rule add pref 101 iif eth3 to 192.168.20.0/24 lookup 30 2>/dev/null || true
+ip rule add pref 102 iif eth3 to 192.168.110.0/24 lookup 60 2>/dev/null || true
+ip rule add pref 103 iif eth3 to 10.200.0.0/30 lookup 60 2>/dev/null || true
 
 # === END PHASE 1 — Phase 2 appends below ===
 
@@ -424,8 +441,10 @@ iptables -C FORWARD -i eth3 -d 192.168.10.0/24 -m conntrack --ctstate NEW -j DRO
   || iptables -I FORWARD 2 -i eth3 -d 192.168.10.0/24 -m conntrack --ctstate NEW -j DROP
 iptables -C FORWARD -i eth3 -d 192.168.20.0/24 -m conntrack --ctstate NEW -j DROP 2>/dev/null \
   || iptables -I FORWARD 3 -i eth3 -d 192.168.20.0/24 -m conntrack --ctstate NEW -j DROP
+iptables -t nat -C POSTROUTING -s 192.168.110.0/24 -o eth3 -j MASQUERADE 2>/dev/null \
+  || iptables -t nat -A POSTROUTING -s 192.168.110.0/24 -o eth3 -j MASQUERADE
 # Ring 4: OOB management for bastion-only SSH
-OOB_IF="eth10"
+OOB_IF="eth0"
 ip addr replace 172.16.0.21/24 dev "$OOB_IF"
 ip link set "$OOB_IF" up
 

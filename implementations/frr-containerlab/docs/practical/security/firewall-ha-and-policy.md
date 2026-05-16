@@ -9,8 +9,10 @@ This runbook is for Ring 1: the HA firewall pair, the shared VIP, and the cross-
 | Firewalls | `firewall-01`, `firewall-02` |
 | Ring 1 VIP | `192.168.1.254/24` on `eth1` |
 | Border transit IPs | `192.168.1.252` on `leaf-01`, `192.168.1.253` on `leaf-02` |
-| HA mechanism | `keepalived` |
+| HA mechanism | `keepalived` over firewall transit VNI `10199` |
 | Policy engine | `nftables` |
+
+The firewall transit is stretched through EVPN/VXLAN, not a direct `leaf-01` to `leaf-02` cable. That keeps `firewall-02` able to own the VIP during failover while avoiding a physical shortcut between the border leaves.
 
 ## First Checks
 
@@ -23,6 +25,7 @@ This runbook is for Ring 1: the HA firewall pair, the shared VIP, and the cross-
 | `docker exec clab-esi-datacenter-firewall-01 ip -4 addr show eth1` | grep 192.168.1.254/24` | checks whether firewall 1 currently owns the VIP | matches on exactly one firewall |
 | `docker exec clab-esi-datacenter-firewall-02 ip -4 addr show eth1` | grep 192.168.1.254/24` | checks whether firewall 2 currently owns the VIP | matches on exactly one firewall |
 | `docker exec clab-esi-datacenter-leaf-01 ping -c2 -W2 192.168.1.254` | confirms the border leaf reaches the VIP | succeeds |
+| `docker exec clab-esi-datacenter-leaf-01 vtysh -c 'show evpn vni 10199'` | confirms the firewall transit VNI exists | VNI `10199` present |
 
 ## Inspect The Policy
 

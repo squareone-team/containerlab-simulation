@@ -74,7 +74,7 @@ The SquareOne admin can also open admin SSH transport. Student/professor roles c
 
 ## VPN Enrollment
 
-The VPN portal is `https://198.51.100.20:8448/`. The web UI generates a lab WireGuard keypair implicitly during login when no public key is supplied. From `vpn-client-01`, a successful browser login also installs `wg0` inside that same container, so the browser reaches internal VPN targets without a sidecar namespace or manual CLI step. `/logout` removes the gateway lease and disconnects the client helper when the lease was browser-installed. You can still enroll by API:
+The VPN portal is `https://198.51.100.20:8448/`. The web UI generates a lab WireGuard keypair implicitly during login when no public key is supplied. From `vpn-client-01`, a successful browser login also installs `wg0` and points the client resolver at `192.168.50.30`, so the browser reaches Moodle and Jupyter by DNS name without a sidecar namespace or manual CLI step. `/logout` removes the gateway lease and disconnects the client helper when the lease was browser-installed. You can still enroll by API:
 
 ```bash
 docker exec clab-esi-datacenter-vpn-client-01 sh -lc 'umask 077; wg genkey | tee /tmp/vpn.key | wg pubkey > /tmp/vpn.pub'
@@ -86,6 +86,7 @@ Expected:
 - Student identities such as `amine.kadri@esi.dz` and `tati.youcef@esi.dz` receive `vpn-student`.
 - Professor identities such as `nora.benali@esi.dz` and `hamani.nacer@esi.dz` receive `vpn-student`.
 - `squareone.admin@esi.dz` is rejected by VPN enrollment.
+- Enrolled VPN users resolve `moodle.esi.dz` and `hpc-jupyter.esi.internal` through datacenter DNS.
 - The gateway NATs tunnel clients behind `198.51.100.20`; `10.250.200.0/24` is not advertised to ISP/Internet routers.
 
 ## SSH/TACACS

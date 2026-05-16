@@ -194,7 +194,7 @@ start_l3vni_rmac_seed_loop
 ip link set eth3 up
 
 # Ring 4: OOB management for bastion-only SSH
-OOB_IF="eth10"
+OOB_IF="eth0"
 ip addr replace 172.16.0.30/24 dev "$OOB_IF"
 ip link set "$OOB_IF" up
 

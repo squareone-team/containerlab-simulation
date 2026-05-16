@@ -117,6 +117,7 @@ server:
   access-control-view: 192.168.90.0/24  internal
   access-control-view: 10.0.0.0/8       internal
   access-control-view: 172.16.0.0/24    internal
+  access-control-view: 198.51.100.20/32 internal
   access-control-view: 198.51.100.0/24 dmz
   access-control-view: 127.0.0.0/8      internal
 # -----------------------------------------------------------------------
@@ -255,11 +256,11 @@ nft -- add rule inet filter input tcp dport 22 ip saddr 172.16.0.50 accept
 
 # DNS UDP/53 from internal VRFs
 nft -- add rule inet filter input udp dport 53 \
-    ip saddr '{ 127.0.0.0/8, 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16 }' accept
+    ip saddr '{ 127.0.0.0/8, 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16, 198.51.100.20/32 }' accept
 
 # DNS TCP/53 from internal VRFs (large responses, zone transfers)
 nft -- add rule inet filter input tcp dport 53 \
-    ip saddr '{ 127.0.0.0/8, 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16 }' accept
+    ip saddr '{ 127.0.0.0/8, 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16, 198.51.100.20/32 }' accept
 
 # Prometheus node_exporter scrape (from prometheus at 192.168.50.60)
 nft -- add rule inet filter input tcp dport 9100 ip saddr 192.168.50.60 accept

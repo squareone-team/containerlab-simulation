@@ -11,15 +11,18 @@ LISTEN_PORT = int(os.environ.get("ESI_VPN_CLIENT_AGENT_PORT", "15814"))
 TRUSTED_GATEWAY = os.environ.get("ESI_VPN_GATEWAY_IP", "198.51.100.20")
 WG_INTERFACE = os.environ.get("ESI_WG_INTERFACE", "wg0")
 KEY_FILE = os.environ.get("ESI_WG_CLIENT_KEY", "/tmp/esi-vpn-client.key")
+RESOLV_CONF = os.environ.get("ESI_VPN_RESOLV_CONF", "/etc/resolv.conf")
+RESOLV_BACKUP = os.environ.get("ESI_VPN_RESOLV_BACKUP", "/tmp/esi-vpn-resolv.conf.backup")
 DEFAULT_ENDPOINT = os.environ.get("ESI_WG_ENDPOINT", "198.51.100.20:51820")
 DEFAULT_ALLOWED_IPS = [
     item.strip()
     for item in os.environ.get(
         "ESI_WG_ALLOWED_IPS",
-        "192.168.10.10/32,192.168.70.10/32,192.168.70.30/32",
+        "192.168.50.30/32,192.168.10.10/32,192.168.70.10/32,192.168.70.30/32,198.51.100.30/32",
     ).split(",")
     if item.strip()
 ]
+DEFAULT_DNS = os.environ.get("ESI_WG_DNS", "192.168.50.30")
 MAX_BODY_BYTES = int(os.environ.get("ESI_VPN_CLIENT_MAX_BODY", "8192"))
 
 
@@ -40,6 +43,25 @@ def disconnect():
         os.remove(KEY_FILE)
     except FileNotFoundError:
         pass
+    if os.path.exists(RESOLV_BACKUP):
+        try:
+            os.replace(RESOLV_BACKUP, RESOLV_CONF)
+        except OSError:
+            pass
+
+
+def install_dns(dns_server):
+    if not os.path.exists(RESOLV_BACKUP):
+        try:
+            with open(RESOLV_CONF, "r", encoding="utf-8") as source:
+                original = source.read()
+            with open(RESOLV_BACKUP, "w", encoding="utf-8") as backup:
+                backup.write(original)
+        except OSError:
+            pass
+    with open(RESOLV_CONF, "w", encoding="utf-8") as resolv:
+        resolv.write("search esi.internal\n")
+        resolv.write(f"nameserver {dns_server}\n")
 
 
 def validate_allowed_ips(values):
@@ -58,6 +80,7 @@ def connect(payload):
     server_pubkey = str(payload.get("server_pubkey", "")).strip()
     endpoint = str(payload.get("endpoint", DEFAULT_ENDPOINT)).strip() or DEFAULT_ENDPOINT
     allowed_ips = validate_allowed_ips(payload.get("allowed_ips", DEFAULT_ALLOWED_IPS))
+    dns_server = str(payload.get("dns", DEFAULT_DNS)).strip() or DEFAULT_DNS
 
     if not private_key or not address or not server_pubkey:
         raise ValueError("missing private_key, address, or server_pubkey")
@@ -95,6 +118,7 @@ def connect(payload):
     run(["ip", "link", "set", WG_INTERFACE, "up"])
     for route in allowed_ips:
         run(["ip", "route", "replace", route, "dev", WG_INTERFACE])
+    install_dns(dns_server)
 
 
 class Handler(BaseHTTPRequestHandler):

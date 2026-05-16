@@ -68,7 +68,7 @@ iptables -A INPUT -p tcp --dport 22 -s 172.16.0.50 -j ACCEPT
 iptables -A INPUT -p tcp --dport 22 -j DROP
 
 # Ring 4: OOB management for bastion-only SSH
-OOB_IF="eth11"
+OOB_IF="eth0"
 ip addr replace 172.16.0.12/24 dev "$OOB_IF"
 ip link set "$OOB_IF" up
 

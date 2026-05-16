@@ -11,7 +11,7 @@ ip route add default via 198.51.100.1 dev eth1
 sysctl -w net.ipv4.ip_forward=1 >/dev/null 2>&1 || true
 
 mkdir -p /etc/wireguard /var/log
-mkdir -p /etc/esi-vpn/tls
+mkdir -p /etc/esi-vpn/tls /var/lib/esi-vpn
 WG_KEY="/etc/wireguard/server.key"
 WG_PUB="/etc/wireguard/server.pub"
 WG_PORT="51820"
@@ -38,6 +38,8 @@ wg set wg0 listen-port "$WG_PORT" private-key "$WG_KEY"
 ip addr replace "$WG_ADDR" dev wg0
 ip link set wg0 up
 
+iptables -F
+iptables -t nat -F
 iptables -P INPUT DROP
 iptables -P FORWARD DROP
 iptables -P OUTPUT ACCEPT
@@ -49,9 +51,14 @@ iptables -A INPUT -p udp --dport "$WG_PORT" -j ACCEPT
 iptables -A INPUT -p tcp --dport "$VPN_ENROLL_PORT" -j ACCEPT
 
 iptables -A FORWARD -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT
+iptables -A FORWARD -i wg0 -o eth1 -p udp -d 192.168.50.30 --dport 53 -m conntrack --ctstate NEW -j ACCEPT
+iptables -A FORWARD -i wg0 -o eth1 -p tcp -d 192.168.50.30 --dport 53 -m conntrack --ctstate NEW -j ACCEPT
 iptables -A FORWARD -i wg0 -o eth1 -p tcp -d 192.168.10.10 --dport 22 -m conntrack --ctstate NEW -j ACCEPT
 iptables -A FORWARD -i wg0 -o eth1 -p tcp -d 192.168.70.10 --dport 22 -m conntrack --ctstate NEW -j ACCEPT
 iptables -A FORWARD -i wg0 -o eth1 -p tcp -d 192.168.70.30 --dport 8080 -m conntrack --ctstate NEW -j ACCEPT
+iptables -A FORWARD -i wg0 -o eth1 -p tcp -d 198.51.100.30 --dport 80 -m conntrack --ctstate NEW -j ACCEPT
+iptables -A FORWARD -i wg0 -o eth1 -p tcp -d 198.51.100.30 --dport 443 -m conntrack --ctstate NEW -j ACCEPT
+iptables -A FORWARD -i wg0 -o eth1 -p tcp -d 198.51.100.30 --dport 8443 -m conntrack --ctstate NEW -j ACCEPT
 
 iptables -t nat -C POSTROUTING -s 10.250.200.0/24 -o eth1 -j MASQUERADE 2>/dev/null \
   || iptables -t nat -A POSTROUTING -s 10.250.200.0/24 -o eth1 -j MASQUERADE

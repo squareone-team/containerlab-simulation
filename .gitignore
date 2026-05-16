@@ -10,6 +10,7 @@ clab-*/
 .codex
 __pycache__/
 *.pyc
+implementations/frr-containerlab/configs/vpn-gateway/state/
 
 # OS
 .DS_Store

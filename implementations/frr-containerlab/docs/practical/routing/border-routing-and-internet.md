@@ -28,6 +28,7 @@ docker exec clab-esi-datacenter-leaf-02 grep -n 'prefix-list ISP-IN\\|prefix-lis
 - `ISP-IN` is meant to keep inbound learning narrow.
 - `ISP-OUT` is meant to prevent RFC1918 leaks.
 - `maximum-prefix` is the guardrail against runaway advertisements from an ISP peer.
+- Campus traffic has no direct `campus-bp` to ISP link. Authenticated campus Internet traffic enters `leaf-01` and is NATed out through the border leaf public VRF; campus access to DMZ/internal services still crosses Ring 1 policy.
 
 ## Orientation Runbook
 
@@ -49,6 +50,8 @@ bash implementations/frr-containerlab/configs/orientation-runbook.sh --deactivat
 | `docker exec clab-esi-datacenter-student-01 wget -qO- -T 5 http://www.google.com/` | authenticated campus student can reach the simulated Google-like internet web server | returns `Google Search` |
 | `docker exec clab-esi-datacenter-student-01 wget -qO- -T 8 http://moodle.esi.dz/` | authenticated campus student can reach the real Moodle container in the DMZ | returns `Moodle` |
 | `docker exec clab-esi-datacenter-student-01 nslookup moodle.esi.dz 192.168.50.30` | confirms Moodle is published as the only public ESI web name, not `esi.internal` | `198.51.100.30` |
+| `docker exec clab-esi-datacenter-internet-client-01 nslookup www.google.com` | external Internet client uses the small Internet DNS forwarder without NAC | `198.18.3.10` |
+| `docker exec clab-esi-datacenter-internet-client-01 wget -qO- -T 5 http://www.google.com/` | external Internet client browses the Google demo without campus authentication | returns `Google Search` |
 | `docker exec clab-esi-datacenter-guest-01 timeout 4 nc -z -w2 198.18.3.10 80 || echo blocked` | unauthenticated campus client cannot reach Internet before NAC | prints `blocked` |
 | `docker exec clab-esi-datacenter-guest-01 timeout 4 nc -z -w2 198.51.100.10 80 || echo blocked` | unauthenticated campus client cannot reach DMZ before NAC | prints `blocked` |
 | `docker exec clab-esi-datacenter-guest-01 timeout 4 nc -z -w2 198.51.100.30 80 || echo blocked` | unauthenticated campus client cannot reach Moodle before NAC | prints `blocked` |

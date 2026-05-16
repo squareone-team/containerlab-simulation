@@ -17,7 +17,7 @@ This page groups the practical checks for Ring 3, Ring 4, Ring 5, and Ring 6.
 | --- | --- | --- |
 | `docker exec clab-esi-datacenter-bastion-01 sh -lc "ssh -o BatchMode=yes -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null root@172.16.0.11 'hostname'"` | OOB SSH from bastion to spine 1 | hostname returned |
 | `docker exec clab-esi-datacenter-bastion-01 sh -lc "ssh -o BatchMode=yes -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null root@172.16.0.21 'hostname'"` | OOB SSH from bastion to leaf 1 | hostname returned |
-| `docker exec clab-esi-datacenter-leaf-01 ip -4 addr show dev eth10` | confirms the OOB address exists on the node | `172.16.0.21/24` |
+| `docker exec clab-esi-datacenter-leaf-01 ip -4 addr show dev eth0` | confirms the OOB address exists on the node without a rendered OOB link | `172.16.0.21/24` |
 | `docker exec clab-esi-datacenter-bastion-01 cat /root/.ssh/id_ed25519.pub` | confirms the bastion key exists | public key text printed |
 
 ## Ring 5: Host Micro-Segmentation
@@ -43,7 +43,7 @@ This page groups the practical checks for Ring 3, Ring 4, Ring 5, and Ring 6.
 
 - Central syslog is reachable only through same-VRF routing or the explicit Ring 1 TCP/514 log-export policy.
 - `server-admin-01` is the safest default source for Ring 6 manual log injection.
-- `oob-sw` is only a Layer 2 bridge, so bastion/OOB debugging is mostly about SSH and addressing, not routing.
+- OOB uses secondary `172.16.0.0/24` addresses on containerlab management `eth0`, so bastion/OOB debugging is mostly about SSH and addressing, not rendered topology links.
 
 ## Automation
 

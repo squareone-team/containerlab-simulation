@@ -6,7 +6,7 @@ This page is for the campus test segment, the WiFi management path, and the DMZ 
 
 | Node | Important addresses | Why it matters |
 | --- | --- | --- |
-| `campus-bp` | `100.10.0.2/30` on `eth1`, `10.200.0.2/30` on `eth3`, `192.168.110.1/24` on `br-student` | upstream edge, service transit, and campus NAC gateway |
+| `campus-bp` | `10.200.0.2/30` on `eth3`, `192.168.110.1/24` on `br-student` | campus NAC gateway; default traffic goes to `leaf-01`, not directly to an ISP |
 | `guest-01` | `192.168.110.30/24` | stable campus client for manual tests |
 | `student-01` | `192.168.110.31/24` | student browser/client, unauthenticated until NAC login |
 | `admin-01` | `192.168.110.32/24` | admin browser/client, unauthenticated until NAC login |
@@ -14,7 +14,7 @@ This page is for the campus test segment, the WiFi management path, and the DMZ 
 | `server-dmz-01` | `198.51.100.10/24` | DMZ web service |
 | `moodle` | `198.51.100.30/24` | Moodle LMS at `moodle.esi.dz` |
 | `moodle-db` | `192.168.80.31/24` on a storage-pod bond | MariaDB backend for Moodle, multihomed to `leaf-07`/`leaf-08` |
-| `leaf-01` | `10.200.0.1/30`, `192.168.1.252/24`, `VRF-WIFI-CTRL` | policy-routing pivot between campus, firewall, and WiFi path |
+| `leaf-01` | `10.200.0.1/30`, `192.168.1.252/24`, `VRF-WIFI-CTRL` | policy-routing pivot between campus, firewall, WiFi, DMZ, and Internet paths |
 
 ## Campus Client Checks
 
@@ -55,7 +55,7 @@ docker exec clab-esi-datacenter-campus-bp ping -c2 -W2 192.168.10.100
 docker exec clab-esi-datacenter-campus-bp wget -qO- http://198.51.100.10
 ```
 
-- The route table should show the narrow service routes via `10.200.0.1`.
+- The route table should show a default route and narrow service routes via `10.200.0.1`; there is no `100.10.0.0/30` ISP shortcut.
 - The auth-server route should keep the NAC identity source as `192.168.110.1`; `10.200.0.2` is only transit.
 - The WiFi controller ping proves the micro-VRF path on `leaf-01` is usable.
 - `wget` to the DMZ IP checks the routed path without depending on campus DNS.

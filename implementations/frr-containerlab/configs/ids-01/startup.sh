@@ -31,12 +31,9 @@ for iface in eth1 eth2; do
   ip link set "$iface" master br-ips
 done
 
-# Optional OOB address documented for the IDS node. It is intentionally kept
-# outside the transparent data-path bridge.
-if ip link show eth3 >/dev/null 2>&1; then
-  ip link set eth3 up
-  ip addr replace 172.16.0.51/24 dev eth3
-fi
+# OOB address uses containerlab management eth0 so the transparent data path
+# stays the only rendered topology edge for the IDS node.
+ip addr replace 172.16.0.51/24 dev eth0
 
 # This host kernel does not expose nftables bridge-family support, so the v1
 # prevention wall uses tc ingress policing on the outside-facing bridge port.
@@ -64,7 +61,7 @@ chmod +x /usr/local/bin/ids-ips-summary
 {
   echo "ids-01 inline IPS started"
   echo "bridge: eth1 <-> eth2"
-  echo "oob: 172.16.0.51/24 on eth3 when present"
+  echo "oob: 172.16.0.51/24 on eth0"
   echo "ddos rule: police excess TCP SYN to 198.51.100.10:80 on eth2 ingress"
 } >/var/log/ids-ips.log
 

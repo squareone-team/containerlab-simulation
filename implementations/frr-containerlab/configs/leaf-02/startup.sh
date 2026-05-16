@@ -79,20 +79,24 @@ ip link add VRF-PUBLIC type vrf table 40
 ip link set VRF-PUBLIC up
 ip link add VRF-ORIENTATION type vrf table 50
 ip link set VRF-ORIENTATION up
-for IFACE in eth3 eth4 eth5 eth6 eth9; do
+for IFACE in eth3 eth4 eth5 eth6; do
   if ip link show "$IFACE" >/dev/null 2>&1; then
     ip link set dev "$IFACE" mtu 9000 || true
   fi
 done
 
-ip link add br-fw-ha type bridge vlan_filtering 1 vlan_default_pvid 1
+ip link add br-fw-ha type bridge
 ip link set br-fw-ha mtu 9000
 ip link set br-fw-ha up
+ip link add vxlan10199 type vxlan id 10199 local $VTEP_IP dstport 4789 nolearning tos inherit 2>/dev/null || true
+ip link set vxlan10199 mtu 9000
+ip link set vxlan10199 master br-fw-ha
+ip link set vxlan10199 up
+bridge vlan add vid 1 dev vxlan10199 pvid untagged 2>/dev/null || true
+bridge vlan add vid 1 dev br-fw-ha self 2>/dev/null || true
 ip link set eth5 master br-fw-ha
-ip link set eth9 master br-fw-ha
 ip link set eth5 up
-ip link set eth9 up
-ip addr add 192.168.1.253/24 dev br-fw-ha
+ip addr replace 192.168.1.253/24 dev br-fw-ha
 ip route replace 10.200.0.0/30 via 192.168.1.252 dev br-fw-ha
 ip route replace 192.168.110.0/24 via 192.168.1.252 dev br-fw-ha
 
@@ -116,6 +120,8 @@ apply_border_qos() {
 if ip link show eth3 >/dev/null 2>&1; then
   apply_border_qos eth3 180
 fi
+iptables -t nat -C POSTROUTING -s 192.168.110.0/24 -o eth3 -j MASQUERADE 2>/dev/null \
+  || iptables -t nat -A POSTROUTING -s 192.168.110.0/24 -o eth3 -j MASQUERADE
 
 # Policy routing for packets returning from the firewall transit segment.
 ip rule add iif br-fw-ha to 192.168.10.0/24 lookup 30 prio 10000 || true
@@ -246,6 +252,7 @@ start_l3vni_rmac_seed_loop() {
   (
     sleep 8
     while true; do
+      seed_l2vni_macs 10199 1 vxlan10199 br-fw-ha
       seed_l2vni_macs 10090 90 vxlan10090 vlan90
       seed_l2vni_macs 10100 100 vxlan10100 vlan100
       seed_l3vni_rmacs 50020 4020 vxlan50020 vlan4020
@@ -261,7 +268,7 @@ start_l3vni_rmac_seed_loop
 # === END PHASE 1 — Phase 2 appends below ===
 
 # Ring 4: OOB management for bastion-only SSH
-OOB_IF="eth10"
+OOB_IF="eth0"
 ip addr replace 172.16.0.22/24 dev "$OOB_IF"
 ip link set "$OOB_IF" up
 

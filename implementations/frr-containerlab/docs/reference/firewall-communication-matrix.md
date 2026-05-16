@@ -22,8 +22,11 @@ topology context.
 - `cluster_5_storage`: `192.168.80.0/24`
 - `cluster_4_orientation`: `192.168.90.0/24`
 - `cluster_public_dmz`: `198.51.100.0/24`
+- `internet_public_web`: `198.18.0.0/15`
 - `cluster_lms_staff`: `192.168.30.0/24`
+- `core_infra_dns`: `192.168.50.30`
 - `core_infra_syslog`: `192.168.50.70`
+- `vpn_gateway`: `198.51.100.20`
 - `moodle_frontend`: `198.51.100.30`
 - `moodle_db_storage`: `192.168.80.31`
 
@@ -46,6 +49,14 @@ topology context.
   - TCP: `514`
 - Pedagogy and campus access to shared DHCP
   - UDP: `67, 68`
+- Campus access to simulated Internet web
+  - Destination: `198.18.0.0/15`
+  - TCP: `80, 443`
+- VPN gateway to datacenter DNS, Moodle, student/HPC SSH, and Jupyter
+  - DNS: TCP/UDP `53` to `192.168.50.30`
+  - Moodle: TCP `80, 443, 8443` to `198.51.100.30`
+  - SSH: TCP `22` to student/HPC targets
+  - Jupyter: TCP `8080` to `192.168.70.30`
 - DMZ to centralized syslog
   - TCP: `514` only, for one-way log export
 - Moodle frontend to Moodle database
@@ -71,6 +82,8 @@ topology context.
 ## HA / VIP Behavior
 
 - VRRP VIP: `192.168.1.254/24` on `eth1`.
+- The transit segment is carried by EVPN/VXLAN VNI `10199`; there is no
+  physical `leaf-01` to `leaf-02` firewall-transit link.
 - `firewall-01` is configured as preferred MASTER (priority 101).
 - `firewall-02` is configured as BACKUP (priority 100).
 - Health script checks:

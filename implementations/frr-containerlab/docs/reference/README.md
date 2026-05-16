@@ -4,6 +4,7 @@ These pages are stable references, not day-to-day runbooks.
 
 | Document | Use it for |
 | --- | --- |
+| [IP addresses and DNS](./ip-addresses-and-dns.md) | Stable fabric, service, public, VPN, campus, and OOB address mapping. |
 | [Credentials](./credentials.md) | Demo accounts, RADIUS/TACACS secrets, Moodle and Grafana logins. |
 | [Firewall communication matrix](./firewall-communication-matrix.md) | Allowed and denied traffic between security zones. |
 | [Prebuilt node images](./prebuilt-node-images.md) | Local image names and why each image exists. |

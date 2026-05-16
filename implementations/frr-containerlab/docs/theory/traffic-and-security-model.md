@@ -34,9 +34,9 @@ This page explains how traffic is supposed to move so the practical runbooks mak
 
 | Ring | Main mechanism | What that means in this lab |
 | --- | --- | --- |
-| Ring 1 | `firewall-01` and `firewall-02` with `keepalived` and `nftables` | one shared VIP, explicit allow rules, default deny, counter-based validation |
+| Ring 1 | `firewall-01` and `firewall-02` with `keepalived`, `nftables`, and firewall transit VNI `10199` | one shared VIP without a physical leaf-to-leaf shortcut, explicit allow rules, default deny, counter-based validation |
 | Ring 3 | `iptables` on spines and leaves | BGP, BFD, VXLAN, and SSH accept only expected sources |
-| Ring 4 | `bastion-01` over `oob-sw` | SSH is expected to succeed from bastion to OOB IPs only |
+| Ring 4 | `bastion-01` over containerlab management `eth0` secondary OOB addresses | SSH is expected to succeed from bastion to OOB IPs only |
 | Ring 5 | host `nftables` | per-node input policy blocks lateral movement even inside reachable segments |
 | Ring 6 | `rsyslog` to `syslog-server` | reachable nodes forward logs over TCP/514 |
 

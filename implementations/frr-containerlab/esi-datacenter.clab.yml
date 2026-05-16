@@ -200,6 +200,7 @@ topology:
         - ip addr add 198.18.1.10/24 dev eth1
         - ip route del default
         - ip route add default via 198.18.1.1 dev eth1
+        - sh -lc "echo nameserver 198.18.3.10 > /etc/resolv.conf"
 
     internet-client-02:
       kind: linux
@@ -208,6 +209,7 @@ topology:
         - ip addr add 198.18.2.10/24 dev eth1
         - ip route del default
         - ip route add default via 198.18.2.1 dev eth1
+        - sh -lc "echo nameserver 198.18.3.10 > /etc/resolv.conf"
 
     internet-web-01:
       kind: linux
@@ -215,10 +217,12 @@ topology:
       cmd: sleep infinity
       binds:
         - ./configs/internet-web-01/www:/www:ro
+        - configs/internet-web-01/dns-forwarder.py:/usr/local/bin/esi-google-dns.py:ro
       exec:
         - sh -c "ip addr add 198.18.3.10/24 dev eth1 && ip link set eth1 up &&
           nohup python3 -m http.server 80 --bind 198.18.3.10 --directory /www
           >/tmp/http-server.log 2>&1 &"
+        - sh -c "nohup python3 /usr/local/bin/esi-google-dns.py >/tmp/dns-forwarder.log 2>&1 &"
         - ip route del default
         - ip route add default via 198.18.3.1 dev eth1
 
@@ -232,6 +236,9 @@ topology:
       binds:
         - configs/vpn-gateway/startup.sh:/startup.sh
         - configs/vpn-gateway/esi-vpn-enroll.py:/usr/local/bin/esi-vpn-enroll.py:ro
+        - configs/vpn-gateway/state/wireguard:/etc/wireguard
+        - configs/vpn-gateway/state/esi-vpn:/etc/esi-vpn
+        - configs/vpn-gateway/state/leases:/var/lib/esi-vpn
         - ../../.codex/logo_esi.png:/opt/esi/logo_esi.png:ro
       exec:
         - sh /startup.sh
@@ -669,14 +676,6 @@ topology:
       exec:
         - sh /startup.sh
 
-    oob-sw:
-      kind: linux
-      image: alpine:3.20
-      binds:
-        - configs/oob-sw/startup.sh:/startup.sh
-      exec:
-        - sh /startup.sh
-
     auth-server:
       kind: linux
       image: esi/auth-server:3.20
@@ -721,11 +720,8 @@ topology:
     - endpoints: [ "internet-client-02:eth1", "internet-router-02:eth1" ]
     - endpoints: [ "internet-router-01:eth3", "internet-web-01:eth1" ]
     - endpoints: [ "internet-router-01:eth4", "vpn-client-01:eth1" ]
-    - endpoints: [ "isp-router-01:eth3", "campus-bp:eth1" ]
-
     - endpoints: [ "leaf-01:eth5", "firewall-01:eth1" ]
     - endpoints: [ "leaf-02:eth5", "firewall-02:eth1" ]
-    - endpoints: [ "leaf-01:eth9", "leaf-02:eth9" ]
 
     - endpoints: [ "leaf-09:eth3", "server-student-01:eth1" ]
     - endpoints: [ "leaf-09:eth4", "server-student-02:eth1" ]
@@ -755,21 +751,7 @@ topology:
     - endpoints: [ "campus-bp:eth5", "student-01:eth1" ]
     - endpoints: [ "campus-bp:eth6", "admin-01:eth1" ]
     - endpoints: [ "firewall-01:eth3", "firewall-02:eth3" ]
-    - endpoints: [ "bastion-01:eth1", "oob-sw:eth1" ]
     - endpoints: [ "prometheus:eth1", "fabric-telemetry:eth1" ]
-    - endpoints: [ "oob-sw:eth2", "spine-01:eth11" ]
-    - endpoints: [ "oob-sw:eth3", "spine-02:eth11" ]
-    - endpoints: [ "oob-sw:eth4", "leaf-01:eth10" ]
-    - endpoints: [ "oob-sw:eth5", "leaf-02:eth10" ]
-    - endpoints: [ "oob-sw:eth6", "leaf-03:eth10" ]
-    - endpoints: [ "oob-sw:eth7", "leaf-04:eth10" ]
-    - endpoints: [ "oob-sw:eth8", "leaf-05:eth10" ]
-    - endpoints: [ "oob-sw:eth9", "leaf-06:eth10" ]
-    - endpoints: [ "oob-sw:eth10", "leaf-07:eth10" ]
-    - endpoints: [ "oob-sw:eth11", "leaf-08:eth10" ]
-    - endpoints: [ "oob-sw:eth12", "leaf-09:eth10" ]
-    - endpoints: [ "oob-sw:eth13", "leaf-10:eth10" ]
-    - endpoints: [ "oob-sw:eth16", "ids-01:eth3" ]
 
     - endpoints: [ "leaf-03:eth9", "ntp-server:eth1" ] # changing eth6 to eth9 to avoid conflict with server-admin-02
     - endpoints: [ "leaf-04:eth9", "ntp-server:eth3" ] # ring1 multihoming for ntp-server data-plane
@@ -777,6 +759,6 @@ topology:
     - endpoints: [ "leaf-04:eth7", "dns-server:eth2" ] # ring1 multihoming for dns-server data-plane
     - endpoints: [ "leaf-03:eth8", "dhcp-server:eth1" ]
     - endpoints: [ "leaf-04:eth8", "dhcp-server:eth2" ] # ring1 multihoming for dhcp-server data-plane
-    - endpoints: [ "leaf-03:eth11", "zabbix-server:eth1" ] # changing eth10 to eth11 to avoid conflict with oob-sw
+    - endpoints: [ "leaf-03:eth11", "zabbix-server:eth1" ] # avoids the former management-link port
     - endpoints: [ "leaf-03:eth12", "auth-server:eth1" ]
     - endpoints: [ "leaf-04:eth11", "auth-server:eth2" ]

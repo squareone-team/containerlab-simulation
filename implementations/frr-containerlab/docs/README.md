@@ -12,7 +12,7 @@ The docs are now split by purpose instead of shortcut files. Start with the shor
 | `practical/security/` | Firewall, identity, NAC, VPN, IDS | [Identity and access](./practical/security/identity-and-access.md) |
 | `practical/services/` | DNS, DHCP, NTP, Moodle, observability | [Moodle LMS](./practical/services/moodle-lms.md) |
 | `practical/operations/` | QoS and recovery exercises | [Resilience and recovery](./practical/operations/resilience-and-recovery.md) |
-| `reference/` | Stable matrices, credentials, image notes | [Credentials](./reference/credentials.md) |
+| `reference/` | Stable matrices, credentials, image notes | [IP addresses and DNS](./reference/ip-addresses-and-dns.md) |
 
 ## Daily Flow
 
@@ -27,7 +27,7 @@ The docs are now split by purpose instead of shortcut files. Start with the shor
 | --- | --- | --- |
 | NAC portal | `https://192.168.110.1:8443/` | ESI-styled captive portal, HTTP redirects to HTTPS. |
 | VPN platform | `https://198.51.100.20:8448/` | ESI-branded WireGuard enrollment with implicit lab key generation and browser-client tunnel install. |
-| Internet demo | `http://www.google.com/` | DNS points to the simulated Internet webserver at `198.18.3.10`. |
+| Internet demo | `http://www.google.com/` | Internal DNS and the external mini forwarder point to the simulated Internet webserver at `198.18.3.10`. |
 | Moodle LMS | `http://moodle.esi.dz/` | Real Moodle container at `198.51.100.30`. |
 | JupyterHub | `https://hpc-jupyter.esi.internal:8080/hub/login` | Internal service after NAC/VPN role admission. |
 

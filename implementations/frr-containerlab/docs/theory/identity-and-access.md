@@ -75,7 +75,7 @@ A WireGuard-based VPN gateway lives in the DMZ (`vpn-gateway` at `198.51.100.20`
 3. Only student/professor identities returning `vpn-student` are accepted.
 4. The gateway adds the peer to `wg0`; if the request came from `vpn-client-01`, it asks that same container's lab helper to bring up the client-side `wg0`.
 5. The gateway NATs traffic toward the firewall.
-6. Firewall rules allow the gateway to reach student/HPC SSH and the Jupyter frontend only.
+6. Firewall and DNS rules allow the gateway to use datacenter DNS, resolve service names, reach student/HPC SSH, reach Moodle, and reach the Jupyter frontend.
 
 Admins are intentionally rejected at the VPN enrollment step. `/logout` removes the WireGuard peer and lease state, and disconnects the browser client tunnel when it was installed by the helper, so repeated browser tests start from a clean remote-access state.
 
@@ -83,7 +83,7 @@ The VPN source seen by the firewall and workloads is the gateway DMZ address (`1
 
 | Remote identity | RADIUS role | VPN enrollment | Internal reachability |
 | --- | --- | --- | --- |
-| `amine.kadri@esi.dz` | `vpn-student` | accepted | SSH to student/HPC targets and HTTPS to Jupyter |
+| `amine.kadri@esi.dz` | `vpn-student` | accepted | DNS to datacenter resolver, Moodle by name, SSH to student/HPC targets, and HTTPS to Jupyter by name |
 | `nora.benali@esi.dz` | `vpn-student` | accepted | Same VPN privilege as a student |
 | `tati.youcef@esi.dz` | `vpn-student` | accepted | Same VPN privilege as a student |
 | `hamani.nacer@esi.dz` | `vpn-student` | accepted | Same VPN privilege as a student |

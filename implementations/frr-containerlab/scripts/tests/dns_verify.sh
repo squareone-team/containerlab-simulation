@@ -162,6 +162,10 @@ chk "access-control-view maps 198.51.100.0/24 to dmz" \
     "$C-dns-server grep 'access-control-view' /etc/unbound/unbound.conf" \
     "198.51.100.0.*dmz"
 
+chk "access-control-view maps VPN gateway NAT source to internal DNS view" \
+    "$C-dns-server grep 'access-control-view' /etc/unbound/unbound.conf" \
+    "198.51.100.20.*internal"
+
 # ---------------------------------------------------------------------------
 # 6. Ring 5 nftables
 # ---------------------------------------------------------------------------
@@ -179,6 +183,10 @@ chk "Ring 5: SSH only from bastion (172.16.0.50)" \
 chk "Ring 5: DNS port 53 in nftables accept rules" \
     "$C-dns-server nft list ruleset" \
     "dport 53"
+
+chk "Ring 5: DNS allows VPN gateway NAT source" \
+    "$C-dns-server nft list ruleset" \
+    "198.51.100.20"
 
 # ---------------------------------------------------------------------------
 # 7. rsyslog TCP/514 (Change 8)

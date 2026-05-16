@@ -1,9 +1,10 @@
 #!/bin/sh
 set -eu
 
-OOB_IF="eth1"
+OOB_IF="eth0"
 
-# Keep Docker management on eth0; assign OOB address on dedicated interface.
+# Keep OOB on the containerlab management interface so it is not rendered as
+# extra topology links.
 ip addr replace 172.16.0.50/24 dev "$OOB_IF"
 ip link set "$OOB_IF" up
 

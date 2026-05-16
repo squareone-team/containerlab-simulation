@@ -25,7 +25,7 @@ VPN_ENROLL_PORT="8448"
 VPN_URL="https://198.51.100.20:8448/"
 VPN_LOGOUT_URL="https://198.51.100.20:8448/logout"
 VPN_HEALTH_URL="https://198.51.100.20:8448/health"
-WG_ALLOWED="192.168.10.10/32,192.168.70.10/32,192.168.70.30/32"
+WG_ALLOWED="192.168.50.30/32,192.168.10.10/32,192.168.70.10/32,192.168.70.30/32,198.51.100.30/32"
 
 failures=0
 
@@ -118,9 +118,39 @@ wait_for_vpn_health() {
   return 1
 }
 
+expect_vpn_health_fast() {
+  local label="$1"
+  local result elapsed
+  result="$(run_in "$VPN_CLIENT" "curl -ks -o /dev/null -w '%{time_total}' ${VPN_HEALTH_URL}" 2>/dev/null || true)"
+  elapsed="$(python3 - <<'PY' "$result"
+import sys
+try:
+    value = float(sys.argv[1])
+except Exception:
+    value = 99.0
+print("ok" if value < 1.5 else "slow")
+PY
+)"
+  if [ "$elapsed" = "ok" ]; then
+    ok "$label"
+  else
+    fail "$label"
+    echo "  health response time: ${result:-unavailable}s"
+  fi
+}
+
 expect_tcp() {
   local node="$1" ip="$2" port="$3" label="$4"
   if run_in "$node" "timeout 5 nc -z -w2 ${ip} ${port}" >/dev/null 2>&1; then
+    ok "$label"
+  else
+    fail "$label"
+  fi
+}
+
+expect_dns() {
+  local node="$1" name="$2" server="$3" pattern="$4" label="$5"
+  if run_in "$node" "timeout 8 nslookup ${name} ${server}" 2>/dev/null | grep -Eq "$pattern"; then
     ok "$label"
   else
     fail "$label"
@@ -334,11 +364,16 @@ expect_tcp_blocked "$ADMIN_BROWSER" "192.168.50.10" 22 "admin browser is blocked
 
 expect_tcp "$VPN_BROWSER" "$VPN_ENROLL_HOST" "$VPN_ENROLL_PORT" "VPN browser can reach HTTPS enrollment portal"
 wait_for_vpn_health "VPN enrollment portal health is OK before browser enrollment"
+expect_vpn_health_fast "VPN enrollment portal health responds quickly before browser enrollment"
 if setup_vpn_tunnel_from_browser; then
   wait_for_vpn_health "VPN enrollment portal remains healthy after browser enrollment"
+  expect_vpn_health_fast "VPN enrollment portal remains quick after browser enrollment"
   sleep 5
   wait_for_vpn_health "VPN enrollment portal remains healthy after idle browser session"
-  expect_browser_page "$VPN_BROWSER" "$JUPYTER_IP_URL" "JupyterHub|jupyterhub" "VPN browser can load JupyterHub after browser WireGuard enrollment"
+  expect_dns "$VPN_BROWSER" "hpc-jupyter.esi.internal" "192.168.50.30" "Address.*192\\.168\\.70\\.30" "VPN browser resolves Jupyter through datacenter DNS"
+  expect_dns "$VPN_BROWSER" "moodle.esi.dz" "192.168.50.30" "Address.*198\\.51\\.100\\.30" "VPN browser resolves Moodle through datacenter DNS"
+  expect_browser_page "$VPN_BROWSER" "$JUPYTER_URL" "JupyterHub|jupyterhub" "VPN browser can load JupyterHub by DNS name after WireGuard enrollment"
+  expect_browser_page "$VPN_BROWSER" "$MOODLE_URL" "Moodle|TP - NAC" "VPN browser can load Moodle by DNS name after WireGuard enrollment"
   vpn_logout "$VPN_BROWSER_PUBLIC_KEY" "VPN browser logout removed WireGuard lease"
   run_in "$VPN_CLIENT" "ip link del wg0 2>/dev/null || true" >/dev/null 2>&1 || true
   expect_tcp_blocked "$VPN_BROWSER" "192.168.70.30" 8080 "VPN browser is blocked after VPN logout and tunnel removal"

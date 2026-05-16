@@ -17,7 +17,7 @@ INTERNET_ROUTERS=(
 
 VPN_ENDPOINT="https://198.51.100.20:8448/enroll"
 VPN_HEALTH_URL="https://198.51.100.20:8448/health"
-WG_ALLOWED="192.168.10.10/32,192.168.70.10/32,192.168.70.30/32"
+WG_ALLOWED="192.168.50.30/32,192.168.10.10/32,192.168.70.10/32,192.168.70.30/32,198.51.100.30/32"
 
 failures=0
 
@@ -54,12 +54,39 @@ expect_tcp() {
   fi
 }
 
+expect_tcp_wait() {
+  local node="$1" ip="$2" port="$3" label="$4"
+  local retries="${5:-120}"
+  local delay="${6:-5}"
+  local attempt=1
+
+  while [ "$attempt" -le "$retries" ]; do
+    if run_in "$node" "timeout 6 nc -z -w3 ${ip} ${port}" >/dev/null 2>&1; then
+      ok "$label"
+      return 0
+    fi
+    sleep "$delay"
+    attempt=$((attempt + 1))
+  done
+
+  fail "$label"
+}
+
 expect_tcp_blocked() {
   local node="$1" ip="$2" port="$3" label="$4"
   if run_in "$node" "timeout 6 nc -z -w3 ${ip} ${port}" >/dev/null 2>&1; then
     fail "$label"
   else
     ok "$label"
+  fi
+}
+
+expect_dns() {
+  local node="$1" name="$2" server="$3" pattern="$4" label="$5"
+  if run_in "$node" "timeout 8 nslookup ${name} ${server}" 2>/dev/null | grep -Eq "$pattern"; then
+    ok "$label"
+  else
+    fail "$label"
   fi
 }
 
@@ -134,6 +161,8 @@ if [ -n "$VPN_ADDR" ] && [ -n "$SERVER_PUB" ]; then
   run_in "$VPN_CLIENT" "ip route replace 192.168.10.10/32 dev wg0"
   run_in "$VPN_CLIENT" "ip route replace 192.168.70.10/32 dev wg0"
   run_in "$VPN_CLIENT" "ip route replace 192.168.70.30/32 dev wg0"
+  run_in "$VPN_CLIENT" "ip route replace 192.168.50.30/32 dev wg0"
+  run_in "$VPN_CLIENT" "ip route replace 198.51.100.30/32 dev wg0"
   run_in "$VPN_CLIENT" "ip route replace 192.168.50.10/32 dev wg0"
 else
   fail "missing VPN address or server key from enrollment"
@@ -142,6 +171,9 @@ fi
 expect_tcp "$VPN_CLIENT" "192.168.10.10" "22" "VPN client can reach student SSH"
 expect_tcp "$VPN_CLIENT" "192.168.70.10" "22" "VPN client can reach HPC SSH"
 expect_tcp "$VPN_CLIENT" "192.168.70.30" "8080" "VPN client can reach Jupyter frontend"
+expect_dns "$VPN_CLIENT" "hpc-jupyter.esi.internal" "192.168.50.30" "Address.*192\\.168\\.70\\.30" "VPN client resolves Jupyter through datacenter DNS"
+expect_dns "$VPN_CLIENT" "moodle.esi.dz" "192.168.50.30" "Address.*198\\.51\\.100\\.30" "VPN client resolves Moodle through datacenter DNS"
+expect_tcp_wait "$VPN_CLIENT" "198.51.100.30" "80" "VPN client can reach Moodle frontend" "${VPN_MOODLE_RETRIES:-120}" "${VPN_MOODLE_DELAY:-5}"
 expect_tcp_blocked "$VPN_CLIENT" "192.168.50.10" "22" "VPN client cannot reach admin SSH"
 
 RESP_ADMIN=$(run_in "$VPN_CLIENT" "PUB=\$(cat /tmp/vpn-client.pub); curl -ks -X POST -H 'Content-Type: application/json' -d '{\"username\":\"squareone.admin@esi.dz\",\"password\":\"SquareOneRoot#2026\",\"public_key\":\"'\"\${PUB}\"'\"}' ${VPN_ENDPOINT}")
@@ -180,13 +212,15 @@ else
   fail "student VPN implicit key enrollment incomplete: ${RESP_IMPLICIT}"
 fi
 
-if [ "$IMPLICIT_INSTALLED" = "true" ] && run_in "$VPN_CLIENT" "ip link show wg0 >/dev/null 2>&1 && ip route get 192.168.70.30 2>/dev/null | grep -q wg0"; then
+if [ "$IMPLICIT_INSTALLED" = "true" ] && run_in "$VPN_CLIENT" "ip link show wg0 >/dev/null 2>&1 && ip route get 192.168.70.30 2>/dev/null | grep -q wg0 && grep -q '192.168.50.30' /etc/resolv.conf"; then
   ok "student VPN implicit browser-style enrollment auto-installs client tunnel"
 else
   fail "student VPN implicit browser-style enrollment did not install client tunnel: ${RESP_IMPLICIT}"
 fi
 
 expect_tcp "$VPN_CLIENT" "192.168.70.30" "8080" "VPN client can reach Jupyter after implicit browser-style enrollment"
+expect_dns "$VPN_CLIENT" "hpc-jupyter.esi.internal" "192.168.50.30" "Address.*192\\.168\\.70\\.30" "VPN implicit tunnel uses datacenter DNS for Jupyter name"
+expect_dns "$VPN_CLIENT" "moodle.esi.dz" "192.168.50.30" "Address.*198\\.51\\.100\\.30" "VPN implicit tunnel uses datacenter DNS for Moodle name"
 
 RESP_IMPLICIT_LOGOUT=$(run_in "$VPN_CLIENT" "curl -ks -X POST -H 'Content-Type: application/json' -d '{\"public_key\":\"${IMPLICIT_PUB}\"}' https://198.51.100.20:8448/logout" 2>/dev/null || true)
 if echo "$RESP_IMPLICIT_LOGOUT" | grep -q '"ok": true'; then

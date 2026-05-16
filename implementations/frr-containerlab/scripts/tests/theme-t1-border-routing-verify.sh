@@ -38,6 +38,23 @@ retry_match() {
   return 1
 }
 
+retry_match_for() {
+  local cmd="$1"
+  local regex="$2"
+  local tries="$3"
+  local delay="$4"
+  local i=1
+  while [ "$i" -le "$tries" ]; do
+    LAST_OUT=$(eval "$cmd" 2>/dev/null)
+    if echo "$LAST_OUT" | grep -Eq "$regex"; then
+      return 0
+    fi
+    sleep "$delay"
+    i=$((i + 1))
+  done
+  return 1
+}
+
 test_banner() {
   echo
   echo "[TEST] $1"
@@ -51,6 +68,25 @@ cmd_match() {
   info "command: $cmd"
   info "expect : /$regex/"
   if retry_match "$cmd" "$regex"; then
+    ok "$title"
+  else
+    fail "$title"
+    echo "  [DEBUG] output:"
+    echo "$LAST_OUT" | sed 's/^/    /'
+  fi
+}
+
+cmd_match_wait() {
+  local title="$1"
+  local cmd="$2"
+  local regex="$3"
+  local tries="$4"
+  local delay="$5"
+  test_banner "$title"
+  info "command: $cmd"
+  info "expect : /$regex/"
+  info "wait   : up to $((tries * delay))s"
+  if retry_match_for "$cmd" "$regex" "$tries" "$delay"; then
     ok "$title"
   else
     fail "$title"
@@ -220,6 +256,18 @@ for node in campus-bp guest-01 internet-router-01 internet-web-01 internet-clien
   check_container "$node"
 done
 
+cmd_no_match "topology has no campus-bp to ISP shortcut link" \
+  "grep -n 'campus-bp:eth1\\|isp-router-01:eth3' ${LAB_ROOT}/esi-datacenter.clab.yml" \
+  "campus-bp:eth1|isp-router-01:eth3"
+
+cmd_no_match "topology has no direct leaf-01 to leaf-02 firewall transit link" \
+  "grep -n 'leaf-01:eth9.*leaf-02:eth9\\|leaf-02:eth9.*leaf-01:eth9' ${LAB_ROOT}/esi-datacenter.clab.yml" \
+  "leaf-0[12]:eth9"
+
+cmd_no_match "topology hides OOB switch fan-out links" \
+  "grep -n 'oob-sw' ${LAB_ROOT}/esi-datacenter.clab.yml" \
+  "oob-sw"
+
 # ---------------------------------------------------------------------------
 # 1) External eBGP sessions (active links + third ISP reachability)
 # ---------------------------------------------------------------------------
@@ -374,6 +422,14 @@ cmd_match "authenticated campus student can reach internet-web-01" \
   "$C-student-01 wget -qO- -T 5 http://198.18.3.10/" \
   "Google Search"
 
+cmd_match "internet-client-01 resolves www.google.com with external DNS forwarder" \
+  "$C-internet-client-01 nslookup www.google.com" \
+  "Address.*198\\.18\\.3\\.10"
+
+cmd_match "internet-client-01 browses www.google.com without NAC" \
+  "$C-internet-client-01 wget -qO- -T 5 http://www.google.com/" \
+  "Google Search"
+
 echo
 cmd_match "authenticated campus student resolves moodle.esi.dz via dns-server" \
   "$C-student-01 nslookup moodle.esi.dz 192.168.50.30" \
@@ -383,9 +439,11 @@ cmd_match "authenticated campus student resolves www.google.com via dns-server" 
   "$C-student-01 nslookup www.google.com 192.168.50.30" \
   "Address: 198\\.18\\.3\\.10|Address.*198\\.18\\.3\\.10"
 
-cmd_match "authenticated campus student HTTP GET moodle.esi.dz reaches Moodle" \
-  "$C-student-01 wget -qO- -T 8 http://moodle.esi.dz/" \
-  "Moodle|TP - NAC"
+cmd_match_wait "authenticated campus student HTTP GET moodle.esi.dz reaches Moodle" \
+  "$C-student-01 wget -qO- -T 20 http://moodle.esi.dz/" \
+  "Moodle|TP - NAC" \
+  "${T1_MOODLE_RETRIES:-120}" \
+  "${T1_MOODLE_DELAY:-5}"
 
 test_banner "unauthenticated campus client cannot reach internet-web-01"
 info "command: $C-guest-01 timeout 4 nc -z -w2 198.18.3.10 80"
