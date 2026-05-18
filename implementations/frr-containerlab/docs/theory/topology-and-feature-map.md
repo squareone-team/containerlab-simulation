@@ -13,8 +13,8 @@ This page is the shortest high-level map of what exists in `frr-containerlab` an
 | Storage pod | `leaf-07`, `leaf-08`, `server-storage-01`, `moodle-db` | Shared storage services and storage-backed Moodle database |
 | Student pod | `leaf-09`, `leaf-10`, `server-student-*` | Pedagogy VRF workloads, DHCP relay, dual-homing |
 | Security and management | `firewall-01`, `firewall-02`, `bastion-01`, `syslog-server` | Ring 1 HA firewall, Ring 4 OOB SSH over containerlab management, Ring 6 central logging |
-| Identity and access | `auth-server`, `campus-bp`, `vpn-gateway` | LDAP directory, TACACS+/RADIUS services, campus NAC edge, and remote access VPN |
-| Campus edge | `campus-bp`, `student-01`, `admin-01`, `guest-01`, `vpn-client-01`, `wifi-controller` | Campus test subnet, NAC role separation, fabric-attached browser clients, WiFi management micro-VRF |
+| Identity and access | `auth-server`, `distribution-switch`, `vpn-gateway` | LDAP directory, TACACS+/RADIUS services, campus NAC edge, and remote access VPN |
+| Campus edge | `distribution-switch`, `student-01`, `admin-01`, `guest-01`, `vpn-client-01`, `wifi-controller` | Campus test subnet, NAC role separation, fabric-attached browser clients, WiFi management micro-VRF |
 | Observability | `fabric-telemetry`, `prometheus`, `grafana`, `zabbix-server` | Metrics, alerts, dashboards, SNMP polling |
 
 ## VRFs And Main Segments
@@ -44,7 +44,7 @@ This page is the shortest high-level map of what exists in `frr-containerlab` an
 | Ring 4 bastion SSH | `bastion-01`, OOB addresses on `eth0`, SSH hardening in nodes | bastion can SSH to `172.16.0.x`; non-bastion should not |
 | Ring 5 host micro-segmentation | host startup scripts using `nftables` | workloads accept only the service ports they own |
 | Ring 6 central logging | `syslog-server`, rsyslog config on nodes | `logger` from a reachable node appears on syslog server |
-| Identity and access | `auth-server`, `campus-bp`, `vpn-gateway`, TACACS+/RADIUS scripts | `tail /var/log/esi-tacacs.log` on auth-server and `nft list set inet campus_nac campus_students` on campus-bp |
+| Identity and access | `auth-server`, `distribution-switch`, `vpn-gateway`, TACACS+/RADIUS scripts | `tail /var/log/esi-tacacs.log` on auth-server and `nft list set inet campus_nac campus_students` on distribution-switch |
 | Moodle LMS | `moodle`, `moodle-db`, DNS `moodle.esi.dz` | `wget -qO- http://moodle.esi.dz/` from an authenticated campus client |
 | SNMP and Zabbix | node `snmpd` + FRR `agentx`, `zabbix-server` | `snmpget` from `zabbix-server` to `10.1.0.x` |
 | Prometheus/Grafana/fabric telemetry | `configs/prometheus`, `configs/grafana`, telemetry scraper script | `curl http://localhost:9090/api/v1/targets` |

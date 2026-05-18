@@ -152,23 +152,13 @@ topology:
       exec:
         - sh /startup.sh
 
-    isp-router-02:
+    border-router-01:
       kind: linux
       image: frrouting/frr:latest
       binds:
-        - configs/isp-router-02/daemons:/etc/frr/daemons
-        - configs/isp-router-02/frr.conf:/etc/frr/frr.conf
-        - configs/isp-router-02/startup.sh:/startup.sh
-      exec:
-        - sh /startup.sh
-
-    isp-router-03:
-      kind: linux
-      image: frrouting/frr:latest
-      binds:
-        - configs/isp-router-03/daemons:/etc/frr/daemons
-        - configs/isp-router-03/frr.conf:/etc/frr/frr.conf
-        - configs/isp-router-03/startup.sh:/startup.sh
+        - configs/border-router-01/daemons:/etc/frr/daemons
+        - configs/border-router-01/frr.conf:/etc/frr/frr.conf
+        - configs/border-router-01/startup.sh:/startup.sh
       exec:
         - sh /startup.sh
 
@@ -239,7 +229,6 @@ topology:
         - configs/vpn-gateway/state/wireguard:/etc/wireguard
         - configs/vpn-gateway/state/esi-vpn:/etc/esi-vpn
         - configs/vpn-gateway/state/leases:/var/lib/esi-vpn
-        - ../../.codex/logo_esi.png:/opt/esi/logo_esi.png:ro
       exec:
         - sh /startup.sh
 
@@ -515,16 +504,6 @@ topology:
         - configs/shared:/shared
       exec:
         - sh /startup.sh
-    ids-01:
-      kind: linux
-      image: esi/alpine-firewall:3.20
-      binds:
-        - configs/ids-01/startup.sh:/startup.sh
-      exec:
-        - sh /startup.sh
-      cap-add:
-        - NET_ADMIN
-        - NET_RAW
     ntp-server:
       kind: linux
       image: esi/alpine-host:3.20
@@ -615,14 +594,13 @@ topology:
         - ip addr add 192.168.10.100/24 dev eth1
         - ip route del default
         - ip route add default via 192.168.10.1 dev eth1
-    campus-bp:
+    distribution-switch:
       kind: linux
       image: esi/alpine-host:3.20
       binds:
-        - configs/campus-bp/startup.sh:/startup.sh
-        - configs/campus-bp/nftables.conf:/etc/nftables.conf:ro
-        - configs/campus-bp/esi-nac-server.py:/usr/local/bin/esi-nac-server.py:ro
-        - ../../.codex/logo_esi.png:/opt/esi/logo_esi.png:ro
+        - configs/distribution-switch/startup.sh:/startup.sh
+        - configs/distribution-switch/nftables.conf:/etc/nftables.conf:ro
+        - configs/distribution-switch/esi-nac-server.py:/usr/local/bin/esi-nac-server.py:ro
       exec:
         - sh /startup.sh
 
@@ -708,10 +686,9 @@ topology:
     - endpoints: [ "spine-02:eth9", "leaf-09:eth2" ]
     - endpoints: [ "spine-02:eth10", "leaf-10:eth2" ]
 
-    - endpoints: [ "leaf-01:eth3", "ids-01:eth1" ]
-    - endpoints: [ "ids-01:eth2", "isp-router-01:eth1" ]
-    - endpoints: [ "leaf-02:eth3", "isp-router-02:eth1" ]
-    - endpoints: [ "leaf-01:eth4", "isp-router-03:eth1" ]
+    - endpoints: [ "isp-router-01:eth1", "border-router-01:eth1" ]
+    - endpoints: [ "border-router-01:eth2", "firewall-01:eth4" ]
+    - endpoints: [ "border-router-01:eth3", "firewall-02:eth4" ]
     - endpoints: [ "isp-router-01:eth2", "isp-router-04:eth3" ]
 
     - endpoints: [ "internet-router-01:eth2", "isp-router-04:eth1" ]
@@ -721,7 +698,9 @@ topology:
     - endpoints: [ "internet-router-01:eth3", "internet-web-01:eth1" ]
     - endpoints: [ "internet-router-01:eth4", "vpn-client-01:eth1" ]
     - endpoints: [ "leaf-01:eth5", "firewall-01:eth1" ]
-    - endpoints: [ "leaf-02:eth5", "firewall-02:eth1" ]
+    - endpoints: [ "leaf-02:eth15", "firewall-01:eth2" ]
+    - endpoints: [ "leaf-01:eth15", "firewall-02:eth1" ]
+    - endpoints: [ "leaf-02:eth5", "firewall-02:eth2" ]
 
     - endpoints: [ "leaf-09:eth3", "server-student-01:eth1" ]
     - endpoints: [ "leaf-09:eth4", "server-student-02:eth1" ]
@@ -745,11 +724,12 @@ topology:
     - endpoints: [ "leaf-01:eth11", "moodle:eth1" ]
     - endpoints: [ "leaf-01:eth6", "vpn-gateway:eth1" ]
     - endpoints: [ "leaf-04:eth6", "syslog-server:eth1" ]
-    - endpoints: [ "campus-bp:eth3", "leaf-01:eth8" ]
     - endpoints: [ "wifi-controller:eth1", "leaf-01:eth14" ]
-    - endpoints: [ "campus-bp:eth4", "guest-01:eth1" ]
-    - endpoints: [ "campus-bp:eth5", "student-01:eth1" ]
-    - endpoints: [ "campus-bp:eth6", "admin-01:eth1" ]
+    - endpoints: [ "distribution-switch:eth3", "firewall-01:eth5" ]
+    - endpoints: [ "distribution-switch:eth7", "firewall-02:eth5" ]
+    - endpoints: [ "distribution-switch:eth4", "guest-01:eth1" ]
+    - endpoints: [ "distribution-switch:eth5", "student-01:eth1" ]
+    - endpoints: [ "distribution-switch:eth6", "admin-01:eth1" ]
     - endpoints: [ "firewall-01:eth3", "firewall-02:eth3" ]
     - endpoints: [ "prometheus:eth1", "fabric-telemetry:eth1" ]
 

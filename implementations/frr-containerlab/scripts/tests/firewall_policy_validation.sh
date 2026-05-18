@@ -25,9 +25,9 @@ assert_ok() {
 }
 
 get_master_firewall() {
-    if run_in_container "firewall-01" "ip -4 addr show eth1 | grep -q '192.168.1.254/24'"; then
+    if run_in_container "firewall-01" "ip -4 addr show bond0 | grep -q '192.168.1.254/24'"; then
         echo "firewall-01"
-    elif run_in_container "firewall-02" "ip -4 addr show eth1 | grep -q '192.168.1.254/24'"; then
+    elif run_in_container "firewall-02" "ip -4 addr show bond0 | grep -q '192.168.1.254/24'"; then
         echo "firewall-02"
     else
         echo ""
@@ -107,6 +107,12 @@ test_tacacs_auth_policy_present() {
         rule_present "ip saddr @cluster_campus_access ip daddr @core_infra_auth tcp dport { 49, 389, 8080 }"
 }
 
+test_internet_edge_policy_present() {
+    rule_present "ip saddr @internet_public_web ip daddr @cluster_public_dmz tcp dport { 80, 443, 8443, 8448 } ct state new" &&
+        rule_present "ip saddr @internet_public_web ip daddr @vpn_gateway udp dport 51820 ct state new" &&
+        rule_present "ip saddr @cluster_campus_access ip daddr @internet_public_web tcp dport { 80, 443 } ct state new"
+}
+
 test_dmz_isolation_present() {
     rule_present "ip saddr @cluster_public_dmz ip daddr @cluster_1_pedagogy" &&
         rule_present "ip saddr @cluster_public_dmz ip daddr @cluster_2_admin"
@@ -131,6 +137,7 @@ assert_ok "rule Moodle access present with counters" test_moodle_access_present
 assert_ok "rule centralized syslog export present with counters" test_syslog_access_present
 assert_ok "rule shared DHCP access present with counters" test_shared_dhcp_access_present
 assert_ok "strict campus TACACS+/SSH policy present with counters" test_tacacs_auth_policy_present
+assert_ok "internet edge north-south policy present with counters" test_internet_edge_policy_present
 assert_ok "rule DMZ isolation explicit drops present with counters" test_dmz_isolation_present
 assert_ok "no HPC<->Storage firewall rule (hairpinning constraint)" test_no_hpc_to_storage_rule_present
 

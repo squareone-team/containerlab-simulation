@@ -66,9 +66,9 @@ start_nc_listener() {
 }
 
 get_master_fw() {
-  if docker exec "$FW1" sh -lc "ip -4 addr show eth1 | grep -q '192.168.1.254/24'"; then
+  if docker exec "$FW1" sh -lc "ip -4 addr show bond0 | grep -q '192.168.1.254/24'"; then
     echo "$FW1"
-  elif docker exec "$FW2" sh -lc "ip -4 addr show eth1 | grep -q '192.168.1.254/24'"; then
+  elif docker exec "$FW2" sh -lc "ip -4 addr show bond0 | grep -q '192.168.1.254/24'"; then
     echo "$FW2"
   else
     echo ""

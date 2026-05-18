@@ -27,7 +27,7 @@ Good signs:
 
 ## Campus NAC
 
-The NAC gateway is `campus-bp` at `192.168.110.1`. It authenticates ESI mail identities over RADIUS, then inserts the client IP into one of two nftables sets:
+The NAC gateway is `distribution-switch` at `192.168.110.1`. It authenticates ESI mail identities over RADIUS, then inserts the client IP into one of two nftables sets:
 
 | Identity | Password | Expected set |
 | --- | --- | --- |
@@ -40,9 +40,9 @@ The NAC gateway is `campus-bp` at `192.168.110.1`. It authenticates ESI mail ide
 Manual role test:
 
 ```bash
-docker exec clab-esi-datacenter-campus-bp sh -lc 'printf "User-Name = \"amine.kadri@esi.dz\"\nUser-Password = \"AmineLab#2026\"\nNAS-Identifier = \"campus-nac\"\n" | radclient -x 192.168.50.80:1812 auth EsiCampusNacRadius#2026'
-docker exec clab-esi-datacenter-campus-bp nft list set inet campus_nac campus_students
-docker exec clab-esi-datacenter-campus-bp nft list set inet campus_nac campus_admins
+docker exec clab-esi-datacenter-distribution-switch sh -lc 'printf "User-Name = \"amine.kadri@esi.dz\"\nUser-Password = \"AmineLab#2026\"\nNAS-Identifier = \"campus-nac\"\n" | radclient -x 192.168.50.80:1812 auth EsiCampusNacRadius#2026'
+docker exec clab-esi-datacenter-distribution-switch nft list set inet campus_nac campus_students
+docker exec clab-esi-datacenter-distribution-switch nft list set inet campus_nac campus_admins
 ```
 
 or from device terminal :

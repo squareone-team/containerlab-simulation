@@ -80,7 +80,7 @@ section() {
 
 print_snapshot() {
     role="BACKUP"
-    if ip -4 addr show eth1 2>/dev/null | grep -q '192.168.1.254/24'; then
+    if ip -4 addr show bond0 2>/dev/null | grep -q '192.168.1.254/24'; then
         role="MASTER"
     fi
 

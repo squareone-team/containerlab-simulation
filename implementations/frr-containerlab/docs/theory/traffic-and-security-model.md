@@ -44,9 +44,9 @@ This page explains how traffic is supposed to move so the practical runbooks mak
 
 - `auth-server` runs OpenLDAP on loopback only and serves TACACS+ and RADIUS.
 - TACACS+ enforces SSH identity on protected servers via PAM and LDAP-backed authorization rules.
-- `campus-bp` acts as a NAC enforcement point: campus devices authenticate via RADIUS, then their IPs are placed into dynamic role sets.
+- `distribution-switch` acts as a NAC enforcement point: campus devices authenticate via RADIUS, then their IPs are placed into dynamic role sets.
 - `vpn-gateway` accepts only RADIUS-authenticated students, adds them to WireGuard, and NATs to Ring 1 so VRF-PUBLIC stays clean.
-- The firewall still limits campus and VPN traffic to approved destinations; role separation is enforced at `campus-bp`.
+- The firewall still limits campus and VPN traffic to approved destinations; role separation is enforced at `distribution-switch`.
 
 ## Important Isolation Rules
 

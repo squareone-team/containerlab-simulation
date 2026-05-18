@@ -487,21 +487,26 @@ restore_static_routes() {
 }
 
 ensure_node_post_restore_routes() {
-  local node="$1" iface="$2" gw=""
+  local node="$1" iface="$2"
   (( DRY_RUN )) && return 0
 
-  # Ring1 firewalls rely on a static transit route that can disappear when
-  # eth1 is toggled down/up. Re-assert it on restore.
-  [[ "$iface" == "eth1" ]] || return 0
   case "$node" in
-    firewall-01) gw="192.168.1.252" ;;
-    firewall-02) gw="192.168.1.253" ;;
+    border-router-01)
+      if run_in_node "$node" test -x /usr/local/bin/install_border_routes.sh; then
+        if ! run_in_node "$node" /usr/local/bin/install_border_routes.sh; then
+          warn "Could not reapply border edge routes on $node after restoring $iface"
+        fi
+      fi
+      ;;
+    firewall-01|firewall-02)
+      if run_in_node "$node" test -x /usr/local/bin/install_firewall_routes.sh; then
+        if ! run_in_node "$node" /usr/local/bin/install_firewall_routes.sh; then
+          warn "Could not reapply firewall edge routes on $node after restoring $iface"
+        fi
+      fi
+      ;;
     *) return 0 ;;
   esac
-
-  if ! run_in_node "$node" ip -4 route replace 192.168.0.0/16 via "$gw" dev "$iface"; then
-    warn "Could not ensure static transit route on $node via $gw dev $iface"
-  fi
 }
 
 # ── node type detection ──────────────────────────────────────────────────────
@@ -629,7 +634,6 @@ toggle_local_interface() {
       run_in_node "$node" ip link set dev "$iface" "$ip_state"
       if [[ "$state" == "up" ]]; then
         restore_static_routes "$node" "$iface"
-        ensure_node_post_restore_routes "$node" "$iface"
       fi
     fi
   else
@@ -637,7 +641,6 @@ toggle_local_interface() {
     run_in_node "$node" ip link set dev "$iface" "$ip_state"
     if [[ "$state" == "up" ]]; then
       restore_static_routes "$node" "$iface"
-      ensure_node_post_restore_routes "$node" "$iface"
     fi
   fi
 
@@ -882,6 +885,7 @@ echo
 if (( RESTORE )); then
   (( DRY_RUN )) || state_remove "$TARGET_NODE"
   do_convergence_wait "$WAIT_DEFAULT_UP"
+  ensure_node_post_restore_routes "$TARGET_NODE" "all links"
   if (( DRY_RUN )); then
     info "✓ Dry-run complete — no interface or state changes were applied"
   else

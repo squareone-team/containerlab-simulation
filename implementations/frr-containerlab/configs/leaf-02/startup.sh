@@ -54,8 +54,6 @@ done
 
 # RING 3: Allow BGP and BFD from known peer subnets, SSH from management subnet, and VTEP control traffic from all leafs. Drop all other attempts to connect to these services on the leaf itself.
 iptables -A INPUT -p tcp --dport 179 -s 10.0.0.0/16 -j ACCEPT
-iptables -A INPUT -p tcp --dport 179 -s 203.0.113.0/24 -j ACCEPT
-iptables -A INPUT -p tcp --dport 179 -s 203.0.114.0/30 -j ACCEPT
 iptables -A INPUT -p tcp --dport 179 -j DROP
 
 for BFD_PORT in 3784 3785 4784; do
@@ -79,7 +77,7 @@ ip link add VRF-PUBLIC type vrf table 40
 ip link set VRF-PUBLIC up
 ip link add VRF-ORIENTATION type vrf table 50
 ip link set VRF-ORIENTATION up
-for IFACE in eth3 eth4 eth5 eth6; do
+for IFACE in eth5 eth6 eth15; do
   if ip link show "$IFACE" >/dev/null 2>&1; then
     ip link set dev "$IFACE" mtu 9000 || true
   fi
@@ -94,11 +92,15 @@ ip link set vxlan10199 master br-fw-ha
 ip link set vxlan10199 up
 bridge vlan add vid 1 dev vxlan10199 pvid untagged 2>/dev/null || true
 bridge vlan add vid 1 dev br-fw-ha self 2>/dev/null || true
-ip link set eth5 master br-fw-ha
-ip link set eth5 up
+for FW_IFACE in eth5 eth15; do
+  if ip link show "$FW_IFACE" >/dev/null 2>&1; then
+    ip link set "$FW_IFACE" master br-fw-ha
+    ip link set "$FW_IFACE" up
+  fi
+done
 ip addr replace 192.168.1.253/24 dev br-fw-ha
-ip route replace 10.200.0.0/30 via 192.168.1.252 dev br-fw-ha
-ip route replace 192.168.110.0/24 via 192.168.1.252 dev br-fw-ha
+ip route replace 10.200.0.0/29 via 192.168.1.254 dev br-fw-ha
+ip route replace 192.168.110.0/24 via 192.168.1.254 dev br-fw-ha
 
 apply_border_qos() {
   local IFACE=$1
@@ -116,12 +118,6 @@ apply_border_qos() {
   tc filter add dev "$IFACE" parent ffff: protocol ip u32 match u32 0 0 \
     action police rate "${RATE}mbit" burst 64kbit drop flowid :1
 }
-
-if ip link show eth3 >/dev/null 2>&1; then
-  apply_border_qos eth3 180
-fi
-iptables -t nat -C POSTROUTING -s 192.168.110.0/24 -o eth3 -j MASQUERADE 2>/dev/null \
-  || iptables -t nat -A POSTROUTING -s 192.168.110.0/24 -o eth3 -j MASQUERADE
 
 # Policy routing for packets returning from the firewall transit segment.
 ip rule add iif br-fw-ha to 192.168.10.0/24 lookup 30 prio 10000 || true

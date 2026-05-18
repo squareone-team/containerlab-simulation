@@ -1,20 +1,20 @@
 # IDS/IPS DDoS Prevention
 
-This runbook validates the lightweight inline IPS wall on `ids-01`.
+This runbook validates the lightweight inline IPS wall now hosted on the firewall pair.
 
-`ids-01` is a transparent Layer-2 bridge between `isp-router-01` and `leaf-01`.
-It keeps the existing BGP/IP design unchanged while `tc` ingress policing drops
-excess TCP SYN traffic to the DMZ web service at `198.51.100.10:80`.
+The standalone IDS bridge has been removed. Firewall `eth4` is the outside
+leg toward `border-router-01`, and `tc` ingress policing drops excess TCP SYN
+traffic to the DMZ web service at `198.51.100.10:80`.
 
 ## Quick Checks
 
 ```bash
-docker exec clab-esi-datacenter-ids-01 ids-ips-summary
-docker exec clab-esi-datacenter-leaf-01 vtysh -c 'show bgp vrf VRF-PUBLIC neighbors 203.0.113.2'
+docker exec clab-esi-datacenter-firewall-01 tc -s filter show dev eth4 ingress
+docker exec clab-esi-datacenter-border-router-01 vtysh -c 'show bgp neighbors 203.0.113.2'
 docker exec clab-esi-datacenter-internet-client-01 wget -q -T 5 -O - http://198.51.100.10/
 ```
 
-The summary should show `br-ips`, a `flower` match for `198.51.100.10:80`, and
+The filter output should show a `flower` match for `198.51.100.10:80` and
 police action counters for dropped excessive SYN traffic.
 
 ## Automated Proof

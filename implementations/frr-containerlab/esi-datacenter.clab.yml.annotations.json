@@ -1079,20 +1079,6 @@
       }
     },
     {
-      "id": "isp-router-02",
-      "position": {
-        "x": 1400,
-        "y": -220
-      }
-    },
-    {
-      "id": "isp-router-03",
-      "position": {
-        "x": 180,
-        "y": -60
-      }
-    },
-    {
       "id": "spine-01",
       "position": {
         "x": 450,
@@ -1211,16 +1197,6 @@
       },
       "icon": "controller",
       "iconColor": "#e91c3a",
-      "iconCornerRadius": 0
-    },
-    {
-      "id": "ids-01",
-      "position": {
-        "x": 40,
-        "y": -120
-      },
-      "icon": "controller",
-      "iconColor": "#e91c1c",
       "iconCornerRadius": 0
     },
     {
@@ -1493,7 +1469,7 @@
       "iconColor": "#000000"
     },
     {
-      "id": "campus-bp",
+      "id": "distribution-switch",
       "position": {
         "x": -60,
         "y": 120
@@ -1547,6 +1523,16 @@
       },
       "icon": "pon",
       "iconColor": "#ff9500",
+      "iconCornerRadius": 0
+    },
+    {
+      "id": "border-router-01",
+      "position": {
+        "x": -40,
+        "y": -120
+      },
+      "icon": "router",
+      "iconColor": "#0c76a8",
       "iconCornerRadius": 0
     }
   ],

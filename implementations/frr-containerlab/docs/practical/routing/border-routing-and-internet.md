@@ -6,29 +6,25 @@ Use this page for the north-south edge: ISP sessions, route filtering, orientati
 
 | Command | Why you run it | Good sign |
 | --- | --- | --- |
-| `docker exec clab-esi-datacenter-leaf-01 vtysh -c 'show bgp vrf VRF-PUBLIC neighbors 203.0.113.2'` | checks ISP session on `leaf-01` | `BGP state = Established` |
-| `docker exec clab-esi-datacenter-leaf-02 vtysh -c 'show bgp neighbors 203.0.113.6'` | checks ISP session on `leaf-02` | `BGP state = Established` |
-| `docker exec clab-esi-datacenter-leaf-01 vtysh -c 'show bgp neighbors 203.0.114.2'` | checks the third ISP adjacency | `BGP state = Established` |
-| `docker exec clab-esi-datacenter-leaf-01 ping -c2 -W1 203.0.113.2` | simple data-plane sanity to ISP 1 | 2 packets received |
-| `docker exec clab-esi-datacenter-leaf-02 ping -c2 -W1 203.0.113.6` | simple data-plane sanity to ISP 2 | 2 packets received |
-| `docker exec clab-esi-datacenter-leaf-01 ping -c2 -W1 203.0.114.2` | simple data-plane sanity to ISP 3 | 2 packets received |
-| `docker exec clab-esi-datacenter-leaf-01 vtysh -c 'show bgp vrf VRF-PUBLIC ipv4 unicast neighbors 203.0.113.2 routes'` | verifies what is being learned inbound | only `0.0.0.0/0` |
-| `docker exec clab-esi-datacenter-isp-router-01 vtysh -c 'show ip bgp neighbors 203.0.113.1 received-routes'` | checks what the ISP sees from the border leaf | no RFC1918 leaks |
+| `docker exec clab-esi-datacenter-border-router-01 vtysh -c 'show bgp neighbors 203.0.113.2'` | checks the only ISP-facing BGP session | `BGP state = Established` |
+| `docker exec clab-esi-datacenter-border-router-01 ping -c2 -W1 203.0.113.2` | data-plane sanity to the ISP router | 2 packets received |
+| `docker exec clab-esi-datacenter-border-router-01 vtysh -c 'show ip bgp neighbors 203.0.113.2 routes'` | verifies what is learned inbound | only `0.0.0.0/0` |
+| `docker exec clab-esi-datacenter-isp-router-01 vtysh -c 'show ip bgp neighbors 203.0.113.1 received-routes'` | checks what the ISP sees from the border router | public prefixes only; no RFC1918 leaks |
 
-## Policy Controls On The Border Leafs
+## Policy Controls On The Border Router
 
 ```bash
-docker exec clab-esi-datacenter-leaf-01 grep 'ESI-BGP-EXTERNAL' /etc/frr/frr.conf
+docker exec clab-esi-datacenter-border-router-01 grep 'ESI-BGP-EXTERNAL' /etc/frr/frr.conf
 docker exec clab-esi-datacenter-leaf-01 grep 'ESI-BGP-INTERNAL' /etc/frr/frr.conf
-docker exec clab-esi-datacenter-leaf-01 grep -n 'prefix-list ISP-IN\\|prefix-list ISP-OUT\\|maximum-prefix' /etc/frr/frr.conf
-docker exec clab-esi-datacenter-leaf-02 grep -n 'prefix-list ISP-IN\\|prefix-list ISP-OUT\\|maximum-prefix' /etc/frr/frr.conf
+docker exec clab-esi-datacenter-border-router-01 grep -n 'prefix-list ISP-IN\\|prefix-list ISP-OUT\\|maximum-prefix' /etc/frr/frr.conf
 ```
 
-- The external and internal MD5 secrets should both exist, but they should be distinct.
+- The external MD5 secret exists only on the ISP-facing border router.
+- Border leafs keep the internal fabric MD5 secret for spine sessions.
 - `ISP-IN` is meant to keep inbound learning narrow.
 - `ISP-OUT` is meant to prevent RFC1918 leaks.
 - `maximum-prefix` is the guardrail against runaway advertisements from an ISP peer.
-- Campus traffic has no direct `campus-bp` to ISP link. Authenticated campus Internet traffic enters `leaf-01` and is NATed out through the border leaf public VRF; campus access to DMZ/internal services still crosses Ring 1 policy.
+- Campus traffic has no direct `distribution-switch` to ISP link. Authenticated campus Internet traffic enters the firewall pair first, is NATed on the firewall outside VIP, then exits through `border-router-01` and `isp-router-01`.
 
 ## Orientation Runbook
 

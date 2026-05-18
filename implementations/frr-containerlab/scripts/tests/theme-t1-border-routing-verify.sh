@@ -252,59 +252,67 @@ PY
 echo "=== ESI Theme T1 Verification (Border Routing & Internet) ==="
 
 echo
-for node in campus-bp guest-01 internet-router-01 internet-web-01 internet-client-01 server-dmz-01 leaf-01; do
+for node in distribution-switch guest-01 internet-router-01 internet-web-01 internet-client-01 server-dmz-01 leaf-01 leaf-02 border-router-01 firewall-01 firewall-02 isp-router-01; do
   check_container "$node"
 done
 
-cmd_no_match "topology has no campus-bp to ISP shortcut link" \
-  "grep -n 'campus-bp:eth1\\|isp-router-01:eth3' ${LAB_ROOT}/esi-datacenter.clab.yml" \
-  "campus-bp:eth1|isp-router-01:eth3"
+cmd_no_match "topology has no distribution-switch to ISP shortcut link" \
+  "grep -n 'distribution-switch:eth1\\|distribution-switch:eth3.*isp-router\\|isp-router.*distribution-switch:eth3' ${LAB_ROOT}/esi-datacenter.clab.yml" \
+  "distribution-switch:eth1|distribution-switch:eth3.*isp-router|isp-router.*distribution-switch:eth3"
 
-cmd_no_match "topology has no direct leaf-01 to leaf-02 firewall transit link" \
-  "grep -n 'leaf-01:eth9.*leaf-02:eth9\\|leaf-02:eth9.*leaf-01:eth9' ${LAB_ROOT}/esi-datacenter.clab.yml" \
-  "leaf-0[12]:eth9"
+cmd_no_match "topology has no direct leaf-to-ISP edge link" \
+  "grep -n 'leaf-0[12]:eth[0-9][0-9]*.*isp-router\\|isp-router.*leaf-0[12]:eth[0-9][0-9]*' ${LAB_ROOT}/esi-datacenter.clab.yml" \
+  "leaf-0[12].*isp-router|isp-router.*leaf-0[12]"
+
+cmd_match "border router is multihomed to both firewalls" \
+  "grep -E 'border-router-01:eth[23].*firewall-0[12]:eth4|firewall-0[12]:eth4.*border-router-01:eth[23]' ${LAB_ROOT}/esi-datacenter.clab.yml | wc -l" \
+  "^2$"
+
+cmd_match "firewalls are multihomed to both border leafs" \
+  "grep -E 'leaf-0[12]:eth(5|15).*firewall-0[12]:eth[12]|firewall-0[12]:eth[12].*leaf-0[12]:eth(5|15)' ${LAB_ROOT}/esi-datacenter.clab.yml | wc -l" \
+  "^4$"
 
 cmd_no_match "topology hides OOB switch fan-out links" \
   "grep -n 'oob-sw' ${LAB_ROOT}/esi-datacenter.clab.yml" \
   "oob-sw"
 
 # ---------------------------------------------------------------------------
-# 1) External eBGP sessions (active links + third ISP reachability)
+# 1) External eBGP session and routed edge reachability
 # ---------------------------------------------------------------------------
-cmd_match "leaf-01 eBGP Up to isp-router-01 (VRF-PUBLIC)" \
-  "$C-leaf-01 vtysh -c 'show bgp vrf VRF-PUBLIC neighbors 203.0.113.2'" \
+cmd_match "border-router-01 eBGP Up to isp-router-01" \
+  "$C-border-router-01 vtysh -c 'show bgp neighbors 203.0.113.2'" \
   "BGP state = Established"
 
-cmd_match "leaf-02 eBGP Up to isp-router-02" \
-  "$C-leaf-02 vtysh -c 'show bgp neighbors 203.0.113.6'" \
-  "BGP state = Established"
-
-cmd_match "leaf-01 third ISP neighbor present" \
-  "$C-leaf-01 vtysh -c 'show bgp neighbors 203.0.114.2'" \
-  "BGP state = Established"
-
-cmd_match "leaf-01 ping isp-router-01" \
-  "$C-leaf-01 ping -c2 -W1 203.0.113.2" \
+cmd_match "border-router-01 ping isp-router-01" \
+  "$C-border-router-01 ping -c2 -W1 203.0.113.2" \
   "2 (packets )?received"
 
-cmd_match "leaf-02 ping isp-router-02" \
-  "$C-leaf-02 ping -c2 -W1 203.0.113.6" \
+cmd_match "firewall master owns inside VIP" \
+  "$C-firewall-01 sh -lc \"ip -4 addr show bond0 | grep -q '192.168.1.254/24' && echo ok\" || $C-firewall-02 sh -lc \"ip -4 addr show bond0 | grep -q '192.168.1.254/24' && echo ok\"" \
+  "^ok$"
+
+cmd_match "firewall master owns outside VIP" \
+  "$C-firewall-01 sh -lc \"ip -4 addr show eth4 | grep -q '203.0.113.14/29' && echo ok\" || $C-firewall-02 sh -lc \"ip -4 addr show eth4 | grep -q '203.0.113.14/29' && echo ok\"" \
+  "^ok$"
+
+cmd_match "leaf-01 reaches firewall inside VIP" \
+  "$C-leaf-01 ping -c2 -W1 192.168.1.254" \
   "2 (packets )?received"
 
-cmd_match "leaf-01 ping isp-router-03" \
-  "$C-leaf-01 ping -c2 -W1 203.0.114.2" \
+cmd_match "leaf-02 reaches firewall inside VIP" \
+  "$C-leaf-02 ping -c2 -W1 192.168.1.254" \
   "2 (packets )?received"
 
 # ---------------------------------------------------------------------------
 # 2) Border policy controls: MD5 secrets, prefix-lists + max-prefix
 # ---------------------------------------------------------------------------
-cmd_match "leaf-01 uses external MD5 secret" \
-  "$C-leaf-01 grep -c 'ESI-BGP-EXTERNAL' /etc/frr/frr.conf" \
+cmd_match "border-router-01 uses external MD5 secret" \
+  "$C-border-router-01 grep -c 'ESI-BGP-EXTERNAL' /etc/frr/frr.conf" \
   "^[1-9][0-9]*$"
 
-cmd_match "leaf-02 uses external MD5 secret" \
-  "$C-leaf-02 grep -c 'ESI-BGP-EXTERNAL' /etc/frr/frr.conf" \
-  "^[1-9][0-9]*$"
+cmd_match "border-router-01 has inbound default-only filter" \
+  "$C-border-router-01 grep -c 'ip prefix-list ISP-IN seq 5 permit 0.0.0.0/0' /etc/frr/frr.conf" \
+  "^1$"
 
 cmd_match "leaf-01 still uses internal MD5 for fabric sessions" \
   "$C-leaf-01 grep -c 'ESI-BGP-INTERNAL' /etc/frr/frr.conf" \
@@ -312,38 +320,23 @@ cmd_match "leaf-01 still uses internal MD5 for fabric sessions" \
 # ---------------------------------------------------------------------------
 # 3) Route acceptance and leakage control
 # ---------------------------------------------------------------------------
-cmd_match "leaf-01 receives default route from isp-router-01" \
-  "$C-leaf-01 vtysh -c 'show bgp vrf VRF-PUBLIC ipv4 unicast neighbors 203.0.113.2 routes'" \
+cmd_match "border-router-01 receives default route from isp-router-01" \
+  "$C-border-router-01 vtysh -c 'show ip bgp neighbors 203.0.113.2 routes'" \
   "0\\.0\\.0\\.0/0"
 
-cmd_match "leaf-02 receives default route from isp-router-02" \
-  "$C-leaf-02 vtysh -c 'show bgp ipv4 unicast neighbors 203.0.113.6 routes'" \
-  "0\\.0\\.0\\.0/0"
+only_default_from_neighbor "border-router-01 accepts only default from isp-router-01" \
+  "$C-border-router-01 vtysh -c 'show ip bgp neighbors 203.0.113.2 routes'"
 
-only_default_from_neighbor "leaf-01 accepts only default from isp-router-01" \
-  "$C-leaf-01 vtysh -c 'show bgp vrf VRF-PUBLIC ipv4 unicast neighbors 203.0.113.2 routes'"
-
-only_default_from_neighbor "leaf-02 accepts only default from isp-router-02" \
-  "$C-leaf-02 vtysh -c 'show bgp ipv4 unicast neighbors 203.0.113.6 routes'"
-
-cmd_no_match "leaf-01 does not accept non-default from isp-router-01" \
-  "$C-leaf-01 vtysh -c 'show bgp vrf VRF-PUBLIC ipv4 unicast neighbors 203.0.113.2 routes'" \
+cmd_no_match "border-router-01 does not accept non-default from isp-router-01" \
+  "$C-border-router-01 vtysh -c 'show ip bgp neighbors 203.0.113.2 routes'" \
   "(10\\.[0-9]+\\.[0-9]+\\.[0-9]+/[0-9]+|172\\.(1[6-9]|2[0-9]|3[0-1])\\.[0-9]+\\.[0-9]+/[0-9]+|192\\.168\\.[0-9]+\\.[0-9]+/[0-9]+)"
 
-cmd_no_match "leaf-02 does not accept non-default from isp-router-02" \
-  "$C-leaf-02 vtysh -c 'show bgp ipv4 unicast neighbors 203.0.113.6 routes'" \
-  "(10\\.[0-9]+\\.[0-9]+\\.[0-9]+/[0-9]+|172\\.(1[6-9]|2[0-9]|3[0-1])\\.[0-9]+\\.[0-9]+/[0-9]+|192\\.168\\.[0-9]+\\.[0-9]+/[0-9]+)"
-
-cmd_no_match "leaf-01 does not leak RFC1918 to isp-router-01" \
+cmd_no_match "border-router-01 does not leak RFC1918 to isp-router-01" \
   "$C-isp-router-01 vtysh -c 'show ip bgp neighbors 203.0.113.1 received-routes'" \
   "(10\\.|172\\.(1[6-9]|2[0-9]|3[0-1])\\.|192\\.168\\.)"
 
-cmd_no_match "leaf-02 does not leak RFC1918 to isp-router-02" \
-  "$C-isp-router-02 vtysh -c 'show ip bgp neighbors 203.0.113.5 received-routes'" \
-  "(10\\.|172\\.(1[6-9]|2[0-9]|3[0-1])\\.|192\\.168\\.)"
-
 # ---------------------------------------------------------------------------
-# 4) Third ISP isolation + orientation activation runbook
+# 4) Orientation activation runbook
 # ---------------------------------------------------------------------------
 cmd_no_match "VRF-ORIENTATION empty before activation" \
   "$C-leaf-01 ip route show vrf VRF-ORIENTATION" \
@@ -481,6 +474,7 @@ echo "[TEST] No legacy static-route hacks on internet/ISP edge"
 EDGE_FILES=(
   "/etc/frr/frr.conf:internet-router-01"
   "/etc/frr/frr.conf:isp-router-01"
+  "/etc/frr/frr.conf:border-router-01"
   "/etc/frr/frr.conf:isp-router-04"
 )
 LEGACY_REGEX='ip route (192\.168\.|198\.19\.9\.)'

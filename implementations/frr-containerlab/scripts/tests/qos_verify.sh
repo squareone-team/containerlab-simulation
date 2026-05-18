@@ -33,15 +33,11 @@ for NODE in leaf-01 leaf-02 leaf-03 leaf-05 leaf-07 leaf-09 leaf-10; do
   echo ""
 done
 
-# Border shaping/policing
-check_cmd "leaf-01: primary link shaping" "$C-leaf-01 tc qdisc show dev eth3 | grep -q 'tbf'"
-if $C-leaf-01 ip link show eth4 >/dev/null 2>&1; then
-  check_cmd "leaf-01: secondary link shaping" "$C-leaf-01 tc qdisc show dev eth4 | grep -q 'tbf'"
-else
-  info "leaf-01: eth4 not present, skipping secondary link shaping check"
-fi
-check_cmd "leaf-02: secondary link shaping" "$C-leaf-02 tc qdisc show dev eth3 | grep -q 'tbf'"
-check_cmd "leaf-01: ingress policing" "$C-leaf-01 tc qdisc show dev eth3 | grep -q 'ingress'"
+# Edge shaping/policing now lives on the routed border/firewall path.
+check_cmd "border-router-01: ISP-facing link shaping" "$C-border-router-01 tc qdisc show dev eth1 | grep -q 'tbf'"
+check_cmd "border-router-01: ISP-facing ingress qdisc" "$C-border-router-01 tc qdisc show dev eth1 | grep -q 'ingress'"
+check_cmd "firewall-01: outside IPS ingress policing" "$C-firewall-01 tc filter show dev eth4 ingress | grep -Eq 'dst_ip 198\\.51\\.100\\.10|police'"
+check_cmd "firewall-02: outside IPS ingress policing" "$C-firewall-02 tc filter show dev eth4 ingress | grep -Eq 'dst_ip 198\\.51\\.100\\.10|police'"
 
 # Spine scheduling
 check_cmd "spine-01: HTB root" "$C-spine-01 tc qdisc show dev eth1 | grep -q 'htb'"

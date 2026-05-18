@@ -9,19 +9,9 @@ TARGET_TEXT="ESI Datacenter DMZ test service is reachable"
 PASS_COUNT=0
 FAIL_COUNT=0
 
-pass() {
-  echo "[PASS] $1"
-  PASS_COUNT=$((PASS_COUNT + 1))
-}
-
-fail() {
-  echo "[FAIL] $1"
-  FAIL_COUNT=$((FAIL_COUNT + 1))
-}
-
-info() {
-  echo "[INFO] $1"
-}
+pass() { echo "[PASS] $1"; PASS_COUNT=$((PASS_COUNT + 1)); }
+fail() { echo "[FAIL] $1"; FAIL_COUNT=$((FAIL_COUNT + 1)); }
+info() { echo "[INFO] $1"; }
 
 run_in_container() {
   local node="$1"
@@ -39,6 +29,14 @@ require_container() {
     pass "container present: $node"
   else
     fail "container missing: $node"
+  fi
+}
+
+master_firewall() {
+  if run_in_container "firewall-01" "ip -4 addr show bond0 | grep -q '192.168.1.254/24'"; then
+    echo "firewall-01"
+  elif run_in_container "firewall-02" "ip -4 addr show bond0 | grep -q '192.168.1.254/24'"; then
+    echo "firewall-02"
   fi
 }
 
@@ -64,15 +62,17 @@ http_ok_from() {
 }
 
 get_drop_packets() {
-  run_in_container "ids-01" "tc -s filter show dev eth2 ingress 2>/dev/null | sed -n 's/.*(dropped \\([0-9][0-9]*\\),.*/\\1/p' | head -n1"
+  local fw="$1"
+  run_in_container "$fw" "tc -s filter show dev eth4 ingress 2>/dev/null | sed -n 's/.*(dropped \\([0-9][0-9]*\\),.*/\\1/p' | head -n1"
 }
 
 show_ips_counters() {
-  run_in_container "ids-01" "tc -s filter show dev eth2 ingress" | sed 's/^/  /'
+  local fw="$1"
+  run_in_container "$fw" "tc -s filter show dev eth4 ingress" | sed 's/^/  /'
 }
 
 bgp_established() {
-  run_in_container "leaf-01" "vtysh -c 'show bgp vrf VRF-PUBLIC neighbors 203.0.113.2' 2>/dev/null | grep -q 'BGP state = Established'" &&
+  run_in_container "border-router-01" "vtysh -c 'show bgp neighbors 203.0.113.2' 2>/dev/null | grep -q 'BGP state = Established'" &&
     run_in_container "isp-router-01" "vtysh -c 'show bgp neighbors 203.0.113.1' 2>/dev/null | grep -q 'BGP state = Established'"
 }
 
@@ -82,7 +82,7 @@ vrf_public_clean() {
 
 attack_snippet() {
   cat <<'ATTACK'
-rm -f /tmp/ids-ddos-counts.log
+rm -f /tmp/edge-ddos-counts.log
 end=$(( $(date +%s) + 8 ))
 target="198.51.100.10"
 
@@ -102,22 +102,22 @@ worker() {
     fi
     count=$((count + 1))
   done
-  echo "worker-${id} requests=${count}" >> /tmp/ids-ddos-counts.log
+  echo "worker-${id} requests=${count}" >> /tmp/edge-ddos-counts.log
 }
 
 for worker_id in 1 2 3 4 5 6; do
   worker "$worker_id" &
 done
 wait
-cat /tmp/ids-ddos-counts.log
+cat /tmp/edge-ddos-counts.log
 ATTACK
 }
 
 echo "============================================================"
-echo " Inline IDS/IPS DDoS Prevention Validation"
+echo " Firewall IDS/IPS DDoS Prevention Validation"
 echo "============================================================"
 
-for node in ids-01 leaf-01 isp-router-01 internet-client-01 internet-client-02 server-dmz-01; do
+for node in firewall-01 firewall-02 border-router-01 isp-router-01 internet-client-01 internet-client-02 server-dmz-01 leaf-01; do
   require_container "$node"
 done
 
@@ -126,22 +126,27 @@ if (( FAIL_COUNT > 0 )); then
   exit 1
 fi
 
-if run_in_container "ids-01" "ip link show br-ips >/dev/null 2>&1 && bridge link show | grep -Eq 'eth1|eth2'"; then
-  pass "ids-01 transparent bridge is present"
+MASTER_FW="$(master_firewall)"
+if [[ -n "$MASTER_FW" ]]; then
+  pass "master firewall detected: $MASTER_FW"
 else
-  fail "ids-01 transparent bridge is missing"
+  fail "no firewall owns the inside VIP"
 fi
 
-if run_in_container "ids-01" "tc filter show dev eth2 ingress | grep -Eq 'dst_ip 198\\.51\\.100\\.10|police'"; then
-  pass "IPS DDoS tc police rule is loaded"
+if (( FAIL_COUNT > 0 )); then
+  exit 1
+fi
+
+if run_in_container "$MASTER_FW" "tc filter show dev eth4 ingress | grep -Eq 'dst_ip 198\\.51\\.100\\.10|police'"; then
+  pass "firewall IPS DDoS tc police rule is loaded on master"
 else
-  fail "IPS DDoS tc police rule is missing"
+  fail "firewall IPS DDoS tc police rule is missing on master"
 fi
 
 if bgp_established; then
-  pass "BGP adjacency survives the inline IPS bridge"
+  pass "BGP adjacency survives firewall inline IPS placement"
 else
-  fail "BGP adjacency is not established across ids-01"
+  fail "BGP adjacency is not established across ISP and border router"
 fi
 
 if http_ok_from "internet-client-01"; then
@@ -150,27 +155,27 @@ else
   fail "baseline internet-client-01 HTTP to DMZ failed"
 fi
 
-before_drop="$(get_drop_packets)"
+before_drop="$(get_drop_packets "$MASTER_FW")"
 before_drop="${before_drop:-0}"
 
 echo
 echo "---------------- IPS counters before attack ----------------"
-show_ips_counters
+show_ips_counters "$MASTER_FW"
 
 echo
 echo "---------------- Controlled HTTP flood trace ----------------"
 info "Launching 6 workers from internet-client-01 and 6 from internet-client-02 for 8 seconds."
 attack_cmd="$(attack_snippet)"
-docker exec "${CLAB_PREFIX}-internet-client-01" sh -lc "$attack_cmd" > /tmp/ids-ddos-client-01.log 2>&1 &
+docker exec "${CLAB_PREFIX}-internet-client-01" sh -lc "$attack_cmd" > /tmp/edge-ddos-client-01.log 2>&1 &
 pid1=$!
-docker exec "${CLAB_PREFIX}-internet-client-02" sh -lc "$attack_cmd" > /tmp/ids-ddos-client-02.log 2>&1 &
+docker exec "${CLAB_PREFIX}-internet-client-02" sh -lc "$attack_cmd" > /tmp/edge-ddos-client-02.log 2>&1 &
 pid2=$!
 
 for second in 1 2 3 4 5 6 7 8; do
   sleep 1
-  current_drop="$(get_drop_packets)"
+  current_drop="$(get_drop_packets "$MASTER_FW")"
   current_drop="${current_drop:-0}"
-  printf '[TRACE] second=%s ips_ddos_drops=%s\n' "$second" "$current_drop"
+  printf '[TRACE] second=%s firewall_ips_drops=%s\n' "$second" "$current_drop"
 done
 
 wait "$pid1"
@@ -178,21 +183,21 @@ wait "$pid2"
 
 echo
 echo "internet-client-01 attack workers:"
-sed 's/^/  /' /tmp/ids-ddos-client-01.log
+sed 's/^/  /' /tmp/edge-ddos-client-01.log
 echo "internet-client-02 attack workers:"
-sed 's/^/  /' /tmp/ids-ddos-client-02.log
+sed 's/^/  /' /tmp/edge-ddos-client-02.log
 
-after_drop="$(get_drop_packets)"
+after_drop="$(get_drop_packets "$MASTER_FW")"
 after_drop="${after_drop:-0}"
 
 echo
 echo "---------------- IPS counters after attack ----------------"
-show_ips_counters
+show_ips_counters "$MASTER_FW"
 
 if [[ "$after_drop" =~ ^[0-9]+$ && "$before_drop" =~ ^[0-9]+$ && "$after_drop" -gt "$before_drop" ]]; then
-  pass "IPS dropped excess DMZ HTTP SYN packets (${before_drop} -> ${after_drop})"
+  pass "firewall IPS dropped excess DMZ HTTP SYN packets (${before_drop} -> ${after_drop})"
 else
-  fail "IPS DDoS drop counter did not increase (${before_drop} -> ${after_drop})"
+  fail "firewall IPS drop counter did not increase (${before_drop} -> ${after_drop})"
 fi
 
 sleep 5
@@ -225,4 +230,4 @@ if (( FAIL_COUNT > 0 )); then
   exit 1
 fi
 
-echo "Inline IDS/IPS DDoS prevention validation passed."
+echo "Firewall IDS/IPS DDoS prevention validation passed."

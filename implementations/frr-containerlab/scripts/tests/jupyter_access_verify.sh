@@ -15,7 +15,7 @@ CAMPUS_STUDENT_NODE="${CLAB_PREFIX}-student-01"
 CAMPUS_ADMIN_NODE="${CLAB_PREFIX}-admin-01"
 JUPYTER_URL="https://${JUPYTER_HOST}:8080/hub/login"
 NAC_AUTH_URL="https://192.168.110.1:8443/auth"
-CAMPUS_BP="${CLAB_PREFIX}-campus-bp"
+CAMPUS_BP="${CLAB_PREFIX}-distribution-switch"
 
 PASS=0
 FAIL=0

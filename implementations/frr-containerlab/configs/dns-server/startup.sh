@@ -162,17 +162,17 @@ view:
   local-data: "student-leaf-02.esi.internal. 300 IN A 10.1.0.20"
   # ISP routers
   local-data: "isp-router-01.esi.internal.  300 IN A 100.64.0.1"
-  local-data: "isp-router-02.esi.internal.  300 IN A 100.64.0.2"
-  local-data: "isp-router-03.esi.internal.  300 IN A 100.64.0.3"
+  local-data: "border-router-01.esi.internal. 300 IN A 100.64.1.1"
   # Firewalls
   local-data: "firewall-01.esi.internal.    300 IN A 192.168.1.1"
   local-data: "firewall-02.esi.internal.    300 IN A 192.168.1.2"
   local-data: "firewall-vip.esi.internal.   300 IN A 192.168.1.254"
-  # OOB / Bastion / IDS
+  local-data: "firewall-outside-vip.esi.internal. 300 IN A 203.0.113.14"
+  local-data: "firewall-campus-vip.esi.internal. 300 IN A 10.200.0.1"
+  local-data: "distribution-switch.esi.internal. 300 IN A 192.168.110.1"
+  # OOB / Bastion
   local-data: "bastion-01.esi.internal.     300 IN A 172.16.0.50"
   local-data: "bastion.esi.internal.        300 IN A 172.16.0.50"
-  local-data: "ids-01.esi.internal.         300 IN A 172.16.0.51"
-  local-data: "ids.esi.internal.            300 IN A 172.16.0.51"
   # CORE-INFRA (192.168.50.0/24)
   local-data: "ntp-server.esi.internal.     300 IN A 192.168.50.20"
   local-data: "ntp.esi.internal.            300 IN A 192.168.50.20"

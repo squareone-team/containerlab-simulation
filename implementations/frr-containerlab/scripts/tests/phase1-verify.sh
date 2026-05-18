@@ -112,12 +112,13 @@ echo "[TEST] VRF-PUBLIC has no internal routes outside DMZ segment"
 info "command: $C-leaf-01 ip route show vrf VRF-PUBLIC"
 info "expect : no 10/8, no 172.16/12, and no 192.168/16"
 LAST_OUT=$($C-leaf-01 ip route show vrf VRF-PUBLIC 2>/dev/null)
-if echo "$LAST_OUT" | grep -Eq "10\.|172\.(1[6-9]|2[0-9]|3[0-1])\."; then
+ROUTE_DESTS=$(echo "$LAST_OUT" | awk '{ print $1 }')
+if echo "$ROUTE_DESTS" | grep -Eq "^(10\.|172\.(1[6-9]|2[0-9]|3[0-1])\.)"; then
   fail "VRF-PUBLIC leaks internal 10/8 or 172.16/12 prefixes"
   echo "  [DEBUG] last output:"
   echo "$LAST_OUT" | sed 's/^/    /'
-elif echo "$LAST_OUT" | grep -Eq "192\.168\." && \
-     echo "$LAST_OUT" | grep -Ev "192\.168\.100(\.|/24)" | grep -Eq "192\.168\."; then
+elif echo "$ROUTE_DESTS" | grep -Eq "^192\.168\." && \
+     echo "$ROUTE_DESTS" | grep -Ev "^192\.168\.100(\.|/24)" | grep -Eq "^192\.168\."; then
   fail "VRF-PUBLIC leaks internal 192.168 prefixes outside DMZ segment"
   echo "  [DEBUG] last output:"
   echo "$LAST_OUT" | sed 's/^/    /'
@@ -137,8 +138,9 @@ else
   echo "$LAST_OUT" | sed 's/^/    /'
 fi
 
-chk "leaf-01 ping isp-router-01" "$C-leaf-01 ping -c2 -W1 203.0.113.2" "2 (packets )?received"
-chk "leaf-02 ping isp-router-02" "$C-leaf-02 ping -c2 -W1 203.0.113.6" "2 (packets )?received"
+chk "border-router-01 ping isp-router-01" "$C-border-router-01 ping -c2 -W1 203.0.113.2" "2 (packets )?received"
+chk "leaf-01 reaches firewall inside VIP" "$C-leaf-01 ping -c2 -W1 192.168.1.254" "2 (packets )?received"
+chk "leaf-02 reaches firewall inside VIP" "$C-leaf-02 ping -c2 -W1 192.168.1.254" "2 (packets )?received"
 chk "spine-01 ecmp hash policy=1" "$C-spine-01 sysctl net.ipv4.fib_multipath_hash_policy" "= 1"
 
 $C-leaf-09 vtysh -c "clear bgp *" 2>/dev/null || true

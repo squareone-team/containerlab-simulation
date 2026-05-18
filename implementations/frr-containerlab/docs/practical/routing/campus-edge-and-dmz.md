@@ -6,7 +6,7 @@ This page is for the campus test segment, the WiFi management path, and the DMZ 
 
 | Node | Important addresses | Why it matters |
 | --- | --- | --- |
-| `campus-bp` | `10.200.0.2/30` on `eth3`, `192.168.110.1/24` on `br-student` | campus NAC gateway; default traffic goes to `leaf-01`, not directly to an ISP |
+| `distribution-switch` | `10.200.0.2/29` on `br-fw-campus`, `192.168.110.1/24` on `br-student` | campus NAC gateway; default traffic goes to the firewall campus VIP, not directly to a leaf or ISP |
 | `guest-01` | `192.168.110.30/24` | stable campus client for manual tests |
 | `student-01` | `192.168.110.31/24` | student browser/client, unauthenticated until NAC login |
 | `admin-01` | `192.168.110.32/24` | admin browser/client, unauthenticated until NAC login |
@@ -14,7 +14,7 @@ This page is for the campus test segment, the WiFi management path, and the DMZ 
 | `server-dmz-01` | `198.51.100.10/24` | DMZ web service |
 | `moodle` | `198.51.100.30/24` | Moodle LMS at `moodle.esi.dz` |
 | `moodle-db` | `192.168.80.31/24` on a storage-pod bond | MariaDB backend for Moodle, multihomed to `leaf-07`/`leaf-08` |
-| `leaf-01` | `10.200.0.1/30`, `192.168.1.252/24`, `VRF-WIFI-CTRL` | policy-routing pivot between campus, firewall, WiFi, DMZ, and Internet paths |
+| `firewall VIPs` | inside `192.168.1.254/24`, campus `10.200.0.1/29`, outside `203.0.113.14/29` | inline campus/DC/Internet security and NAT |
 
 ## Campus Client Checks
 
@@ -30,13 +30,13 @@ This page is for the campus test segment, the WiFi management path, and the DMZ 
 | `docker exec clab-esi-datacenter-student-01 wget -qO- http://dmz-server-01.esi.internal` | checks authenticated campus-to-DMZ HTTP | returns the DMZ page |
 | `docker exec clab-esi-datacenter-student-01 wget -qO- http://moodle.esi.dz/` | checks authenticated campus-to-Moodle HTTP | returns Moodle HTML |
 | `docker exec clab-esi-datacenter-student-01 nslookup ntp-server.esi.internal 192.168.50.30` | checks authenticated campus DNS service access | returns `192.168.50.20` |
-| `docker exec clab-esi-datacenter-campus-bp ip route get 192.168.50.80` | checks NAC RADIUS source identity | contains `src 192.168.110.1` |
+| `docker exec clab-esi-datacenter-distribution-switch ip route get 192.168.50.80` | checks NAC RADIUS source identity | contains `src 192.168.110.1` |
 
 ## Campus NAC Checks
 
 ```bash
-docker exec clab-esi-datacenter-campus-bp nft list set inet campus_nac campus_students
-docker exec clab-esi-datacenter-campus-bp nft list set inet campus_nac campus_admins
+docker exec clab-esi-datacenter-distribution-switch nft list set inet campus_nac campus_students
+docker exec clab-esi-datacenter-distribution-switch nft list set inet campus_nac campus_admins
 ```
 
 - Before login, neither `192.168.110.31` nor `192.168.110.32` should appear in a NAC role set.
@@ -44,20 +44,20 @@ docker exec clab-esi-datacenter-campus-bp nft list set inet campus_nac campus_ad
 - After admin login, `campus_admins` should include `192.168.110.32`.
 - `guest-01` should not appear in either set.
 - `guest-01` should reach the NAC portal only; Google demo, DMZ, Moodle, Jupyter, SSH, TACACS+, and LDAP are blocked until authentication.
-- Protected servers accept the campus subnet as a possible SSH source; role separation is enforced at `campus-bp`, not by fixed endpoint IPs on the servers.
+- Protected servers accept the campus subnet as a possible SSH source; role separation is enforced at `distribution-switch`, not by fixed endpoint IPs on the servers.
 
 ## Campus Border Checks
 
 ```bash
-docker exec clab-esi-datacenter-campus-bp ip -4 addr show
-docker exec clab-esi-datacenter-campus-bp ip route show
-docker exec clab-esi-datacenter-campus-bp ping -c2 -W2 192.168.10.100
-docker exec clab-esi-datacenter-campus-bp wget -qO- http://198.51.100.10
+docker exec clab-esi-datacenter-distribution-switch ip -4 addr show
+docker exec clab-esi-datacenter-distribution-switch ip route show
+docker exec clab-esi-datacenter-distribution-switch ping -c2 -W2 192.168.10.100
+docker exec clab-esi-datacenter-distribution-switch wget -qO- http://198.51.100.10
 ```
 
 - The route table should show a default route and narrow service routes via `10.200.0.1`; there is no `100.10.0.0/30` ISP shortcut.
 - The auth-server route should keep the NAC identity source as `192.168.110.1`; `10.200.0.2` is only transit.
-- The WiFi controller ping proves the micro-VRF path on `leaf-01` is usable.
+- The WiFi controller ping proves the distribution-switch -> firewall -> border-leaf micro-VRF path is usable.
 - `wget` to the DMZ IP checks the routed path without depending on campus DNS.
 
 ## WiFi Management Micro-VRF
@@ -68,7 +68,7 @@ docker exec clab-esi-datacenter-leaf-01 vtysh -c 'show evpn vni 10120'
 docker exec clab-esi-datacenter-wifi-controller ip -4 addr show dev eth1
 ```
 
-- `VRF-WIFI-CTRL` should contain the WiFi controller route and the campus route, but not a default route.
+- `VRF-WIFI-CTRL` should contain the WiFi controller route, but not a default route.
 - VNI `10120` proves the management segment exists in the overlay.
 - The controller itself should stay at `192.168.10.100/24`.
 

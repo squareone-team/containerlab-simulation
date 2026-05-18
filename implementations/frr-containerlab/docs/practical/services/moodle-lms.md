@@ -16,7 +16,7 @@ Bitnami announced that existing versioned images moved from `docker.io/bitnami` 
 | `moodle.esi.dz` | `198.51.100.30` |
 | `www.google.com` | `198.18.3.10` |
 
-Moodle is deliberately published under `moodle.esi.dz`, not `internal.esi.dz`, and the old apex `esi.dz` web shortcut is not published. Campus users reach Moodle only after NAC places their source IP into the `campus_students` or `campus_admins` set. `campus-bp` also clamps forwarded TCP MSS to 1360 for the campus-to-public path so full Moodle pages survive the lab's mixed-MTU routed segments.
+Moodle is deliberately published under `moodle.esi.dz`, not `internal.esi.dz`, and the old apex `esi.dz` web shortcut is not published. Campus users reach Moodle only after NAC places their source IP into the `campus_students` or `campus_admins` set. `distribution-switch` also clamps forwarded TCP MSS to 1360 for the campus-to-public path so full Moodle pages survive the lab's mixed-MTU routed segments.
 
 ## First Start
 

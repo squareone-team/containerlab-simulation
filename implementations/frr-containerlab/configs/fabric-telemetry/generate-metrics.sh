@@ -25,7 +25,7 @@ peer_role_for() {
   case "$node" in
     leaf-01|leaf-02)
       case "$peer" in
-        203.0.113.*|203.0.114.*|198.18.*) echo "isp" ;;
+        203.0.113.*|198.18.*) echo "isp" ;;
         10.*) echo "spine" ;;
         *) echo "peer" ;;
       esac

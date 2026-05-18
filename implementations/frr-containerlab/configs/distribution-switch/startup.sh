@@ -14,29 +14,37 @@ wait_for_iface() {
     return 1
 }
 
-hostname campus-bp
+hostname distribution-switch
 
 ip link add br-student type bridge 2>/dev/null || true
 ip link set br-student up
 ip addr replace 192.168.110.1/24 dev br-student
 
+ip link add br-fw-campus type bridge 2>/dev/null || true
+ip link set br-fw-campus up
+ip addr replace 10.200.0.2/29 dev br-fw-campus
+
 wait_for_iface eth3
 ip link set eth3 up
-ip addr replace 10.200.0.2/30 dev eth3
+ip link set eth3 master br-fw-campus
+wait_for_iface eth7
+ip link set eth7 up
+ip link set eth7 master br-fw-campus
+
 ip route del default 2>/dev/null || true
-ip route add default via 10.200.0.1 dev eth3
-ip route replace 192.168.10.100/32 via 10.200.0.1 dev eth3
-ip route replace 192.168.50.20/32 via 10.200.0.1 dev eth3
-ip route replace 192.168.50.30/32 via 10.200.0.1 dev eth3
-ip route replace 192.168.50.40/32 via 10.200.0.1 dev eth3
-ip route replace 192.168.50.70/32 via 10.200.0.1 dev eth3
-# Use the campus SVI as the RADIUS client identity. The transit /30 stays a
+ip route add default via 10.200.0.1 dev br-fw-campus
+ip route replace 192.168.10.100/32 via 10.200.0.1 dev br-fw-campus
+ip route replace 192.168.50.20/32 via 10.200.0.1 dev br-fw-campus
+ip route replace 192.168.50.30/32 via 10.200.0.1 dev br-fw-campus
+ip route replace 192.168.50.40/32 via 10.200.0.1 dev br-fw-campus
+ip route replace 192.168.50.70/32 via 10.200.0.1 dev br-fw-campus
+# Use the campus SVI as the RADIUS client identity. The firewall transit stays a
 # routing link; policy and RADIUS client trust bind to the NAC gateway address.
-ip route replace 192.168.50.80/32 via 10.200.0.1 dev eth3 src 192.168.110.1
-ip route replace 192.168.10.10/32 via 10.200.0.1 dev eth3
-ip route replace 192.168.50.10/32 via 10.200.0.1 dev eth3
-ip route replace 192.168.70.10/32 via 10.200.0.1 dev eth3
-ip route replace 192.168.70.30/32 via 10.200.0.1 dev eth3
+ip route replace 192.168.50.80/32 via 10.200.0.1 dev br-fw-campus src 192.168.110.1
+ip route replace 192.168.10.10/32 via 10.200.0.1 dev br-fw-campus
+ip route replace 192.168.50.10/32 via 10.200.0.1 dev br-fw-campus
+ip route replace 192.168.70.10/32 via 10.200.0.1 dev br-fw-campus
+ip route replace 192.168.70.30/32 via 10.200.0.1 dev br-fw-campus
 
 for IFACE in eth4 eth5 eth6; do
     wait_for_iface "$IFACE"

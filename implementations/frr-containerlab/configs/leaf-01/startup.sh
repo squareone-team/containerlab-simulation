@@ -55,8 +55,6 @@ done
 
 # RING 3: Allow BGP and BFD from known peer subnets, SSH from management subnet, and VTEP control traffic from all leafs. Drop all other attempts to connect to these services on the leaf itself.
 iptables -A INPUT -p tcp --dport 179 -s 10.0.0.0/16 -j ACCEPT
-iptables -A INPUT -p tcp --dport 179 -s 203.0.113.0/24 -j ACCEPT
-iptables -A INPUT -p tcp --dport 179 -s 203.0.114.0/30 -j ACCEPT
 iptables -A INPUT -p tcp --dport 179 -j DROP
 
 for BFD_PORT in 3784 3785 4784; do
@@ -82,15 +80,9 @@ ip link add VRF-ORIENTATION type vrf table 50
 ip link set VRF-ORIENTATION up
 ip link add VRF-WIFI-CTRL type vrf table 60
 ip link set VRF-WIFI-CTRL up
-for IFACE in eth3 eth4 eth5 eth6 eth7 eth8 eth11 eth12; do
+for IFACE in eth5 eth6 eth7 eth11 eth12 eth14 eth15; do
   ip link set dev $IFACE mtu 9000 || true
 done
-
-if ip link show eth3 >/dev/null 2>&1; then
-  ip link set eth3 master VRF-PUBLIC
-  ip addr add 203.0.113.1/30 dev eth3 2>/dev/null || true
-  ip link set eth3 up
-fi
 
 apply_border_qos() {
   local IFACE=$1
@@ -126,13 +118,6 @@ apply_border_qos_wait() {
   return 1
 }
 
-apply_border_qos_wait eth3 950 || true
-apply_border_qos_wait eth4 180 || true
-
-ip link set eth8 master VRF-WIFI-CTRL
-ip addr add 10.200.0.1/30 dev eth8
-ip link set eth8 up
-
 ip link add br-fw-ha type bridge
 ip link set br-fw-ha mtu 9000
 ip link set br-fw-ha up
@@ -142,18 +127,23 @@ ip link set vxlan10199 master br-fw-ha
 ip link set vxlan10199 up
 bridge vlan add vid 1 dev vxlan10199 pvid untagged 2>/dev/null || true
 bridge vlan add vid 1 dev br-fw-ha self 2>/dev/null || true
-ip link set eth5 master br-fw-ha
-ip link set eth5 up
+for FW_IFACE in eth5 eth15; do
+  if ip link show "$FW_IFACE" >/dev/null 2>&1; then
+    ip link set "$FW_IFACE" master br-fw-ha
+    ip link set "$FW_IFACE" up
+  fi
+done
 ip addr replace 192.168.1.252/24 dev br-fw-ha
 
 # Policy routing for packets returning from the firewall transit segment.
+ip rule add iif br-fw-ha to 192.168.10.100/32 lookup 60 prio 9999 || true
 ip rule add iif br-fw-ha to 192.168.10.0/24 lookup 30 prio 10000 || true
 ip rule add iif br-fw-ha to 192.168.20.0/24 lookup 30 prio 10001 || true
 ip rule add iif br-fw-ha to 192.168.50.0/24 lookup 20 prio 10002 || true
 ip rule add iif br-fw-ha to 192.168.60.0/24 lookup 20 prio 10003 || true
 ip rule add iif br-fw-ha to 192.168.70.0/24 lookup 20 prio 10004 || true
 ip rule add iif br-fw-ha to 192.168.80.0/24 lookup 20 prio 10005 || true
-ip rule add iif br-fw-ha to 10.200.0.0/30 lookup 60 prio 10006 || true
+ip rule add iif br-fw-ha to 10.200.0.0/29 lookup 60 prio 10006 || true
 ip rule add iif br-fw-ha to 192.168.110.0/24 lookup 60 prio 10007 || true
 ip rule add iif br-fw-ha to 198.51.100.0/24 lookup 40 prio 10008 || true
 ip rule add iif br-fw-ha from 192.168.50.0/24 lookup 30 prio 10010 || true
@@ -307,7 +297,8 @@ ip link set vlan120 address $ANYCAST_MAC || true
 ip addr add 192.168.10.1/24 dev vlan120
 ip link set vlan120 up
 ip route replace 192.168.10.100/32 dev vlan120 vrf VRF-WIFI-CTRL
-ip route replace 192.168.110.0/24 via 10.200.0.2 dev eth8 vrf VRF-WIFI-CTRL
+ip route replace 10.200.0.0/29 via 192.168.1.254 dev br-fw-ha vrf VRF-WIFI-CTRL
+ip route replace 192.168.110.0/24 via 192.168.1.254 dev br-fw-ha vrf VRF-WIFI-CTRL
 
 if ip link show eth14 >/dev/null 2>&1; then
   ip link set eth14 master br0
@@ -353,7 +344,7 @@ FW_INTERNAL_SUBNETS="
 192.168.60.0/24
 192.168.70.0/24
 192.168.80.0/24
-10.200.0.0/30
+10.200.0.0/29
 192.168.110.0/24
 "
 
@@ -373,76 +364,16 @@ for SUBNET in $FW_INTERNAL_SUBNETS; do
   PREF=$((PREF + 1))
 done
 
-# Return traffic for border-leaf NATed Internet sessions must go back to
-# VRF-WIFI-CTRL. DMZ/Moodle return traffic still hairpins through Ring 1.
-ip rule add pref 68 from 198.18.0.0/15 iif VRF-PUBLIC to 192.168.110.0/24 lookup 60 2>/dev/null || true
-ip rule add pref 69 from 198.18.0.0/15 iif eth3 to 192.168.110.0/24 lookup 60 2>/dev/null || true
-
-# Campus traffic keeps its dedicated micro-VRF uplink, but only the shared
-# service IPs, auth proof targets, and the explicit DMZ test subnet are steered through Ring 1.
-# No broader internal prefixes leak.
-FW_CAMPUS_TABLE=160
-FW_CAMPUS_SERVICE_IPS="
-192.168.50.20/32
-192.168.50.30/32
-192.168.50.40/32
-192.168.50.70/32
-192.168.50.80/32
-192.168.10.10/32
-192.168.50.10/32
-192.168.70.10/32
-192.168.70.30/32
-198.51.100.0/24
-"
-
-for SUBNET in $FW_CAMPUS_SERVICE_IPS; do
-  ip route replace table "$FW_CAMPUS_TABLE" "$SUBNET" via 192.168.1.254 dev br-fw-ha
-done
-
-# Authenticated campus users reach the simulated Internet through the border
-# leaf public VRF and border-leaf NAT. The campus gateway still has no ISP link.
-ip rule add pref 64 iif VRF-WIFI-CTRL to 198.18.0.0/15 lookup 40 2>/dev/null || true
-ip rule add pref 65 iif eth8 to 198.18.0.0/15 lookup 40 2>/dev/null || true
-
-PREF=80
-for SUBNET in $FW_CAMPUS_SERVICE_IPS; do
-  ip rule add pref "$PREF" iif VRF-WIFI-CTRL to "$SUBNET" lookup "$FW_CAMPUS_TABLE" 2>/dev/null || true
-  PREF=$((PREF + 1))
-done
-
-PREF=86
-for SUBNET in $FW_CAMPUS_SERVICE_IPS; do
-  ip rule add pref "$PREF" iif eth8 to "$SUBNET" lookup "$FW_CAMPUS_TABLE" 2>/dev/null || true
-  PREF=$((PREF + 1))
-done
-
 ip link add vlan4060 link br0 type vlan id 4060
 ip link set vlan4060 master VRF-WIFI-CTRL
 ip link set vlan4060 up
-
-# Inbound internet traffic to DMZ must use VRF-PUBLIC table.
-ip rule add pref 90 iif eth3 to 198.51.100.0/24 lookup 40 2>/dev/null || true
-
-# Inbound internet return traffic to student subnets must use VRF-PEDAGOGY.
-ip rule add pref 100 iif eth3 to 192.168.10.0/24 lookup 30 2>/dev/null || true
-ip rule add pref 101 iif eth3 to 192.168.20.0/24 lookup 30 2>/dev/null || true
-ip rule add pref 102 iif eth3 to 192.168.110.0/24 lookup 60 2>/dev/null || true
-ip rule add pref 103 iif eth3 to 10.200.0.0/30 lookup 60 2>/dev/null || true
 
 # === END PHASE 1 — Phase 2 appends below ===
 
 # =====================================================
 # THEME T1 — BORDER ROUTING — Youcef
-# Stateful guard: allow return traffic, block unsolicited internet->student.
+# Stateful guard is enforced on firewall-01/firewall-02.
 # =====================================================
-iptables -C FORWARD -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT 2>/dev/null \
-  || iptables -I FORWARD 1 -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT
-iptables -C FORWARD -i eth3 -d 192.168.10.0/24 -m conntrack --ctstate NEW -j DROP 2>/dev/null \
-  || iptables -I FORWARD 2 -i eth3 -d 192.168.10.0/24 -m conntrack --ctstate NEW -j DROP
-iptables -C FORWARD -i eth3 -d 192.168.20.0/24 -m conntrack --ctstate NEW -j DROP 2>/dev/null \
-  || iptables -I FORWARD 3 -i eth3 -d 192.168.20.0/24 -m conntrack --ctstate NEW -j DROP
-iptables -t nat -C POSTROUTING -s 192.168.110.0/24 -o eth3 -j MASQUERADE 2>/dev/null \
-  || iptables -t nat -A POSTROUTING -s 192.168.110.0/24 -o eth3 -j MASQUERADE
 # Ring 4: OOB management for bastion-only SSH
 OOB_IF="eth0"
 ip addr replace 172.16.0.21/24 dev "$OOB_IF"

@@ -42,19 +42,19 @@ The TACACS+ PoC uses encrypted TACACS+ packet bodies with a shared lab secret. T
 
 ## Campus NAC (PoC)
 
-The campus devices share one subnet (`192.168.110.0/24`). Instead of hardcoding IPs in the firewall, `campus-bp` now behaves like a small NAC enforcement point:
+The campus devices share one subnet (`192.168.110.0/24`). Instead of hardcoding IPs in the firewall, `distribution-switch` now behaves like a small NAC enforcement point:
 
-1. Campus devices call the local HTTPS NAC portal/API (`campus-bp:8443`) with ESI mail credentials.
-2. `campus-bp` authenticates to `auth-server` over RADIUS.
+1. Campus devices call the local HTTPS NAC portal/API (`distribution-switch:8443`) with ESI mail credentials.
+2. `distribution-switch` authenticates to `auth-server` over RADIUS.
 3. RADIUS responses return a role (`campus-student` or `campus-admin`).
-4. `campus-bp` inserts the device IP into dynamic nftables role sets.
+4. `distribution-switch` inserts the device IP into dynamic nftables role sets.
 5. Traffic is filtered locally based on those sets.
 
 This mirrors the control-plane intent of NAC without claiming switchport 802.1X support.
 
-The protected servers intentionally do not encode `student-01` or `admin-01` addresses as the role boundary. They accept the campus subnet as a possible SSH source, and `campus-bp` decides which current campus IP may reach which target:
+The protected servers intentionally do not encode `student-01` or `admin-01` addresses as the role boundary. They accept the campus subnet as a possible SSH source, and `distribution-switch` decides which current campus IP may reach which target:
 
-| Device role at `campus-bp` | Dynamic set | Allowed SSH targets |
+| Device role at `distribution-switch` | Dynamic set | Allowed SSH targets |
 | --- | --- | --- |
 | student or professor identity | `campus_students` | student pod, HPC pod, Moodle, Google demo, Jupyter |
 | SquareOne admin identity | `campus_admins` | student pod, HPC pod, admin pod, Moodle, Google demo, Jupyter |
@@ -64,7 +64,7 @@ This removes the same-subnet hardcoding while keeping the enforcement visible in
 
 Unauthenticated campus clients may reach only the NAC portal itself. `www.google.com`, `moodle.esi.dz`, DNS, Jupyter, and SSH paths are opened only after the device IP appears in a NAC role set.
 
-For RADIUS, `campus-bp` deliberately uses `192.168.110.1` as the client source. The `10.200.0.0/30` link is only a routing transit to `leaf-01`; it is not trusted as an identity. Ring 1 and `auth-server` therefore accept campus RADIUS only from the NAC gateway address, which keeps the AAA trust boundary tied to the enforcement point instead of to a point-to-point transport IP.
+For RADIUS, `distribution-switch` deliberately uses `192.168.110.1` as the client source. The `10.200.0.0/29` link is only a routing transit to the firewall campus VIP; it is not trusted as an identity. Ring 1 and `auth-server` therefore accept campus RADIUS only from the NAC gateway address, which keeps the AAA trust boundary tied to the enforcement point instead of to a point-to-point transport IP.
 
 ## VPN Remote Access
 

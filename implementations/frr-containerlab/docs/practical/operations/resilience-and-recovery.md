@@ -47,8 +47,8 @@ This checks:
 
 | Command | Why you run it | Good sign |
 | --- | --- | --- |
-| `docker exec clab-esi-datacenter-firewall-01 ip -4 route show 192.168.0.0/16` | restore can sometimes drop this static route | via `192.168.1.252 dev eth1` |
-| `docker exec clab-esi-datacenter-firewall-02 ip -4 route show 192.168.0.0/16` | same check on firewall 2 | via `192.168.1.253 dev eth1` |
+| `docker exec clab-esi-datacenter-firewall-01 ip -4 route show 192.168.0.0/16` | restore can sometimes drop this static route | via `192.168.1.252` or `.253` dev `bond0` |
+| `docker exec clab-esi-datacenter-firewall-02 ip -4 route show 192.168.0.0/16` | same check on firewall 2 | via `192.168.1.252` or `.253` dev `bond0` |
 | `docker exec clab-esi-datacenter-firewall-01 ip -4 addr show eth1` | grep 192.168.1.254/24` | checks VIP ownership after failover | exactly one firewall matches |
 | `docker exec clab-esi-datacenter-spine-01 vtysh -c 'show bgp summary json'` | confirms spine sessions reconverged | neighbors back to `Established` |
 | `docker exec clab-esi-datacenter-leaf-01 ip -o link show dev eth1` | confirms uplink is operational again | state `UP` or `UNKNOWN` |

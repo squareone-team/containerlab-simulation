@@ -69,9 +69,9 @@ bash scripts/resiliancy/simulate_node_down.sh --node leaf-03 --no-wait
 - Isolated-node state is stored at `${XDG_RUNTIME_DIR:-/tmp}/clab-resilience/<lab>.json`.
 - In `--dry-run` mode, the script does not update state files and does not wait
   for convergence timers.
-- For Ring 1 firewalls, restore automatically re-applies the static transit route
-  (`192.168.0.0/16 via 192.168.1.252|253 dev eth1`) because some kernels drop
-  static routes when interfaces are toggled down/up.
+- For Ring 1 firewalls, restore automatically re-runs the firewall route
+  installer so inside (`bond0`), outside (`eth4`), and campus (`eth5`) routes are
+  restored after interface toggles.
 
 ## Post-Resilience Sanity Check
 

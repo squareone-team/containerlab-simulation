@@ -92,13 +92,13 @@ echo "=== Resilience Post-Check ==="
 
 echo
 echo "--- Firewall HA and transit ---"
-check "firewall-01 has Ring1 transit route via leaf-01" \
+check "firewall-01 has Ring1 transit route via an active border leaf" \
   "firewall-01" \
-  "ip -4 route show 192.168.0.0/16 | grep -Eq 'via 192.168.1.252 dev eth1( |$)'"
+  "ip -4 route show 192.168.0.0/16 | grep -Eq 'via 192.168.1.(252|253) dev bond0( |$)'"
 
-check "firewall-02 has Ring1 transit route via leaf-02" \
+check "firewall-02 has Ring1 transit route via an active border leaf" \
   "firewall-02" \
-  "ip -4 route show 192.168.0.0/16 | grep -Eq 'via 192.168.1.253 dev eth1( |$)'"
+  "ip -4 route show 192.168.0.0/16 | grep -Eq 'via 192.168.1.(252|253) dev bond0( |$)'"
 
 check "firewall-01 keepalived is running" \
   "firewall-01" \
@@ -109,10 +109,10 @@ check "firewall-02 keepalived is running" \
   "pgrep keepalived >/dev/null"
 
 vip_owners=0
-if run_node "firewall-01" "ip -4 addr show eth1 | grep -q '192.168.1.254/24'" >/dev/null 2>&1; then
+if run_node "firewall-01" "ip -4 addr show bond0 | grep -q '192.168.1.254/24'" >/dev/null 2>&1; then
   vip_owners=$((vip_owners + 1))
 fi
-if run_node "firewall-02" "ip -4 addr show eth1 | grep -q '192.168.1.254/24'" >/dev/null 2>&1; then
+if run_node "firewall-02" "ip -4 addr show bond0 | grep -q '192.168.1.254/24'" >/dev/null 2>&1; then
   vip_owners=$((vip_owners + 1))
 fi
 if [ "$vip_owners" -eq 1 ]; then
@@ -224,12 +224,12 @@ check_blocked "unauthenticated guest cannot reach Jupyter frontend" \
   "guest-01" \
   "nc -z -w2 192.168.70.30 8080"
 
-check "campus-bp reaches WiFi controller" \
-  "campus-bp" \
+check "distribution-switch reaches WiFi controller" \
+  "distribution-switch" \
   "ping -c2 -W2 192.168.10.100 >/dev/null"
 
-check "campus-bp reaches DMZ HTTP service through firewall" \
-  "campus-bp" \
+check "distribution-switch reaches DMZ HTTP service through firewall" \
+  "distribution-switch" \
   "wget -qO- -T 5 http://198.51.100.10 | grep -q 'ESI Datacenter DMZ test service is reachable'"
 
 check_host "all resilience state is restored" \

@@ -6,7 +6,7 @@ CLAB_PREFIX="clab-${LAB}"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 WEBDRIVER_PROBE="${SCRIPT_DIR}/browser_webdriver_probe.py"
 
-CAMPUS_BP="${CLAB_PREFIX}-campus-bp"
+CAMPUS_BP="${CLAB_PREFIX}-distribution-switch"
 GUEST_BROWSER="${CLAB_PREFIX}-guest-01"
 STUDENT_BROWSER="${CLAB_PREFIX}-student-01"
 ADMIN_BROWSER="${CLAB_PREFIX}-admin-01"

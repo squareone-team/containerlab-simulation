@@ -5,7 +5,7 @@ LAB="${LAB:-esi-datacenter}"
 CLAB_PREFIX="clab-${LAB}"
 
 AUTH_SERVER="${CLAB_PREFIX}-auth-server"
-CAMPUS_BP="${CLAB_PREFIX}-campus-bp"
+CAMPUS_BP="${CLAB_PREFIX}-distribution-switch"
 CAMPUS_STUDENT="${CLAB_PREFIX}-student-01"
 CAMPUS_ADMIN="${CLAB_PREFIX}-admin-01"
 GUEST_CLIENT="${CLAB_PREFIX}-guest-01"
@@ -274,9 +274,9 @@ expect_runtime_rule "$AUTH_SERVER" "ip saddr { 192.168.110.1, 198.51.100.20 } ud
 expect_runtime_absent "$AUTH_SERVER" "10.200.0.2" "auth server does not trust campus transit /30 as RADIUS client"
 
 if run_in "$CAMPUS_BP" "ip route get ${AUTH_IP} | grep -q 'src ${NAC_GATEWAY_IP}'"; then
-  ok "campus-bp uses NAC gateway source for RADIUS"
+  ok "distribution-switch uses NAC gateway source for RADIUS"
 else
-  fail "campus-bp does not source RADIUS from ${NAC_GATEWAY_IP}"
+  fail "distribution-switch does not source RADIUS from ${NAC_GATEWAY_IP}"
 fi
 
 wait_for_tcp "$CAMPUS_STUDENT" "$STUDENT_TARGET" 22 "campus student to student pod SSH"

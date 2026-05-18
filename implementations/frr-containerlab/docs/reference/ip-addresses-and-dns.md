@@ -23,12 +23,11 @@ This reference lists the stable lab addresses. DNS records are hosted on `dns-se
 
 | Segment | IPs | DNS |
 | --- | --- | --- |
-| leaf-01 to isp-router-01 | `203.0.113.1/30`, `203.0.113.2/30` | none |
-| leaf-02 to isp-router-02 | `203.0.113.5/30`, `203.0.113.6/30` | none |
-| leaf-01 to isp-router-03 | `203.0.114.1/30`, `203.0.114.2/30` | none |
-| Ring 1 firewall transit | leaf-01 `192.168.1.252/24`, leaf-02 `192.168.1.253/24`, VIP `192.168.1.254/24` | `firewall-vip.esi.internal` |
-| firewall-01 | `192.168.1.1/24` | `firewall-01.esi.internal` |
-| firewall-02 | `192.168.1.2/24` | `firewall-02.esi.internal` |
+| isp-router-01 to border-router-01 | ISP `203.0.113.2/30`, border `203.0.113.1/30` | none |
+| border-router-01 to firewalls | border `203.0.113.9/29`, outside VIP `203.0.113.14/29` | `firewall-outside-vip.esi.internal` |
+| Ring 1 firewall inside transit | leaf-01 `192.168.1.252/24`, leaf-02 `192.168.1.253/24`, VIP `192.168.1.254/24` | `firewall-vip.esi.internal` |
+| firewall-01 | inside `192.168.1.1/24`, outside `203.0.113.10/29`, campus `10.200.0.3/29` | `firewall-01.esi.internal` |
+| firewall-02 | inside `192.168.1.2/24`, outside `203.0.113.11/29`, campus `10.200.0.4/29` | `firewall-02.esi.internal` |
 | Public/DMZ gateway | `198.51.100.1/24` | none |
 | VPN gateway | `198.51.100.20/24`, VPN pool `10.250.200.10-10.250.200.200` | portal `https://198.51.100.20:8448/` |
 | Moodle frontend | `198.51.100.30/24` | `moodle.esi.dz` |
@@ -40,8 +39,8 @@ This reference lists the stable lab addresses. DNS records are hosted on `dns-se
 
 | Node/Segment | IP | DNS |
 | --- | --- | --- |
-| campus-bp NAC gateway | `192.168.110.1/24` | portal `https://192.168.110.1:8443/` |
-| campus transit to border leaf | `10.200.0.2/30` to leaf-01 `10.200.0.1/30` | none |
+| distribution-switch NAC gateway | `192.168.110.1/24` | portal `https://192.168.110.1:8443/` |
+| campus transit to firewall pair | distribution switch `10.200.0.2/29`, firewall VIP `10.200.0.1/29` | `firewall-campus-vip.esi.internal` |
 | guest-01 | `192.168.110.30/24` | none |
 | student-01 | `192.168.110.31/24` | none |
 | admin-01 | `192.168.110.32/24` | none |
@@ -70,7 +69,6 @@ OOB uses secondary addresses on the containerlab management interface so the VS 
 | Node | OOB IP | DNS |
 | --- | --- | --- |
 | bastion-01 | `172.16.0.50/24` | `bastion-01.esi.internal`, `bastion.esi.internal` |
-| ids-01 | `172.16.0.51/24` | `ids-01.esi.internal`, `ids.esi.internal` |
 | spine-01 / spine-02 | `172.16.0.11/24`, `172.16.0.12/24` | none |
 | leaf-01 through leaf-10 | `172.16.0.21/24` through `172.16.0.30/24` | none |
 

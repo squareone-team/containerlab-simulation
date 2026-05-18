@@ -7,7 +7,9 @@ This runbook is for Ring 1: the HA firewall pair, the shared VIP, and the cross-
 | Item | Value |
 | --- | --- |
 | Firewalls | `firewall-01`, `firewall-02` |
-| Ring 1 VIP | `192.168.1.254/24` on `eth1` |
+| Ring 1 VIP | `192.168.1.254/24` on `bond0` |
+| Outside VIP | `203.0.113.14/29` on `eth4` |
+| Campus VIP | `10.200.0.1/29` on `eth5` |
 | Border transit IPs | `192.168.1.252` on `leaf-01`, `192.168.1.253` on `leaf-02` |
 | HA mechanism | `keepalived` over firewall transit VNI `10199` |
 | Policy engine | `nftables` |
@@ -18,12 +20,12 @@ The firewall transit is stretched through EVPN/VXLAN, not a direct `leaf-01` to 
 
 | Command | Why you run it | Good sign |
 | --- | --- | --- |
-| `docker exec clab-esi-datacenter-firewall-01 ip -4 route show 192.168.0.0/16` | checks the border transit route on firewall 1 | via `192.168.1.252 dev eth1` |
-| `docker exec clab-esi-datacenter-firewall-02 ip -4 route show 192.168.0.0/16` | checks the border transit route on firewall 2 | via `192.168.1.253 dev eth1` |
+| `docker exec clab-esi-datacenter-firewall-01 ip -4 route show 192.168.0.0/16` | checks the border transit route on firewall 1 | via `192.168.1.252` or `.253` dev `bond0` |
+| `docker exec clab-esi-datacenter-firewall-02 ip -4 route show 192.168.0.0/16` | checks the border transit route on firewall 2 | via `192.168.1.252` or `.253` dev `bond0` |
 | `docker exec clab-esi-datacenter-firewall-01 ps aux` | grep '[k]eepalived'` | confirms HA daemon on firewall 1 | process exists |
 | `docker exec clab-esi-datacenter-firewall-02 ps aux` | grep '[k]eepalived'` | confirms HA daemon on firewall 2 | process exists |
-| `docker exec clab-esi-datacenter-firewall-01 ip -4 addr show eth1` | grep 192.168.1.254/24` | checks whether firewall 1 currently owns the VIP | matches on exactly one firewall |
-| `docker exec clab-esi-datacenter-firewall-02 ip -4 addr show eth1` | grep 192.168.1.254/24` | checks whether firewall 2 currently owns the VIP | matches on exactly one firewall |
+| `docker exec clab-esi-datacenter-firewall-01 ip -4 addr show bond0` | grep 192.168.1.254/24` | checks whether firewall 1 currently owns the VIP | matches on exactly one firewall |
+| `docker exec clab-esi-datacenter-firewall-02 ip -4 addr show bond0` | grep 192.168.1.254/24` | checks whether firewall 2 currently owns the VIP | matches on exactly one firewall |
 | `docker exec clab-esi-datacenter-leaf-01 ping -c2 -W2 192.168.1.254` | confirms the border leaf reaches the VIP | succeeds |
 | `docker exec clab-esi-datacenter-leaf-01 vtysh -c 'show evpn vni 10199'` | confirms the firewall transit VNI exists | VNI `10199` present |
 
