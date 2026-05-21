@@ -334,7 +334,7 @@ expect_browser_ui "$VPN_BROWSER" 5814 "VPN browser UI is served by the fabric-co
 
 clear_browser_roles
 
-expect_browser_page "$GUEST_BROWSER" "$NAC_URL" "Bienvenus au portail ESI|Sign in to access this network" "guest browser can load NAC portal"
+expect_browser_page "$GUEST_BROWSER" "$NAC_URL" "Bienvenus au portail ESI|ESI NAC Portal" "guest browser can load NAC portal"
 expect_tcp "$GUEST_BROWSER" "192.168.110.1" 80 "guest browser can reach NAC HTTP redirect"
 expect_plain_http_auth_rejected "$GUEST_BROWSER" "NAC rejects credential POST over plain HTTP"
 expect_tcp_blocked "$GUEST_BROWSER" "198.18.3.10" 80 "guest browser starts without Internet access"

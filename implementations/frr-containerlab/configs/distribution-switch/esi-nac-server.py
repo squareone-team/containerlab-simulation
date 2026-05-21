@@ -34,110 +34,182 @@ ROLE_PATTERN = re.compile(r"Filter-Id\s*=\s*\"?([A-Za-z0-9_-]+)\"?")
 
 
 PORTAL_CSS = """
-    :root {
-      color-scheme: light;
-      --esi-blue: #055bb5;
-      --esi-blue-dark: #034a92;
-      --esi-red: #c7102e;
-      --esi-gold: #f5a623;
-      --ink: #24313f;
-      --muted: #66727f;
-      --line: #d7dbdd;
-      --paper: #ffffff;
-      --canvas: #f4f6f8;
-    }
-    * { box-sizing: border-box; }
-    body {
-      margin: 0;
-      min-height: 100vh;
-      display: grid;
-      place-items: center;
-      background:
-        linear-gradient(135deg, rgba(5,91,181,.06), rgba(199,16,46,.05)),
-        var(--canvas);
-      color: var(--ink);
-      font-family: Arial, Helvetica, sans-serif;
-    }
-    .portal {
-      width: min(430px, calc(100vw - 28px));
-      border: 1px solid var(--line);
-      box-shadow: 0 18px 45px rgba(20, 37, 55, .18);
-      background: var(--paper);
-    }
-    .masthead {
-      background: var(--esi-blue);
-      color: #fff;
-      text-align: center;
-      padding: 20px 18px 18px;
-      border-bottom: 3px solid var(--esi-red);
-    }
-    .logo {
-      display: inline-grid;
-      place-items: center;
-      width: 58px;
-      height: 58px;
-      margin-bottom: 8px;
-      border-radius: 50%;
-      background: #fff;
-      border: 3px solid rgba(255,255,255,.7);
-      overflow: hidden;
-    }
-    .logo img { width: 100%; height: 100%; object-fit: contain; }
-    .logo-fallback { color: var(--esi-blue); font-weight: 800; font-size: 1.15rem; }
-    h1 { margin: 0; font-size: 1.55rem; font-weight: 700; text-shadow: 1px 2px 4px rgba(0,0,0,.25); }
-    .body { padding: 24px 26px 22px; }
-    .hint { margin: 0 0 16px; color: var(--muted); line-height: 1.45; font-size: .95rem; }
-    label { display: block; margin: 14px 0 6px; font-size: .86rem; font-weight: 700; color: #4a5561; }
-    input {
-      width: 100%;
-      padding: 11px 12px;
-      border: 1px solid var(--esi-gold);
-      border-radius: 6px;
-      font: inherit;
-      color: var(--ink);
-      background: #fff;
-    }
-    input:focus { outline: 2px solid rgba(245,166,35,.25); border-color: var(--esi-gold); }
-    button {
-      width: 100%;
-      margin-top: 18px;
-      border: 0;
-      border-radius: 4px;
-      padding: 12px 14px;
-      background: var(--esi-blue);
-      color: #fff;
-      font: inherit;
-      font-weight: 700;
-      cursor: pointer;
-    }
-    button:hover { background: var(--esi-blue-dark); }
-    .demo-grid { display: grid; gap: 8px; margin: 18px 0 4px; }
-    .demo {
-      border-left: 4px solid var(--esi-gold);
-      background: #fbfbfd;
-      padding: 10px 12px;
-      font-size: .86rem;
-      line-height: 1.35;
-    }
-    .demo strong { display: block; color: var(--ink); margin-bottom: 2px; }
-    .links { display: grid; gap: 9px; margin-top: 18px; }
-    a { color: var(--esi-blue); font-weight: 700; text-decoration: none; }
-    a:hover { text-decoration: underline; }
-    .status {
-      display: inline-block;
-      margin-bottom: 14px;
-      border-radius: 999px;
-      padding: 6px 11px;
-      font-size: .78rem;
-      font-weight: 800;
-      letter-spacing: .03em;
-      text-transform: uppercase;
-    }
-    .ok { background: #e6f6ed; color: #0f6f3d; }
-    .bad { background: #fdebed; color: #a50e26; }
-    .warn { background: #fff5df; color: #8a5b00; }
-    .foot { margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--line); color: var(--muted); font-size: .82rem; }
+        * { box-sizing: border-box; }
+
+        body {
+            font: 11pt Arial, Helvetica, sans-serif;
+            color: #5c5c5c;
+            margin: 0;
+            padding: 0;
+            min-height: 100vh;
+            background: #f0f0f0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .center-box {
+            width: min(560px, calc(100vw - 32px));
+            border-radius: 4px;
+            overflow: hidden;
+            box-shadow: 0px 4px 16px rgba(0,0,0,0.18);
+        }
+
+        .panel-header {
+            background-color: #055BB5;
+            padding: 24px 32px;
+            text-align: center;
+        }
+
+        .panel-header h2 {
+            font-size: 1.75em;
+            color: #f7fafc;
+            text-shadow: 1px 1px 4px rgba(0,0,0,0.3);
+            margin: 0;
+            font-weight: bold;
+        }
+
+        .panel-body {
+            background: #fff;
+            padding: 42px 64px 38px 64px;
+            border: 1px solid #d7dbdd;
+            border-top: none;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .panel-form {
+            width: 100%;
+        }
+
+        .panel-body input[type="text"],
+        .panel-body input[type="password"] {
+            display: block;
+            width: 100%;
+            border: 1px solid #d7dbdd;
+            border-radius: 6px;
+            padding: 13px 16px;
+            font-size: 1em;
+            color: #5c5c5c;
+            margin: 10px 0;
+            background: #fff;
+            transition: border-color 0.2s;
+        }
+
+        .panel-body input[type="text"]:focus,
+        .panel-body input[type="password"]:focus {
+            outline: none;
+            border-color: #faa107;
+        }
+
+        .panel-body input[type="text"]::placeholder,
+        .panel-body input[type="password"]::placeholder {
+            color: #b0b6bc;
+        }
+
+        .sign-in-btn {
+            display: block;
+            width: 100%;
+            margin: 18px 0 12px 0;
+            padding: 13px;
+            background: #055BB5;
+            color: #fff;
+            border: none;
+            border-radius: 6px;
+            font-size: 1em;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .sign-in-btn:hover { background: #044a96; }
+
+        .links {
+            margin-top: 8px;
+            text-align: center;
+            width: 100%;
+        }
+
+        .links a {
+            display: block;
+            text-decoration: none;
+            color: #1987cb;
+            font-size: 0.95em;
+            margin: 7px 0;
+        }
+
+        .links a:hover { color: #878b97; }
+
+        .status {
+            width: 100%;
+            text-align: center;
+            margin: 0 0 10px 0;
+            padding: 10px 12px;
+            border-radius: 6px;
+            font-size: 1em;
+            font-weight: bold;
+        }
+
+        .status.ok { background: #e6f6ed; color: #0f6f3d; }
+        .status.bad { background: #fdebed; color: #a50e26; }
+        .status.warn { background: #fff5df; color: #8a5b00; }
+
+        .message {
+            text-align: center;
+            margin: 6px 0 8px 0;
+            font-size: 1em;
+        }
+
+        .details {
+            width: 100%;
+            text-align: center;
+            font-size: 0.95em;
+            margin-top: 6px;
+        }
+
+        .details .detail { margin: 4px 0; }
+
+        .watermark {
+            position: fixed;
+            bottom: 18px;
+            right: 22px;
+            display: flex;
+            align-items: center;
+            gap: 7px;
+            opacity: 0.6;
+            font-size: 0.78em;
+            color: #555;
+            user-select: none;
+            pointer-events: none;
+        }
+
+        .watermark svg {
+            width: 22px;
+            height: 22px;
+        }
+
+        @media (max-width: 560px) {
+            body { font-size: 10pt; }
+            .panel-header { padding: 20px 24px; }
+            .panel-body { padding: 32px 28px 30px 28px; }
+        }
 """
+
+WATERMARK_HTML = """
+    <div class="watermark">
+        made by
+        <svg width="1045" height="1045" viewBox="0 0 1045 1045" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M1045 1045H460.247V188.159H210.775L164.264 360.111H288.294V1045H0V0H1045V1045Z" fill="#0D4260"/>
+        </svg>
+    </div>
+"""
+
+
+def write_response_body(wfile, body, chunk_size=256):
+    for offset in range(0, len(body), chunk_size):
+        wfile.write(body[offset:offset + chunk_size])
+        wfile.flush()
 
 
 def logo_markup():
@@ -145,37 +217,33 @@ def logo_markup():
 
 
 def render_login_page():
-    return f"""<!doctype html>
-<html lang="en">
+        return f"""<!doctype html>
+<html>
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Sign in to access this network</title>
-  <style>{PORTAL_CSS}</style>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge, chrome=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>ESI NAC Portal</title>
+    <style>{PORTAL_CSS}</style>
 </head>
 <body>
-  <main class="portal">
-    <header class="masthead">
-      {logo_markup()}
-      <h1>Bienvenus au portail ESI</h1>
-    </header>
-    <section class="body">
-      <p class="hint">Authentifiez votre session pour acceder au reseau pedagogique, a Moodle et aux services autorises.</p>
-      <form method="post" action="/auth">
-      <label for="username">Identifiant ESI</label>
-      <input id="username" name="username" autocomplete="username" placeholder="prenom.nom@esi.dz" required>
-      <label for="password">Password</label>
-      <input id="password" name="password" type="password" autocomplete="current-password" required>
-      <button type="submit">Sign in</button>
-    </form>
-    <div class="demo-grid" aria-label="Demo accounts">
-      <div class="demo"><strong>Professor/student role</strong> hamani.nacer@esi.dz / HamaniTPs#2026</div>
-      <div class="demo"><strong>Student role</strong> tati.youcef@esi.dz / TatiLab#2026</div>
-      <div class="demo"><strong>SquareOne admin</strong> squareone.admin@esi.dz / SquareOneRoot#2026</div>
+    <div class="center-box">
+        <div class="panel-header">
+            <h2>Bienvenus au portail ESI</h2>
+        </div>
+        <div class="panel-body">
+            <form method="post" action="/auth" class="panel-form">
+                <input type="text" id="username" name="username" placeholder="Username" autocomplete="username" required>
+                <input type="password" id="password" name="password" placeholder="Password" autocomplete="current-password" required>
+                <button class="sign-in-btn" type="submit">Sign in</button>
+            </form>
+            <div class="links">
+                <a href="#">Access the User Portal</a>
+                <a href="http://portail.esi-lan.dz/password">Changer le mot de passe</a>
+            </div>
+        </div>
     </div>
-    <div class="foot"><a href="http://portail.esi-lan.dz/password">Changer le mot de passe</a></div>
-    </section>
-  </main>
+    {WATERMARK_HTML}
 </body>
 </html>
 """
@@ -200,31 +268,35 @@ def render_status_page(kind, title, message, role="", username=""):
     else:
         links = '<div class="links"><a href="/">Try again</a></div>'
     details = ""
-    if safe_role:
-        details += f"<p class=\"hint\">Role: <strong>{safe_role}</strong></p>"
-    if safe_user:
-        details += f"<p class=\"hint\">Identity: <strong>{safe_user}</strong></p>"
+    if safe_role or safe_user:
+        detail_items = []
+        if safe_role:
+            detail_items.append(f"<div class=\"detail\">Role: <strong>{safe_role}</strong></div>")
+        if safe_user:
+            detail_items.append(f"<div class=\"detail\">Identity: <strong>{safe_user}</strong></div>")
+        details = f"<div class=\"details\">{''.join(detail_items)}</div>"
     return f"""<!doctype html>
-<html lang="en">
+<html>
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>{safe_title}</title>
-  <style>{PORTAL_CSS}</style>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge, chrome=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{safe_title}</title>
+    <style>{PORTAL_CSS}</style>
 </head>
 <body>
-  <main class="portal">
-    <header class="masthead">
-      {logo_markup()}
-      <h1>Bienvenus au portail ESI</h1>
-    </header>
-    <section class="body">
-      <span class="status {badge_class}">{safe_title}</span>
-      <p class="hint">{safe_message}</p>
-      {details}
-      {links}
-    </section>
-  </main>
+    <div class="center-box">
+        <div class="panel-header">
+            <h2>Bienvenus au portail ESI</h2>
+        </div>
+        <div class="panel-body">
+            <div class="status {badge_class}">{safe_title}</div>
+            <p class="message">{safe_message}</p>
+            {details}
+            {links}
+        </div>
+    </div>
+    {WATERMARK_HTML}
 </body>
 </html>
 """
@@ -309,7 +381,8 @@ class Handler(BaseHTTPRequestHandler):
         self.send_header("Cache-Control", "public, max-age=3600")
         self.send_header("Content-Length", str(len(body)))
         self.end_headers()
-        self.wfile.write(body)
+        self.wfile.flush()
+        write_response_body(self.wfile, body)
 
     def send_html(self, status, html):
         body = html.encode("utf-8")
@@ -317,7 +390,8 @@ class Handler(BaseHTTPRequestHandler):
         self.send_header("Content-Type", "text/html; charset=utf-8")
         self.send_header("Content-Length", str(len(body)))
         self.end_headers()
-        self.wfile.write(body)
+        self.wfile.flush()
+        write_response_body(self.wfile, body)
 
     def send_json(self, status, payload):
         body = json.dumps(payload).encode("utf-8")
@@ -325,7 +399,8 @@ class Handler(BaseHTTPRequestHandler):
         self.send_header("Content-Type", "application/json")
         self.send_header("Content-Length", str(len(body)))
         self.end_headers()
-        self.wfile.write(body)
+        self.wfile.flush()
+        write_response_body(self.wfile, body)
 
     def do_GET(self):
         if self.path == "/logo.png":

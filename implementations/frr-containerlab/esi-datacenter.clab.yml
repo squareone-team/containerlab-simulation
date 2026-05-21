@@ -226,6 +226,7 @@ topology:
       binds:
         - configs/vpn-gateway/startup.sh:/startup.sh
         - configs/vpn-gateway/esi-vpn-enroll.py:/usr/local/bin/esi-vpn-enroll.py:ro
+        - configs/vpn-gateway/logo_esi_web.png:/usr/local/bin/logo_esi.png:ro
         - configs/vpn-gateway/state/wireguard:/etc/wireguard
         - configs/vpn-gateway/state/esi-vpn:/etc/esi-vpn
         - configs/vpn-gateway/state/leases:/var/lib/esi-vpn
