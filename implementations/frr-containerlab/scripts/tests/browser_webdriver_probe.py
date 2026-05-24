@@ -150,7 +150,7 @@ def nac_login(url, username, password, expected_role):
     driver = WebDriver()
     try:
         driver.open(url)
-        driver.wait_source("Sign in to access this network|Bienvenus au portail ESI")
+        driver.wait_source("ESI NAC Portal|Bienvenus au portail ESI")
         driver.type("#username", username)
         driver.type("#password", password)
         driver.click("button[type='submit']")

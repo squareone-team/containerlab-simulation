@@ -28,7 +28,8 @@ WG_INTERFACE = os.environ.get("ESI_WG_INTERFACE", "wg0")
 SERVER_PUB = os.environ.get("ESI_WG_SERVER_PUB", "/etc/wireguard/server.pub")
 STATE_FILE = os.environ.get("ESI_VPN_STATE", "/var/lib/esi-vpn/leases.json")
 LOG_FILE = os.environ.get("ESI_VPN_LOG", "/var/log/esi-vpn-auth.log")
-LOGO_PATH = os.environ.get("ESI_VPN_LOGO", "/opt/esi/logo_esi.png")
+DEFAULT_LOGO_PATH = os.path.join(os.path.dirname(__file__), "logo_esi.png")
+LOGO_PATH = os.environ.get("ESI_VPN_LOGO", DEFAULT_LOGO_PATH)
 CLIENT_AGENT_PORT = int(os.environ.get("ESI_VPN_CLIENT_AGENT_PORT", "15814"))
 CLIENT_AGENT_ENABLED = os.environ.get("ESI_VPN_CLIENT_AGENT", "1") == "1"
 VPN_ALLOWED_IPS = [
@@ -48,211 +49,281 @@ MAX_BODY_BYTES = int(os.environ.get("ESI_VPN_MAX_BODY", "8192"))
 STATE_LOCK = threading.Lock()
 
 PORTAL_CSS = """
-    :root {
-      color-scheme: light;
-      --ink: #17202a;
-      --muted: #607080;
-      --line: #d9e1e8;
-      --blue: #063f7d;
-      --cyan: #00a0c8;
-      --green: #0f7b43;
-      --red: #b42335;
-      --paper: #ffffff;
-      --field: #f7fafc;
-    }
-    * { box-sizing: border-box; }
-    body {
-      margin: 0;
-      min-height: 100vh;
-      color: var(--ink);
-      font-family: Inter, Arial, Helvetica, sans-serif;
-      background:
-        linear-gradient(120deg, rgba(6,63,125,.94), rgba(0,160,200,.72)),
-        #0b1f36;
-      display: grid;
-      place-items: center;
-      padding: 28px 14px;
-    }
-    main {
-      width: min(980px, 100%);
-      display: grid;
-      grid-template-columns: minmax(280px, .85fr) minmax(320px, 1.15fr);
-      background: var(--paper);
-      box-shadow: 0 24px 70px rgba(0,0,0,.28);
-      border: 1px solid rgba(255,255,255,.45);
-      min-height: 620px;
-    }
-    .brand {
-      color: #fff;
-      background:
-        linear-gradient(180deg, rgba(6,63,125,.92), rgba(6,63,125,.78)),
-        #063f7d;
-      padding: 34px 30px;
-      display: flex;
-      flex-direction: column;
-      justify-content: space-between;
-    }
-    .brand img {
-      width: 92px;
-      height: 92px;
-      object-fit: contain;
-      border-radius: 50%;
-      background: #fff;
-      padding: 6px;
-      border: 3px solid rgba(255,255,255,.7);
-    }
-    .brand h1 { margin: 28px 0 10px; font-size: 2rem; line-height: 1.05; }
-    .brand p { margin: 0; line-height: 1.55; color: rgba(255,255,255,.86); }
-    .panel { padding: 34px 36px; }
-    .status {
-      display: inline-block;
-      margin-bottom: 16px;
-      border-radius: 999px;
-      padding: 6px 11px;
-      font-size: .77rem;
-      font-weight: 800;
-      letter-spacing: .04em;
-      text-transform: uppercase;
-    }
-    .ok { color: var(--green); background: #e8f6ef; }
-    .bad { color: var(--red); background: #fdecee; }
-    h2 { margin: 0 0 8px; font-size: 1.55rem; }
-    .hint { margin: 0 0 18px; color: var(--muted); line-height: 1.5; }
-    label { display: block; margin: 14px 0 6px; font-weight: 750; font-size: .88rem; }
-    input, textarea {
-      width: 100%;
-      border: 1px solid var(--line);
-      background: var(--field);
-      border-radius: 7px;
-      padding: 11px 12px;
-      font: inherit;
-      color: var(--ink);
-    }
-    textarea { min-height: 76px; resize: vertical; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: .86rem; }
-    .actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 16px; }
-    button {
-      border: 0;
-      border-radius: 7px;
-      padding: 12px 14px;
-      font: inherit;
-      font-weight: 800;
-      cursor: pointer;
-      background: var(--blue);
-      color: #fff;
-    }
-    button.secondary { background: #eef4f8; color: var(--blue); border: 1px solid var(--line); }
-    pre {
-      white-space: pre-wrap;
-      word-break: break-word;
-      background: #0d1b2a;
-      color: #e7f7ff;
-      padding: 16px;
-      border-radius: 7px;
-      overflow: auto;
-      font-size: .86rem;
-    }
-    .demo { margin-top: 16px; padding: 12px; border: 1px solid var(--line); background: #fbfdff; font-size: .88rem; line-height: 1.45; }
-    a { color: var(--blue); font-weight: 800; text-decoration: none; }
-    a:hover { text-decoration: underline; }
-    @media (max-width: 760px) {
-      main { grid-template-columns: 1fr; }
-      .brand { gap: 24px; }
-      .panel { padding: 26px 22px; }
-    }
+        :root {
+            color-scheme: light;
+            --esi-blue: #055bb5;
+            --esi-blue-dark: #044a96;
+            --ink: #2b3542;
+            --muted: #66727f;
+            --line: #d7dbdd;
+            --paper: #ffffff;
+            --canvas: #f0f0f0;
+            --ok: #0f6f3d;
+            --bad: #a50e26;
+            --warn: #8a5b00;
+        }
+        * { box-sizing: border-box; }
+        body {
+            font: 9pt Arial, Helvetica, sans-serif;
+            color: var(--ink);
+            margin: 0;
+            padding: 0;
+            min-height: 100vh;
+            background: var(--canvas);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .center-box {
+            width: min(560px, calc(100vw - 28px));
+            border-radius: 4px;
+            overflow: hidden;
+            box-shadow: 0px 4px 18px rgba(0,0,0,0.18);
+            background: var(--paper);
+        }
+        .panel-header {
+            background-color: var(--esi-blue);
+            padding: 16px 20px;
+        }
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            color: #f7fafc;
+        }
+        .brand img {
+            width: 44px;
+            height: 44px;
+            object-fit: contain;
+            border-radius: 8px;
+            background: #fff;
+            padding: 4px;
+            border: 2px solid rgba(255,255,255,.6);
+        }
+        .brand h2 {
+            margin: 0;
+            font-size: 1.35em;
+            font-weight: bold;
+            text-shadow: 1px 1px 4px rgba(0,0,0,0.3);
+        }
+        .brand p {
+            margin: 2px 0 0;
+            font-size: 0.9em;
+            color: rgba(255,255,255,0.9);
+        }
+        .panel-body {
+            padding: 24px 32px 26px 32px;
+            border: 1px solid var(--line);
+            border-top: none;
+        }
+        .panel-form { width: 100%; }
+        .status {
+            display: inline-block;
+            margin-bottom: 12px;
+            border-radius: 6px;
+            padding: 6px 10px;
+            font-size: 0.85em;
+            font-weight: bold;
+        }
+        .status.ok { background: #e6f6ed; color: var(--ok); }
+        .status.bad { background: #fdebed; color: var(--bad); }
+        .status.warn { background: #fff5df; color: var(--warn); }
+        h3 {
+            margin: 4px 0 8px;
+            font-size: 1.25em;
+            color: #2b3440;
+        }
+        .hint {
+            margin: 0 0 16px;
+            color: var(--muted);
+            line-height: 1.5;
+            font-size: 0.95em;
+        }
+        label { display: block; margin: 12px 0 6px; font-size: 0.88em; font-weight: bold; color: #4a5561; }
+        input, textarea {
+            width: 100%;
+            border: 1px solid var(--line);
+            border-radius: 6px;
+            padding: 10px 12px;
+            font: inherit;
+            color: var(--ink);
+            background: #fff;
+        }
+        textarea {
+            min-height: 76px;
+            resize: vertical;
+            font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+            font-size: 0.86em;
+        }
+        input:focus, textarea:focus { outline: none; border-color: #faa107; }
+        .actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 16px; }
+        button,
+        .actions a {
+            border: 0;
+            border-radius: 6px;
+            padding: 10px 12px;
+            font: inherit;
+            font-weight: bold;
+            cursor: pointer;
+            background: var(--esi-blue);
+            color: #fff;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+        button.secondary,
+        .actions a.secondary {
+            background: #f4f7fb;
+            color: var(--esi-blue);
+            border: 1px solid var(--line);
+        }
+        pre {
+            white-space: pre-wrap;
+            word-break: break-word;
+            background: #f7f9fb;
+            color: #2b3542;
+            padding: 12px 14px;
+            border-radius: 6px;
+            border: 1px solid var(--line);
+            overflow: auto;
+            font-size: 0.86em;
+            margin-top: 14px;
+        }
+        .watermark {
+            position: fixed;
+            bottom: 18px;
+            right: 22px;
+            display: flex;
+            align-items: center;
+            gap: 7px;
+            opacity: 0.6;
+            font-size: 0.78em;
+            color: #555;
+            user-select: none;
+            pointer-events: none;
+        }
+        .watermark svg {
+            width: 22px;
+            height: 22px;
+        }
+        @media (max-width: 680px) {
+            .panel-body { padding: 20px 22px 22px 22px; }
+            .brand p { display: none; }
+        }
+"""
+
+WATERMARK_HTML = """
+    <div class="watermark">
+        made by
+        <svg width="1045" height="1045" viewBox="0 0 1045 1045" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M1045 1045H460.247V188.159H210.775L164.264 360.111H288.294V1045H0V0H1045V1045Z" fill="#0D4260"/>
+        </svg>
+    </div>
 """
 
 
+def write_response_body(wfile, body, chunk_size=256):
+    for offset in range(0, len(body), chunk_size):
+        wfile.write(body[offset:offset + chunk_size])
+        wfile.flush()
+
+
 def render_shell(panel_html):
-    return f"""<!doctype html>
-<html lang="en">
+        return f"""<!doctype html>
+<html>
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>ESI VPN Platform</title>
-  <style>{PORTAL_CSS}</style>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge, chrome=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>ESI VPN Portal</title>
+    <link rel="stylesheet" href="/style.css">
 </head>
 <body>
-  <main>
-    <section class="brand">
-      <div>
-        <img src="/logo.png" alt="ESI logo">
-        <h1>ESI VPN Platform</h1>
-        <p>Remote access enrollment for lab users with WireGuard, RADIUS identity checks, and role-based internal reachability.</p>
-      </div>
-      <p>SquareOne operations profile - demo fabric gateway 198.51.100.20</p>
-    </section>
-    <section class="panel">{panel_html}</section>
-  </main>
+    <div class="center-box">
+        <div class="panel-header">
+            <div class="brand">
+                <img src="/logo.png" alt="ESI logo">
+                <div>
+                    <h2>ESI VPN Portal</h2>
+                    <p>WireGuard enrollment for ESI lab access.</p>
+                </div>
+            </div>
+        </div>
+        <div class="panel-body">
+            {panel_html}
+        </div>
+    </div>
+    {WATERMARK_HTML}
 </body>
 </html>
 """
 
 
 def render_home_page():
-    return render_shell("""
-      <span class="status ok">Enrollment portal</span>
-      <h2>Create a VPN lease</h2>
-      <p class="hint">Use an ESI identity. A lab WireGuard keypair is generated automatically during enrollment unless you provide an existing public key.</p>
-      <form method="post" action="/enroll" id="enroll-form">
-        <label for="username">ESI identity</label>
-        <input id="username" name="username" autocomplete="username" placeholder="amine.kadri@esi.dz" required>
-        <label for="password">Password</label>
-        <input id="password" name="password" type="password" autocomplete="current-password" required>
-        <input id="private_key" name="private_key" type="hidden">
-        <label for="public_key">WireGuard public key (optional)</label>
-        <textarea id="public_key" name="public_key" placeholder="Leave empty to generate a lab keypair"></textarea>
-        <div class="actions">
-          <button type="submit">Enroll</button>
-          <button type="button" class="secondary" id="generate-key">Generate key now</button>
-        </div>
-      </form>
-      <div class="demo"><strong>Student VPN demo</strong><br>tati.youcef@esi.dz / TatiLab#2026<br><strong>Professor same privilege</strong><br>hamani.nacer@esi.dz / HamaniTPs#2026</div>
-      <pre id="generated-key" aria-live="polite"></pre>
-      <script>
-        const output = document.getElementById("generated-key");
-        const publicKey = document.getElementById("public_key");
-        const privateKey = document.getElementById("private_key");
+        return render_shell("""
+            <span class="status ok">Enrollment portal</span>
+            <h3>Create a VPN lease</h3>
+            <p class="hint">Use an ESI identity. A lab WireGuard keypair is generated automatically unless you provide an existing public key.</p>
+            <form method="post" action="/enroll" id="enroll-form" class="panel-form">
+                <label for="username">ESI identity</label>
+                <input id="username" name="username" autocomplete="username" placeholder="prenom.nom@esi.dz" required>
+                <label for="password">Password</label>
+                <input id="password" name="password" type="password" autocomplete="current-password" required>
+                <input id="private_key" name="private_key" type="hidden">
+                <label for="public_key">WireGuard public key (optional)</label>
+                <textarea id="public_key" name="public_key" placeholder="Leave empty to generate a lab keypair"></textarea>
+                <div class="actions">
+                    <button type="submit">Enroll</button>
+                    <button type="button" class="secondary" id="generate-key">Generate key now</button>
+                </div>
+            </form>
+            <pre id="generated-key" aria-live="polite"></pre>
+            <script>
+                const output = document.getElementById("generated-key");
+                const publicKey = document.getElementById("public_key");
+                const privateKey = document.getElementById("private_key");
 
-        async function generateKeyPair() {
-          output.textContent = "Generating WireGuard keypair...";
-          const response = await fetch("/generate-key", { method: "POST", cache: "no-store" });
-          const payload = await response.json();
-          if (!payload.ok) {
-            throw new Error(payload.error || "key generation failed");
-          }
-          privateKey.value = payload.private_key;
-          publicKey.value = payload.public_key;
-          output.textContent = "PrivateKey = " + payload.private_key + "\\nPublicKey = " + payload.public_key;
-        }
+                async function generateKeyPair() {
+                    output.textContent = "Generating WireGuard keypair...";
+                    const response = await fetch("/generate-key", { method: "POST", cache: "no-store" });
+                    const payload = await response.json();
+                    if (!payload.ok) {
+                        throw new Error(payload.error || "key generation failed");
+                    }
+                    privateKey.value = payload.private_key;
+                    publicKey.value = payload.public_key;
+                    output.textContent = "PrivateKey = " + payload.private_key + "\\nPublicKey = " + payload.public_key;
+                }
 
-        document.getElementById("generate-key").addEventListener("click", async () => {
-          try {
-            await generateKeyPair();
-          } catch (error) {
-            output.textContent = error.message || "key generation request failed";
-          }
-        });
-      </script>
-    """)
+                document.getElementById("generate-key").addEventListener("click", async () => {
+                    try {
+                        await generateKeyPair();
+                    } catch (error) {
+                        output.textContent = error.message || "key generation request failed";
+                    }
+                });
+            </script>
+        """)
 
 
 def render_logout_page():
-    return render_shell("""
-      <span class="status ok">VPN logout</span>
-      <h2>Remove a VPN lease</h2>
-      <p class="hint">Submit the WireGuard public key, or authenticate an ESI identity to remove that user's active lab leases.</p>
-      <form method="post" action="/logout">
-        <label for="public_key">WireGuard public key</label>
-        <textarea id="public_key" name="public_key" placeholder="Public key to remove"></textarea>
-        <label for="username">ESI identity</label>
-        <input id="username" name="username" autocomplete="username" placeholder="amine.kadri@esi.dz">
-        <label for="password">Password</label>
-        <input id="password" name="password" type="password" autocomplete="current-password">
-        <div class="actions">
-          <button type="submit">Log out VPN lease</button>
-        </div>
-      </form>
-    """)
+        return render_shell("""
+            <span class="status warn">VPN logout</span>
+            <h3>Remove a VPN lease</h3>
+            <p class="hint">Submit the WireGuard public key, or authenticate an ESI identity to remove that user's active lab leases.</p>
+            <form method="post" action="/logout" class="panel-form">
+                <label for="public_key">WireGuard public key</label>
+                <textarea id="public_key" name="public_key" placeholder="Public key to remove"></textarea>
+                <label for="username">ESI identity</label>
+                <input id="username" name="username" autocomplete="username" placeholder="prenom.nom@esi.dz">
+                <label for="password">Password</label>
+                <input id="password" name="password" type="password" autocomplete="current-password">
+                <div class="actions">
+                    <button type="submit">Log out VPN lease</button>
+                </div>
+            </form>
+        """)
 
 
 def render_result_page(ok, title, message, config=None, public_key="", client_installed=False, install_error=""):
@@ -274,14 +345,18 @@ def render_result_page(ok, title, message, config=None, public_key="", client_in
       </form>
         """
     return render_shell(f"""
-      <span class="status {badge}">{safe_title}</span>
-      <h2>{safe_title}</h2>
-      <p class="hint">{safe_message}</p>
-      {install_html}
-      {config_html}
-      <div class="actions"><a href="/">Return to enrollment</a> <a href="/logout">Logout</a> <a href="/health">Health check</a></div>
-      {logout_html}
-    """)
+            <span class="status {badge}">{safe_title}</span>
+            <h3>{safe_title}</h3>
+            <p class="hint">{safe_message}</p>
+            {install_html}
+            {config_html}
+            <div class="actions">
+                <a href="/" class="primary">Return to enrollment</a>
+                <a href="/logout" class="secondary">Logout</a>
+                <a href="/health" class="secondary">Health check</a>
+            </div>
+            {logout_html}
+        """)
 
 
 def log_event(event):
@@ -542,7 +617,18 @@ class Handler(BaseHTTPRequestHandler):
         self.send_header("Cache-Control", "public, max-age=3600")
         self.send_header("Content-Length", str(len(body)))
         self.end_headers()
-        self.wfile.write(body)
+        self.wfile.flush()
+        write_response_body(self.wfile, body)
+
+    def _send_css(self):
+        body = PORTAL_CSS.encode("utf-8")
+        self.send_response(200)
+        self.send_header("Content-Type", "text/css; charset=utf-8")
+        self.send_header("Cache-Control", "no-store")
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+        self.wfile.flush()
+        write_response_body(self.wfile, body)
 
     def _send_json(self, status, payload):
         body = json.dumps(payload).encode("utf-8")
@@ -551,7 +637,8 @@ class Handler(BaseHTTPRequestHandler):
         self.send_header("Cache-Control", "no-store")
         self.send_header("Content-Length", str(len(body)))
         self.end_headers()
-        self.wfile.write(body)
+        self.wfile.flush()
+        write_response_body(self.wfile, body)
 
     def _send_html(self, status, html):
         body = html.encode("utf-8")
@@ -560,11 +647,15 @@ class Handler(BaseHTTPRequestHandler):
         self.send_header("Cache-Control", "no-store")
         self.send_header("Content-Length", str(len(body)))
         self.end_headers()
-        self.wfile.write(body)
+        self.wfile.flush()
+        write_response_body(self.wfile, body)
 
     def do_GET(self):
         if self.path == "/logo.png":
             self._send_logo()
+            return
+        if self.path == "/style.css":
+            self._send_css()
             return
         if self.path in ("/", "/index.html"):
             self._send_html(200, render_home_page())
