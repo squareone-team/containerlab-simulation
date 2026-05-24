@@ -19,8 +19,8 @@
       "id": "pod1-title",
       "text": "POD 1: EDGE / BORDER",
       "position": {
-        "x": -111.33248290145183,
-        "y": -30.166883313757218
+        "x": -133.5961842024255,
+        "y": -28.995109561074393
       },
       "fontSize": 20,
       "fontColor": "#0d4260",
@@ -80,8 +80,8 @@
       "id": "pod5-title",
       "text": "POD 5: ULTRA COMPUTE POD",
       "position": {
-        "x": 1195.5272058556952,
-        "y": -29.072836707702148
+        "x": 1207.3179642606788,
+        "y": -29.07283670770215
       },
       "fontSize": 20,
       "fontColor": "#0d4260",
@@ -113,10 +113,10 @@
       "id": "freeText_1779614569671",
       "text": "ESI NETWORK",
       "position": {
-        "x": -64.53259473412304,
-        "y": 696.998411428531
+        "x": -103.38658356596372,
+        "y": 592.8139639427768
       },
-      "fontSize": 20,
+      "fontSize": 32,
       "fontColor": "#0D4260",
       "backgroundColor": "transparent",
       "fontWeight": "bold",
@@ -129,10 +129,10 @@
       "id": "freeText_1779614735330",
       "text": "INTERNET",
       "position": {
-        "x": -509.85990142833384,
-        "y": 464.3325637947419
+        "x": -536.2371186901761,
+        "y": 411.8186853595717
       },
-      "fontSize": 20,
+      "fontSize": 32,
       "fontColor": "#0D4260",
       "backgroundColor": "transparent",
       "fontWeight": "bold",
@@ -165,10 +165,10 @@
       "id": "shape-pod1",
       "shapeType": "rectangle",
       "position": {
-        "x": -191.54944839245923,
+        "x": -211.54474054780795,
         "y": 31.201689109916117
       },
-      "width": 380,
+      "width": 400,
       "height": 420,
       "fillColor": "#ffffff",
       "fillOpacity": 0.2,
@@ -255,8 +255,8 @@
       "id": "shape-internet",
       "shapeType": "rectangle",
       "position": {
-        "x": -124.60548626941937,
-        "y": 526.8837022175962
+        "x": -122.45653478002276,
+        "y": 678.1969821940745
       },
       "width": 255,
       "height": 195,
@@ -291,11 +291,11 @@
       "id": "freeShape_1779614612395",
       "shapeType": "rectangle",
       "position": {
-        "x": -710.3719543315377,
-        "y": 525.1122397375353
+        "x": -703.4692034170596,
+        "y": 493.9395293508725
       },
-      "width": 510,
-      "height": 441,
+      "width": 498,
+      "height": 380,
       "fillColor": "#ecf2f5",
       "fillOpacity": 1,
       "borderColor": "#60a5fa",
@@ -426,10 +426,10 @@
     {
       "id": "vpn-gateway",
       "position": {
-        "x": -140,
+        "x": -160,
         "y": 100
       },
-      "icon": "vpn-gateway-1",
+      "icon": "wireguard-vpn-gateway",
       "iconCornerRadius": 0
     },
     {
@@ -446,7 +446,7 @@
         "x": -160,
         "y": 360
       },
-      "icon": "server"
+      "icon": "moodle-server"
     },
     {
       "id": "server-dmz-01",
@@ -454,7 +454,7 @@
         "x": -160,
         "y": 280
       },
-      "icon": "server"
+      "icon": "server-2"
     },
     {
       "id": "server-admin-01",
@@ -462,7 +462,7 @@
         "x": 220,
         "y": 260
       },
-      "icon": "server"
+      "icon": "server-2"
     },
     {
       "id": "server-admin-02",
@@ -470,7 +470,7 @@
         "x": 460,
         "y": 260
       },
-      "icon": "server"
+      "icon": "server-2"
     },
     {
       "id": "ntp-server",
@@ -478,7 +478,7 @@
         "x": 260,
         "y": 360
       },
-      "icon": "server"
+      "icon": "server-2"
     },
     {
       "id": "dns-server",
@@ -486,7 +486,7 @@
         "x": 340,
         "y": 360
       },
-      "icon": "server"
+      "icon": "server-2"
     },
     {
       "id": "dhcp-server",
@@ -494,7 +494,7 @@
         "x": 420,
         "y": 360
       },
-      "icon": "server"
+      "icon": "server-2"
     },
     {
       "id": "auth-server",
@@ -502,7 +502,7 @@
         "x": 340,
         "y": 260
       },
-      "icon": "server"
+      "icon": "server-2"
     },
     {
       "id": "server-hpc-01",
@@ -510,7 +510,7 @@
         "x": 1260,
         "y": 260
       },
-      "icon": "server"
+      "icon": "server-2"
     },
     {
       "id": "server-hpc-02",
@@ -518,7 +518,7 @@
         "x": 1380,
         "y": 260
       },
-      "icon": "server"
+      "icon": "server-2"
     },
     {
       "id": "server-hpc-jupyter",
@@ -526,7 +526,7 @@
         "x": 1320,
         "y": 360
       },
-      "icon": "server"
+      "icon": "jupyter-server"
     },
     {
       "id": "server-storage-01",
@@ -534,7 +534,7 @@
         "x": 600,
         "y": 360
       },
-      "icon": "server"
+      "icon": "db"
     },
     {
       "id": "moodle-db",
@@ -542,7 +542,7 @@
         "x": 720,
         "y": 360
       },
-      "icon": "server"
+      "icon": "moodle-db"
     },
     {
       "id": "server-student-01",
@@ -550,7 +550,7 @@
         "x": 920,
         "y": 360
       },
-      "icon": "server"
+      "icon": "server-2"
     },
     {
       "id": "server-student-02",
@@ -558,69 +558,69 @@
         "x": 1040,
         "y": 360
       },
-      "icon": "server"
+      "icon": "server-2"
     },
     {
       "id": "internet-router-01",
       "position": {
-        "x": -420,
-        "y": 780
+        "x": -418.4278988793355,
+        "y": 687.8272896133371
       },
       "icon": "router"
     },
     {
       "id": "internet-router-02",
       "position": {
-        "x": -620,
-        "y": 780
+        "x": -618.4278988793355,
+        "y": 687.8272896133371
       },
       "icon": "router"
     },
     {
       "id": "isp-router-01",
       "position": {
-        "x": -260,
-        "y": 540
+        "x": -340,
+        "y": 520
       },
       "icon": "router"
     },
     {
       "id": "isp-router-04",
       "position": {
-        "x": -500,
-        "y": 700
+        "x": -498.4278988793355,
+        "y": 607.8272896133371
       },
       "icon": "router"
     },
     {
       "id": "internet-web-01",
       "position": {
-        "x": -520,
-        "y": 880
+        "x": -518.4278988793355,
+        "y": 787.8272896133371
       },
-      "icon": "pc"
+      "icon": "google-server"
     },
     {
       "id": "internet-client-01",
       "position": {
-        "x": -400,
-        "y": 880
+        "x": -398.4278988793355,
+        "y": 787.8272896133371
       },
       "icon": "pc"
     },
     {
       "id": "internet-client-02",
       "position": {
-        "x": -660,
-        "y": 880
+        "x": -658.4278988793355,
+        "y": 787.8272896133371
       },
       "icon": "pc"
     },
     {
       "id": "vpn-client-01",
       "position": {
-        "x": -280,
-        "y": 880
+        "x": -278.4278988793355,
+        "y": 787.8272896133371
       },
       "icon": "pc"
     },
@@ -628,39 +628,39 @@
       "id": "border-router-01",
       "position": {
         "x": -160,
-        "y": 500
+        "y": 520
       },
       "icon": "router"
     },
     {
       "id": "distribution-switch",
       "position": {
-        "x": -20,
-        "y": 540
+        "x": -17.851048510603363,
+        "y": 691.3132799764783
       },
       "icon": "workgroup-switch"
     },
     {
       "id": "admin-01",
       "position": {
-        "x": -100,
-        "y": 640
+        "x": -97.85104851060339,
+        "y": 791.3132799764783
       },
       "icon": "pc"
     },
     {
       "id": "student-01",
       "position": {
-        "x": -20,
-        "y": 640
+        "x": -17.851048510603363,
+        "y": 791.3132799764783
       },
       "icon": "pc"
     },
     {
       "id": "guest-01",
       "position": {
-        "x": 60,
-        "y": 640
+        "x": 62.14895148939664,
+        "y": 791.3132799764783
       },
       "icon": "pc"
     },
@@ -678,7 +678,7 @@
         "x": 340,
         "y": 520
       },
-      "icon": "server"
+      "icon": "zabbix-server"
     },
     {
       "id": "syslog-server",
@@ -686,7 +686,7 @@
         "x": 420,
         "y": 520
       },
-      "icon": "server"
+      "icon": "rsyslog-server"
     },
     {
       "id": "prometheus",
@@ -694,7 +694,7 @@
         "x": 260,
         "y": 600
       },
-      "icon": "server"
+      "icon": "prometheus-server"
     },
     {
       "id": "grafana",
@@ -702,7 +702,7 @@
         "x": 340,
         "y": 600
       },
-      "icon": "server"
+      "icon": "grafana-server"
     },
     {
       "id": "fabric-telemetry",
@@ -710,7 +710,7 @@
         "x": 420,
         "y": 600
       },
-      "icon": "server"
+      "icon": "server-2"
     }
   ],
   "edgeAnnotations": [],

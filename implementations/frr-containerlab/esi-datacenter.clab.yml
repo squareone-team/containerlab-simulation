@@ -224,7 +224,8 @@ topology:
         - sh -c "ip addr add 198.18.3.10/24 dev eth1 && ip link set eth1 up &&
           nohup python3 -m http.server 80 --bind 198.18.3.10 --directory /www
           >/tmp/http-server.log 2>&1 &"
-        - sh -c "nohup python3 /usr/local/bin/esi-google-dns.py >/tmp/dns-forwarder.log 2>&1 &"
+        - sh -c "nohup python3 /usr/local/bin/esi-google-dns.py
+          >/tmp/dns-forwarder.log 2>&1 &"
         - ip route del default
         - ip route add default via 198.18.3.1 dev eth1
 
@@ -429,10 +430,10 @@ topology:
         - NET_ADMIN
         - NET_RAW
       env:
-        MARIADB_ROOT_PASSWORD: "MoodleRootDb#2026"
+        MARIADB_ROOT_PASSWORD: MoodleRootDb#2026
         MARIADB_DATABASE: moodle
         MARIADB_USER: moodle_app
-        MARIADB_PASSWORD: "MoodleAppDb#2026"
+        MARIADB_PASSWORD: MoodleAppDb#2026
         MARIADB_CHARACTER_SET: utf8mb4
         MARIADB_COLLATE: utf8mb4_unicode_ci
       exec:
@@ -458,16 +459,16 @@ topology:
         - NET_RAW
       env:
         MOODLE_DATABASE_TYPE: mariadb
-        MOODLE_DATABASE_HOST: "192.168.80.31"
+        MOODLE_DATABASE_HOST: 192.168.80.31
         MOODLE_DATABASE_PORT_NUMBER: "3306"
         MOODLE_DATABASE_NAME: moodle
         MOODLE_DATABASE_USER: moodle_app
-        MOODLE_DATABASE_PASSWORD: "MoodleAppDb#2026"
+        MOODLE_DATABASE_PASSWORD: MoodleAppDb#2026
         MOODLE_USERNAME: squareone.admin
-        MOODLE_PASSWORD: "SquareOneMoodle#2026"
-        MOODLE_EMAIL: "squareone.admin@esi.dz"
-        MOODLE_SITE_NAME: "ESI Moodle TP"
-        MOODLE_HOST: "moodle.esi.dz"
+        MOODLE_PASSWORD: SquareOneMoodle#2026
+        MOODLE_EMAIL: squareone.admin@esi.dz
+        MOODLE_SITE_NAME: ESI Moodle TP
+        MOODLE_HOST: moodle.esi.dz
         APACHE_HTTP_PORT_NUMBER: "80"
         APACHE_HTTPS_PORT_NUMBER: "8443"
       binds:
@@ -476,9 +477,9 @@ topology:
       exec:
         - sh -lc "command -v ip >/dev/null 2>&1 || install_packages iproute2
           >/tmp/iproute2-install.log 2>&1"
-        - sh -lc "ip link set eth1 up && ip addr replace 198.51.100.30/24
-          dev eth1 && ip route del default 2>/dev/null || true; ip route add
-          default via 198.51.100.1 dev eth1 || true"
+        - sh -lc "ip link set eth1 up && ip addr replace 198.51.100.30/24 dev
+          eth1 && ip route del default 2>/dev/null || true; ip route add default
+          via 198.51.100.1 dev eth1 || true"
         - sh -lc "nohup sh /opt/esi-moodle/bootstrap.sh
           >/tmp/esi-moodle-bootstrap.log 2>&1 &"
 
@@ -570,7 +571,7 @@ topology:
         - 3000:3000
       env:
         GF_SECURITY_ADMIN_USER: squareone.admin
-        GF_SECURITY_ADMIN_PASSWORD: "SquareOneGrafana#2026"
+        GF_SECURITY_ADMIN_PASSWORD: SquareOneGrafana#2026
         GF_USERS_ALLOW_SIGN_UP: "false"
         GF_METRICS_ENABLED: "true"
         GF_ANALYTICS_REPORTING_ENABLED: "false"
