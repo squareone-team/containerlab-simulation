@@ -1,7 +1,7 @@
 #!/bin/sh
 set -eu
 
-hostname dmz-server-01
+hostname public-web-server
 
 ip link set eth1 up
 ip addr replace 198.51.100.10/24 dev eth1

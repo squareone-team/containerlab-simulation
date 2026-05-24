@@ -51,7 +51,7 @@ interfaces:
 
   # DMZ server
   Ethernet7:
-    description: "server-dmz-01 [VLAN 100 PUBLIC]"
+    description: "public-web-server [VLAN 100 PUBLIC]"
     type: access
     access_vlan: 100
     mtu: "{{ mtu_host }}"

@@ -151,7 +151,7 @@ topology:
       kind: linux
       image: esi/alpine-host:3.20
 
-    server-dmz-01:
+    public-web-server:
       kind: linux
       image: esi/alpine-host:3.20
 
@@ -271,7 +271,7 @@ topology:
     - endpoints: [ "leaf-06:eth4", "server-hpc-02:eth2" ]
     - endpoints: [ "leaf-07:eth3", "server-storage-01:eth1" ]
     - endpoints: [ "leaf-08:eth3", "server-storage-01:eth2" ]
-    - endpoints: [ "leaf-01:eth7", "server-dmz-01:eth1" ]
+    - endpoints: [ "leaf-01:eth7", "public-web-server:eth1" ]
     - endpoints: [ "leaf-04:eth6", "syslog-server:eth1" ]
     - endpoints: [ "leaf-03:eth3", "ftp-server:eth1" ]
     - endpoints: [ "firewall-01:eth3", "firewall-02:eth3" ]

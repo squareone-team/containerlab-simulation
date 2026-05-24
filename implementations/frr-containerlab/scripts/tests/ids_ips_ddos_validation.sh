@@ -117,7 +117,7 @@ echo "============================================================"
 echo " Firewall IDS/IPS DDoS Prevention Validation"
 echo "============================================================"
 
-for node in firewall-01 firewall-02 border-router-01 isp-router-01 internet-client-01 internet-client-02 server-dmz-01 leaf-01; do
+for node in firewall-01 firewall-02 border-router-01 isp-router-01 internet-client-01 internet-client-02 public-web-server leaf-01; do
   require_container "$node"
 done
 

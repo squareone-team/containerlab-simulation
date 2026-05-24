@@ -77,7 +77,7 @@ DMZ_TOKEN="RING1_DMZ_$(date +%s)"
 run_in_container "server-admin-01" "pkill nc >/dev/null 2>&1 || true; rm -f /tmp/ring1-admin-9102.log; (nc -l -p 9102 >/tmp/ring1-admin-9102.log 2>&1 &)"
 sleep 1
 before_dmz="$(get_rule_packets "$MASTER_FW" "$DMZ_DROP_RULE")"
-run_in_container "server-dmz-01" "printf '%s\n' '$DMZ_TOKEN' | nc -w 3 192.168.50.10 9102 >/dev/null 2>&1 || true"
+run_in_container "public-web-server" "printf '%s\n' '$DMZ_TOKEN' | nc -w 3 192.168.50.10 9102 >/dev/null 2>&1 || true"
 sleep 2
 after_dmz="$(get_rule_packets "$MASTER_FW" "$DMZ_DROP_RULE")"
 

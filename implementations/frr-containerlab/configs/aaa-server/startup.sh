@@ -19,7 +19,7 @@ wait_for_iface() {
     return 1
 }
 
-hostname auth-server 2>/dev/null || true
+hostname aaa-server 2>/dev/null || true
 
 if wait_for_iface eth1 && wait_for_iface eth2; then
     ip link add bond0 type bond mode active-backup miimon 100 primary eth1 2>/dev/null || true
@@ -39,7 +39,7 @@ if wait_for_iface eth1 && wait_for_iface eth2; then
     ip route replace 192.168.0.0/16 via 192.168.50.1 dev bond0
     ip route replace 10.0.0.0/8 via 192.168.50.1 dev bond0
 else
-    echo "[auth-server] WARNING: eth1/eth2 did not appear for bond0" >&2
+    echo "[aaa-server] WARNING: eth1/eth2 did not appear for bond0" >&2
 fi
 
 mkdir -p /etc/esi-auth /run/openldap /var/lib/openldap/openldap-data /var/log
@@ -644,7 +644,7 @@ if [ -x /usr/local/bin/esi-radiusd ]; then
         sleep 1
     done
 else
-    echo "[auth-server] WARNING: esi-radiusd missing; rebuild the auth-server image" >&2
+    echo "[aaa-server] WARNING: esi-radiusd missing; rebuild the auth-server image" >&2
 fi
 
-echo "[auth-server] ready: OpenLDAP on loopback, TACACS+ on 192.168.50.80:49, RADIUS on 192.168.50.80:1812"
+echo "[aaa-server] ready: OpenLDAP on loopback, TACACS+ on 192.168.50.80:49, RADIUS on 192.168.50.80:1812"

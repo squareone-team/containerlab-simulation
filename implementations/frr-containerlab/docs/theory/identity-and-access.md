@@ -10,7 +10,7 @@ The goal is to show how identity drives policy at the border without pretending 
 
 ## Directory Of Truth (LDAP)
 
-The `auth-server` container runs OpenLDAP on loopback only. It contains:
+The `aaa-server` container runs OpenLDAP on loopback only. It contains:
 
 - People: `nora.benali@esi.dz`, `hamani.nacer@esi.dz`, `amrouche.hakim@esi.dz`, `amine.kadri@esi.dz`, `selma.bouaziz@esi.dz`, `ilyes.rahmani@esi.dz`, `tati.youcef@esi.dz`, `kherroubi.amine@esi.dz`, `badaoui.ikram@esi.dz`, `zitouni.rania@esi.dz`, `mostefai.mounir@esi.dz`, `bousdjira.nadine@esi.dz`, `hassnaoui.sarah@esi.dz`, `squareone.admin@esi.dz`
 - Linux SSH aliases: `nora.benali`, `hamani.nacer`, `amrouche.hakim`, `amine.kadri`, `tati.youcef`, `kherroubi.amine`, `badaoui.ikram`, `zitouni.rania`, `mostefai.mounir`, `bousdjira.nadine`, `hassnaoui.sarah`, `squareone.admin`
@@ -26,7 +26,7 @@ Identity metadata lives in the `description` attribute:
 Protected servers (`server-student-*`, `server-admin-*`, `server-hpc-*`) run PAM with `esi-pam-auth-client.py`:
 
 1. SSH password is handed to the PAM exec client.
-2. The client opens a TACACS+ session to `auth-server`.
+2. The client opens a TACACS+ session to `aaa-server`.
 3. The custom TACACS+ daemon binds to LDAP with the user DN.
 4. Authorization is based on group membership and the resource label in `/etc/esi-auth-resource`.
 
@@ -38,14 +38,14 @@ Resource mapping is enforced inside `tacacs_server.py`:
 
 TACACS+ is therefore the user authorization layer. Reaching TCP/22 is not enough: the SSH login still has to pass LDAP password validation and a TACACS+ authorization decision for that server resource.
 
-The TACACS+ PoC uses encrypted TACACS+ packet bodies with a shared lab secret. The protected servers send authentication and authorization requests with the unencrypted flag cleared, and `auth-server` rejects unencrypted TACACS+ by default. Recent TACACS+ logs include `encrypted_body: true` so the test suite can prove that server-side AAA is not moving as plain text on the internal fabric.
+The TACACS+ PoC uses encrypted TACACS+ packet bodies with a shared lab secret. The protected servers send authentication and authorization requests with the unencrypted flag cleared, and `aaa-server` rejects unencrypted TACACS+ by default. Recent TACACS+ logs include `encrypted_body: true` so the test suite can prove that server-side AAA is not moving as plain text on the internal fabric.
 
 ## Campus NAC (PoC)
 
 The campus devices share one subnet (`192.168.110.0/24`). Instead of hardcoding IPs in the firewall, `distribution-switch` now behaves like a small NAC enforcement point:
 
 1. Campus devices call the local HTTPS NAC portal/API (`distribution-switch:8443`) with ESI mail credentials.
-2. `distribution-switch` authenticates to `auth-server` over RADIUS.
+2. `distribution-switch` authenticates to `aaa-server` over RADIUS.
 3. RADIUS responses return a role (`campus-student` or `campus-admin`).
 4. `distribution-switch` inserts the device IP into dynamic nftables role sets.
 5. Traffic is filtered locally based on those sets.
@@ -64,14 +64,14 @@ This removes the same-subnet hardcoding while keeping the enforcement visible in
 
 Unauthenticated campus clients may reach only the NAC portal itself. `www.google.com`, `moodle.esi.dz`, DNS, Jupyter, and SSH paths are opened only after the device IP appears in a NAC role set.
 
-For RADIUS, `distribution-switch` deliberately uses `192.168.110.1` as the client source. The `10.200.0.0/29` link is only a routing transit to the firewall campus VIP; it is not trusted as an identity. Ring 1 and `auth-server` therefore accept campus RADIUS only from the NAC gateway address, which keeps the AAA trust boundary tied to the enforcement point instead of to a point-to-point transport IP.
+For RADIUS, `distribution-switch` deliberately uses `192.168.110.1` as the client source. The `10.200.0.0/29` link is only a routing transit to the firewall campus VIP; it is not trusted as an identity. Ring 1 and `aaa-server` therefore accept campus RADIUS only from the NAC gateway address, which keeps the AAA trust boundary tied to the enforcement point instead of to a point-to-point transport IP.
 
 ## VPN Remote Access
 
 A WireGuard-based VPN gateway lives in the DMZ (`vpn-gateway` at `198.51.100.20`). Enrollment is identity-driven:
 
 1. The client posts credentials to the enrollment API; the browser portal can generate a lab WireGuard keypair implicitly.
-2. The gateway authenticates against RADIUS on `auth-server`.
+2. The gateway authenticates against RADIUS on `aaa-server`.
 3. Only student/professor identities returning `vpn-student` are accepted.
 4. The gateway adds the peer to `wg0`; if the request came from `vpn-client-01`, it asks that same container's lab helper to bring up the client-side `wg0`.
 5. The gateway NATs traffic toward the firewall.
@@ -96,10 +96,10 @@ This is the honest security posture of the lab:
 | Flow | Protection in this lab | Caveat |
 | --- | --- | --- |
 | Campus browser/device to NAC | HTTPS on `192.168.110.1:8443`; port `80` only redirects and rejects credential POSTs | self-signed lab certificate; encrypted against passive sniffing, not production PKI |
-| NAC gateway to RADIUS | RADIUS shared-secret password hiding; auth-server accepts only `192.168.110.1` and `198.51.100.20` | RADIUS is not full-packet encryption; usernames, NAS ID, and role attributes can still be visible |
+| NAC gateway to RADIUS | RADIUS shared-secret password hiding; aaa-server accepts only `192.168.110.1` and `198.51.100.20` | RADIUS is not full-packet encryption; usernames, NAS ID, and role attributes can still be visible |
 | User SSH client to server | SSH transport encryption | protects the human password before the target server calls TACACS+ |
 | Protected server to TACACS+ | encrypted TACACS+ packet bodies using `ESI_TACACS_SECRET` | shared-secret PoC, not TLS; keep it on an isolated management/control plane |
-| TACACS+/RADIUS to LDAP | OpenLDAP bound to `127.0.0.1` inside `auth-server` | not exposed on the fabric; also not LDAPS because it never leaves the container |
+| TACACS+/RADIUS to LDAP | OpenLDAP bound to `127.0.0.1` inside `aaa-server` | not exposed on the fabric; also not LDAPS because it never leaves the container |
 | VPN enrollment browser/API to gateway | HTTPS on `198.51.100.20:8448` | self-signed lab certificate |
 | VPN data plane | WireGuard encryption on UDP `51820` | tunnel client space is NATed at the gateway and not advertised externally |
 

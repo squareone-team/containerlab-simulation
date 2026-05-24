@@ -4,7 +4,7 @@
 # LACP bonds (where lacp_bond: true), NTP client, and basic validation.
 #
 # Groups handled:
-#   servers_edge    — server-dmz-01
+#   servers_edge    — public-web-server
 #   servers_core    — server-admin-01, server-admin-02
 #   servers_storage — server-hpc-01, server-hpc-02, server-storage-01
 #   servers_ultra   — server-student-01, server-student-02 (LACP bond)

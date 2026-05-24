@@ -11,7 +11,7 @@ This page is for the campus test segment, the WiFi management path, and the DMZ 
 | `student-01` | `192.168.110.31/24` | student browser/client, unauthenticated until NAC login |
 | `admin-01` | `192.168.110.32/24` | admin browser/client, unauthenticated until NAC login |
 | `wifi-controller` | `192.168.10.100/24` | target behind `VRF-WIFI-CTRL` |
-| `server-dmz-01` | `198.51.100.10/24` | DMZ web service |
+| `public-web-server` | `198.51.100.10/24` | DMZ web service |
 | `moodle` | `198.51.100.30/24` | Moodle LMS at `moodle.esi.dz` |
 | `moodle-db` | `192.168.80.31/24` on a storage-pod bond | MariaDB backend for Moodle, multihomed to `leaf-07`/`leaf-08` |
 | `firewall VIPs` | inside `192.168.1.254/24`, campus `10.200.0.1/29`, outside `203.0.113.14/29` | inline campus/DC/Internet security and NAT |
@@ -56,7 +56,7 @@ docker exec clab-esi-datacenter-distribution-switch wget -qO- http://198.51.100.
 ```
 
 - The route table should show a default route and narrow service routes via `10.200.0.1`; there is no `100.10.0.0/30` ISP shortcut.
-- The auth-server route should keep the NAC identity source as `192.168.110.1`; `10.200.0.2` is only transit.
+- The aaa-server route should keep the NAC identity source as `192.168.110.1`; `10.200.0.2` is only transit.
 - The WiFi controller ping proves the distribution-switch -> firewall -> border-leaf micro-VRF path is usable.
 - `wget` to the DMZ IP checks the routed path without depending on campus DNS.
 
@@ -75,9 +75,9 @@ docker exec clab-esi-datacenter-wifi-controller ip -4 addr show dev eth1
 ## DMZ Host Checks
 
 ```bash
-docker exec clab-esi-datacenter-server-dmz-01 ip -4 addr show dev eth1
-docker exec clab-esi-datacenter-server-dmz-01 nft list ruleset
-docker exec clab-esi-datacenter-server-dmz-01 sh -lc 'wget -qO- http://127.0.0.1'
+docker exec clab-esi-datacenter-public-web-server ip -4 addr show dev eth1
+docker exec clab-esi-datacenter-public-web-server nft list ruleset
+docker exec clab-esi-datacenter-public-web-server sh -lc 'wget -qO- http://127.0.0.1'
 docker exec clab-esi-datacenter-moodle sh -lc 'wget -qO- http://127.0.0.1 | grep -Ei "Moodle|TP - NAC"'
 ```
 

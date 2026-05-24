@@ -187,7 +187,7 @@
         "y": 32.387536326322035
       },
       "width": 300,
-      "height": 661,
+      "height": 758,
       "fillColor": "#ffffff",
       "fillOpacity": 0.2,
       "borderColor": "#bababa",
@@ -277,7 +277,7 @@
         "y": 448.0309456480835
       },
       "width": 280,
-      "height": 236,
+      "height": 332,
       "fillColor": "#ecf2f5",
       "fillOpacity": 1,
       "borderColor": "#e5e7eb",
@@ -449,7 +449,7 @@
       "icon": "moodle-server"
     },
     {
-      "id": "server-dmz-01",
+      "id": "public-web-server",
       "position": {
         "x": -160,
         "y": 280
@@ -457,9 +457,17 @@
       "icon": "server-2"
     },
     {
+      "id": "bac-server",
+      "position": {
+        "x": -60,
+        "y": 280
+      },
+      "icon": "server-2"
+    },
+    {
       "id": "server-admin-01",
       "position": {
-        "x": 220,
+        "x": 260,
         "y": 260
       },
       "icon": "server-2"
@@ -467,7 +475,7 @@
     {
       "id": "server-admin-02",
       "position": {
-        "x": 460,
+        "x": 420,
         "y": 260
       },
       "icon": "server-2"
@@ -497,7 +505,7 @@
       "icon": "server-2"
     },
     {
-      "id": "auth-server",
+      "id": "aaa-server",
       "position": {
         "x": 340,
         "y": 260
@@ -580,6 +588,14 @@
       "id": "isp-router-01",
       "position": {
         "x": -340,
+        "y": 600
+      },
+      "icon": "router"
+    },
+    {
+      "id": "isp-router-03-bac",
+      "position": {
+        "x": -420,
         "y": 520
       },
       "icon": "router"
@@ -667,8 +683,8 @@
     {
       "id": "bastion-01",
       "position": {
-        "x": 260,
-        "y": 520
+        "x": 300,
+        "y": 700
       },
       "icon": "pc"
     },
@@ -689,18 +705,34 @@
       "icon": "rsyslog-server"
     },
     {
-      "id": "prometheus",
+      "id": "oob-sw",
+      "position": {
+        "x": 380,
+        "y": 700
+      },
+      "icon": "workgroup-switch"
+    },
+    {
+      "id": "ansible-awx",
       "position": {
         "x": 260,
-        "y": 600
+        "y": 520
+      },
+      "icon": "ansible-server"
+    },
+    {
+      "id": "prometheus",
+      "position": {
+        "x": 340,
+        "y": 620
       },
       "icon": "prometheus-server"
     },
     {
       "id": "grafana",
       "position": {
-        "x": 340,
-        "y": 600
+        "x": 260,
+        "y": 620
       },
       "icon": "grafana-server"
     },
@@ -708,7 +740,7 @@
       "id": "fabric-telemetry",
       "position": {
         "x": 420,
-        "y": 600
+        "y": 620
       },
       "icon": "server-2"
     }

@@ -52,7 +52,7 @@ bash implementations/frr-containerlab/configs/orientation-runbook.sh --deactivat
 | `docker exec clab-esi-datacenter-guest-01 timeout 4 nc -z -w2 198.51.100.10 80 || echo blocked` | unauthenticated campus client cannot reach DMZ before NAC | prints `blocked` |
 | `docker exec clab-esi-datacenter-guest-01 timeout 4 nc -z -w2 198.51.100.30 80 || echo blocked` | unauthenticated campus client cannot reach Moodle before NAC | prints `blocked` |
 | `docker exec clab-esi-datacenter-internet-client-01 ping -c2 -W2 198.51.100.10` | external client can reach the DMZ IP | succeeds |
-| `docker exec clab-esi-datacenter-server-dmz-01 ip -4 -o addr show dev eth1` | confirms the DMZ host uses public/testnet addressing | `198.51.100.10/24` |
+| `docker exec clab-esi-datacenter-public-web-server ip -4 -o addr show dev eth1` | confirms the DMZ host uses public/testnet addressing | `198.51.100.10/24` |
 
 ## Prometheus And Grafana Checks
 

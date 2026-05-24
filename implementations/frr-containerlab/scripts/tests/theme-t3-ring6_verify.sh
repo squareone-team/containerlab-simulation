@@ -9,7 +9,7 @@ SOURCES=(
   "${CLAB_PREFIX}server-admin-01"
   "${CLAB_PREFIX}server-student-01"
   "${CLAB_PREFIX}server-hpc-01"
-  "${CLAB_PREFIX}server-dmz-01"
+  "${CLAB_PREFIX}public-web-server"
 )
 TOKEN="RING6_VERIFY_$(date +%s)"
 

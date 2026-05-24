@@ -11,7 +11,7 @@ TARGETS=(
   server-student-01 server-student-02
   server-admin-01 server-admin-02
   server-hpc-01 server-hpc-02
-  server-storage-01 server-dmz-01
+  server-storage-01 public-web-server
   lms-staff services-web
 )
 

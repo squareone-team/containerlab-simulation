@@ -145,7 +145,7 @@ $MGMT_SNMP_TARGETS
 EOF
 
 TOKEN="HEAVY_RESILIENCE_$(date +%s)"
-for source in $FAILED_SPINE $FAILED_LEAVES server-admin-01 server-student-01 server-dmz-01; do
+for source in $FAILED_SPINE $FAILED_LEAVES server-admin-01 server-student-01 public-web-server; do
   check_node "${source} can inject syslog over management" \
     "$source" \
     "logger -t HEAVY-RESILIENCE '${TOKEN}-${source}'"

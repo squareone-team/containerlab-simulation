@@ -164,6 +164,16 @@ topology:
       exec:
         - sh /startup.sh
 
+    isp-router-03-bac:
+      kind: linux
+      image: frrouting/frr:latest
+      binds:
+        - configs/isp-router-03-bac/daemons:/etc/frr/daemons
+        - configs/isp-router-03-bac/frr.conf:/etc/frr/frr.conf
+        - configs/isp-router-03-bac/startup.sh:/startup.sh
+      exec:
+        - sh /startup.sh
+
     border-router-01:
       kind: linux
       image: frrouting/frr:latest
@@ -411,16 +421,28 @@ topology:
         - sh /startup.sh
         - sh /ntp-client.sh
 
-    server-dmz-01:
+    public-web-server:
       kind: linux
       image: esi/alpine-host:3.20
       binds:
-        - configs/server-dmz-01/startup.sh:/startup.sh
-        - configs/server-dmz-01/www:/www:ro
+        - configs/public-web-server/startup.sh:/startup.sh
+        - configs/public-web-server/www:/www:ro
         - configs/ntp-server/server-client-ntp.sh:/ntp-client.sh
       exec:
         - sh /startup.sh
         - sh /ntp-client.sh
+
+    bac-server:
+      kind: linux
+      image: esi/alpine-host:3.20
+      cap-add:
+        - NET_ADMIN
+        - SYS_MODULE
+        - NET_RAW
+      binds:
+        - configs/bac-server/startup.sh:/startup.sh
+      exec:
+        - sh /startup.sh
 
     moodle-db:
       kind: linux
@@ -670,12 +692,33 @@ topology:
       exec:
         - sh /startup.sh
 
-    auth-server:
+    aaa-server:
       kind: linux
       image: esi/auth-server:3.20
       cmd: sleep infinity
       binds:
-        - configs/auth-server/startup.sh:/startup.sh
+        - configs/aaa-server/startup.sh:/startup.sh
+      exec:
+        - sh /startup.sh
+
+    ansible-awx:
+      kind: linux
+      image: esi/naas:bookworm
+      cmd: sleep infinity
+      cap-add:
+        - NET_ADMIN
+        - SYS_MODULE
+        - NET_RAW
+      binds:
+        - configs/ansible-awx/startup.sh:/startup.sh
+      exec:
+        - sh /startup.sh
+
+    oob-sw:
+      kind: linux
+      image: esi/alpine-host:3.20
+      binds:
+        - configs/oob-sw/startup.sh:/startup.sh
       exec:
         - sh /startup.sh
 
@@ -703,6 +746,7 @@ topology:
     - endpoints: [ "spine-02:eth10", "leaf-10:eth2" ]
 
     - endpoints: [ "isp-router-01:eth1", "border-router-01:eth1" ]
+    - endpoints: [ "isp-router-03-bac:eth1", "border-router-01:eth4" ]
     - endpoints: [ "border-router-01:eth2", "firewall-01:eth4" ]
     - endpoints: [ "border-router-01:eth3", "firewall-02:eth4" ]
     - endpoints: [ "isp-router-01:eth2", "isp-router-04:eth3" ]
@@ -736,7 +780,9 @@ topology:
     - endpoints: [ "leaf-08:eth3", "server-storage-01:eth2" ]
     - endpoints: [ "leaf-07:eth4", "moodle-db:eth1" ]
     - endpoints: [ "leaf-08:eth4", "moodle-db:eth2" ]
-    - endpoints: [ "leaf-01:eth7", "server-dmz-01:eth1" ]
+    - endpoints: [ "leaf-01:eth7", "public-web-server:eth1" ]
+    - endpoints: [ "leaf-01:eth8", "bac-server:eth1" ]
+    - endpoints: [ "leaf-02:eth8", "bac-server:eth2" ]
     - endpoints: [ "leaf-01:eth11", "moodle:eth1" ]
     - endpoints: [ "leaf-01:eth6", "vpn-gateway:eth1" ]
     - endpoints: [ "wifi-controller:eth1", "leaf-01:eth14" ]
@@ -754,5 +800,5 @@ topology:
     - endpoints: [ "leaf-04:eth7", "dns-server:eth2" ] # ring1 multihoming for dns-server data-plane
     - endpoints: [ "leaf-03:eth8", "dhcp-server:eth1" ]
     - endpoints: [ "leaf-04:eth8", "dhcp-server:eth2" ] # ring1 multihoming for dhcp-server data-plane
-    - endpoints: [ "leaf-03:eth12", "auth-server:eth1" ]
-    - endpoints: [ "leaf-04:eth11", "auth-server:eth2" ]
+    - endpoints: [ "leaf-03:eth12", "aaa-server:eth1" ]
+    - endpoints: [ "leaf-04:eth11", "aaa-server:eth2" ]
