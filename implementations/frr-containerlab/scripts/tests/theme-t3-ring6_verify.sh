@@ -4,7 +4,7 @@ set -euo pipefail
 LAB_NAME="${LAB_NAME:-esi-datacenter}"
 CLAB_PREFIX="clab-${LAB_NAME}-"
 SYSLOG="${CLAB_PREFIX}syslog-server"
-# Test same-VRF logging plus explicit Ring 1 log-export exceptions.
+# Test centralized logging over the Containerlab management network.
 SOURCES=(
   "${CLAB_PREFIX}server-admin-01"
   "${CLAB_PREFIX}server-student-01"

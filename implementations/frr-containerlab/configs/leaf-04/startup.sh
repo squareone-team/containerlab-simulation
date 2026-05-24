@@ -243,7 +243,7 @@ start_l3vni_rmac_seed_loop
 # === END PHASE 1 — Phase 2 appends below ===
 ip link set eth3 up
 ip link set eth5 up
-ip link set eth6 up
+ip link set eth6 up 2>/dev/null || true
 ip link set eth7 up 2>/dev/null || true
 ip link set eth8 up 2>/dev/null || true
 ip link set eth9 up 2>/dev/null || true
@@ -287,7 +287,7 @@ iptables -C INPUT -i "$OOB_IF" -p tcp --dport 22 -j DROP 2>/dev/null || iptables
 
 cat > /etc/rsyslog.conf << 'RSYSLOG'
 module(load="imuxsock")
-*.* @@192.168.50.70:514
+*.* @@172.20.20.70:514
 RSYSLOG
 
 /usr/sbin/rsyslogd

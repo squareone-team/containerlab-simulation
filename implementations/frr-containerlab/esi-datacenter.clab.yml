@@ -5,6 +5,7 @@ topology:
     spine-01:
       kind: linux
       image: esi/frr-node:latest
+      mgmt-ipv4: 172.20.20.11
       binds:
         - configs/spine-01/daemons:/etc/frr/daemons
         - configs/spine-01/frr.conf:/etc/frr/frr.conf
@@ -16,6 +17,7 @@ topology:
     spine-02:
       kind: linux
       image: esi/frr-node:latest
+      mgmt-ipv4: 172.20.20.12
       binds:
         - configs/spine-02/daemons:/etc/frr/daemons
         - configs/spine-02/frr.conf:/etc/frr/frr.conf
@@ -27,6 +29,7 @@ topology:
     leaf-01:
       kind: linux
       image: esi/frr-node:latest
+      mgmt-ipv4: 172.20.20.21
       binds:
         - configs/leaf-01/daemons:/etc/frr/daemons
         - configs/leaf-01/frr.conf:/etc/frr/frr.conf
@@ -38,6 +41,7 @@ topology:
     leaf-02:
       kind: linux
       image: esi/frr-node:latest
+      mgmt-ipv4: 172.20.20.22
       binds:
         - configs/leaf-02/daemons:/etc/frr/daemons
         - configs/leaf-02/frr.conf:/etc/frr/frr.conf
@@ -49,6 +53,7 @@ topology:
     leaf-03:
       kind: linux
       image: esi/frr-node:latest
+      mgmt-ipv4: 172.20.20.23
       binds:
         - configs/leaf-03/daemons:/etc/frr/daemons
         - configs/leaf-03/frr.conf:/etc/frr/frr.conf
@@ -61,6 +66,7 @@ topology:
     leaf-04:
       kind: linux
       image: esi/frr-node:latest
+      mgmt-ipv4: 172.20.20.24
       binds:
         - configs/leaf-04/daemons:/etc/frr/daemons
         - configs/leaf-04/frr.conf:/etc/frr/frr.conf
@@ -73,6 +79,7 @@ topology:
     leaf-05:
       kind: linux
       image: esi/frr-node:latest
+      mgmt-ipv4: 172.20.20.25
       binds:
         - configs/leaf-05/daemons:/etc/frr/daemons
         - configs/leaf-05/frr.conf:/etc/frr/frr.conf
@@ -85,6 +92,7 @@ topology:
     leaf-06:
       kind: linux
       image: esi/frr-node:latest
+      mgmt-ipv4: 172.20.20.26
       binds:
         - configs/leaf-06/daemons:/etc/frr/daemons
         - configs/leaf-06/frr.conf:/etc/frr/frr.conf
@@ -97,6 +105,7 @@ topology:
     leaf-07:
       kind: linux
       image: esi/frr-node:latest
+      mgmt-ipv4: 172.20.20.27
       binds:
         - configs/leaf-07/daemons:/etc/frr/daemons
         - configs/leaf-07/frr.conf:/etc/frr/frr.conf
@@ -109,6 +118,7 @@ topology:
     leaf-08:
       kind: linux
       image: esi/frr-node:latest
+      mgmt-ipv4: 172.20.20.28
       binds:
         - configs/leaf-08/daemons:/etc/frr/daemons
         - configs/leaf-08/frr.conf:/etc/frr/frr.conf
@@ -121,6 +131,7 @@ topology:
     leaf-09:
       kind: linux
       image: esi/frr-node:latest
+      mgmt-ipv4: 172.20.20.29
       binds:
         - configs/leaf-09/daemons:/etc/frr/daemons
         - configs/leaf-09/frr.conf:/etc/frr/frr.conf
@@ -133,6 +144,7 @@ topology:
     leaf-10:
       kind: linux
       image: esi/frr-node:latest
+      mgmt-ipv4: 172.20.20.30
       binds:
         - configs/leaf-10/daemons:/etc/frr/daemons
         - configs/leaf-10/frr.conf:/etc/frr/frr.conf
@@ -532,6 +544,7 @@ topology:
     zabbix-server:
       kind: linux
       image: esi/alpine-zabbix:3.20
+      mgmt-ipv4: 172.20.20.50
       binds:
         - configs/zabbix-server/startup.sh:/startup.sh
         - configs/zabbix-server/provision_topology.py:/opt/zabbix/provision_topology.py:ro
@@ -583,6 +596,7 @@ topology:
     syslog-server:
       kind: linux
       image: esi/alpine-host:3.20
+      mgmt-ipv4: 172.20.20.70
       binds:
         - configs/syslog-server/startup.sh:/startup.sh
         - configs/shared:/shared:ro
@@ -724,7 +738,6 @@ topology:
     - endpoints: [ "leaf-01:eth7", "server-dmz-01:eth1" ]
     - endpoints: [ "leaf-01:eth11", "moodle:eth1" ]
     - endpoints: [ "leaf-01:eth6", "vpn-gateway:eth1" ]
-    - endpoints: [ "leaf-04:eth6", "syslog-server:eth1" ]
     - endpoints: [ "wifi-controller:eth1", "leaf-01:eth14" ]
     - endpoints: [ "distribution-switch:eth3", "firewall-01:eth5" ]
     - endpoints: [ "distribution-switch:eth7", "firewall-02:eth5" ]
@@ -740,6 +753,5 @@ topology:
     - endpoints: [ "leaf-04:eth7", "dns-server:eth2" ] # ring1 multihoming for dns-server data-plane
     - endpoints: [ "leaf-03:eth8", "dhcp-server:eth1" ]
     - endpoints: [ "leaf-04:eth8", "dhcp-server:eth2" ] # ring1 multihoming for dhcp-server data-plane
-    - endpoints: [ "leaf-03:eth11", "zabbix-server:eth1" ] # avoids the former management-link port
     - endpoints: [ "leaf-03:eth12", "auth-server:eth1" ]
     - endpoints: [ "leaf-04:eth11", "auth-server:eth2" ]

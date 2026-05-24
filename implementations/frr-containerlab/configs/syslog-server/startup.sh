@@ -6,9 +6,8 @@ if ! command -v rsyslogd >/dev/null 2>&1; then
   exit 1
 fi
 
-ip addr add 192.168.50.70/24 dev eth1
-ip route del default 2>/dev/null || true
-ip route add default via 192.168.50.1 dev eth1
+ip link set eth0 up
+echo "syslog-server using management network on eth0: $(ip -4 -o addr show dev eth0 | awk '{print $4}' | head -1)"
 
 mkdir -p /run/sshd /root/.ssh /var/log
 chmod 700 /root/.ssh

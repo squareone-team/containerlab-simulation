@@ -57,17 +57,17 @@ This reference lists the stable lab addresses. DNS records are hosted on `dns-se
 | ntp-server | `192.168.50.20/24` | `ntp-server.esi.internal`, `ntp.esi.internal` |
 | dns-server | `192.168.50.30/24` | `dns-server.esi.internal`, `dns.esi.internal` |
 | dhcp-server | `192.168.50.40/24` | `dhcp-server.esi.internal`, `dhcp.esi.internal` |
-| zabbix-server | `192.168.50.50/24` | `zabbix-server.esi.internal`, `zabbix.esi.internal` |
 | prometheus | `192.168.50.60/24` | `prometheus.esi.internal` |
-| syslog-server | `192.168.50.70/24` | `syslog-server.esi.internal`, `syslog.esi.internal` |
 | auth-server | `192.168.50.80/24` | none |
 
 ## OOB Management
 
-OOB uses secondary addresses on the containerlab management interface so the VS Code topology is not cluttered by management fan-out links.
+OOB and observability use management-interface addresses so the VS Code topology is not cluttered by management fan-out links. Zabbix and syslog use the Containerlab management subnet; fabric nodes also carry secondary `172.16.0.x` addresses for bastion SSH.
 
-| Node | OOB IP | DNS |
+| Node | Management/OOB IP | DNS |
 | --- | --- | --- |
+| zabbix-server | `172.20.20.50/24` | `zabbix-server.esi.internal`, `zabbix.esi.internal` |
+| syslog-server | `172.20.20.70/24` | `syslog-server.esi.internal`, `syslog.esi.internal` |
 | bastion-01 | `172.16.0.50/24` | `bastion-01.esi.internal`, `bastion.esi.internal` |
 | spine-01 / spine-02 | `172.16.0.11/24`, `172.16.0.12/24` | none |
 | leaf-01 through leaf-10 | `172.16.0.21/24` through `172.16.0.30/24` | none |

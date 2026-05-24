@@ -113,8 +113,8 @@
       "id": "freeText_1779614569671",
       "text": "ESI NETWORK",
       "position": {
-        "x": -68.47981615696392,
-        "y": 464.11234748091925
+        "x": -64.53259473412304,
+        "y": 696.998411428531
       },
       "fontSize": 20,
       "fontColor": "#0D4260",
@@ -201,8 +201,8 @@
       "id": "shape-pod3",
       "shapeType": "rectangle",
       "position": {
-        "x": 532.8449399948703,
-        "y": 31.761960361811745
+        "x": 1192.8449399948704,
+        "y": 31.76196036181176
       },
       "width": 300,
       "height": 420,
@@ -219,7 +219,7 @@
       "id": "shape-pod4",
       "shapeType": "rectangle",
       "position": {
-        "x": 855.2250362445781,
+        "x": 535.2250362445781,
         "y": 32.978003707914866
       },
       "width": 300,
@@ -237,7 +237,7 @@
       "id": "shape-pod5",
       "shapeType": "rectangle",
       "position": {
-        "x": 1179.280459216945,
+        "x": 859.280459216945,
         "y": 32.118517530881206
       },
       "width": 300,
@@ -362,7 +362,7 @@
     {
       "id": "leaf-05",
       "position": {
-        "x": 600,
+        "x": 1260,
         "y": 100
       },
       "icon": "layer-3-switch"
@@ -370,7 +370,7 @@
     {
       "id": "leaf-06",
       "position": {
-        "x": 720,
+        "x": 1380,
         "y": 100
       },
       "icon": "layer-3-switch"
@@ -378,7 +378,7 @@
     {
       "id": "leaf-07",
       "position": {
-        "x": 920,
+        "x": 600,
         "y": 100
       },
       "icon": "layer-3-switch"
@@ -386,7 +386,7 @@
     {
       "id": "leaf-08",
       "position": {
-        "x": 1040,
+        "x": 720,
         "y": 100
       },
       "icon": "layer-3-switch"
@@ -394,7 +394,7 @@
     {
       "id": "leaf-09",
       "position": {
-        "x": 1240,
+        "x": 920,
         "y": 100
       },
       "icon": "layer-3-switch"
@@ -402,7 +402,7 @@
     {
       "id": "leaf-10",
       "position": {
-        "x": 1360,
+        "x": 1040,
         "y": 100
       },
       "icon": "layer-3-switch"
@@ -410,7 +410,7 @@
     {
       "id": "firewall-01",
       "position": {
-        "x": 20,
+        "x": -40,
         "y": 360
       },
       "icon": "firewall-1"
@@ -418,7 +418,7 @@
     {
       "id": "firewall-02",
       "position": {
-        "x": 120,
+        "x": 80,
         "y": 360
       },
       "icon": "firewall-1"
@@ -435,8 +435,8 @@
     {
       "id": "wifi-controller",
       "position": {
-        "x": -140,
-        "y": 240
+        "x": -160,
+        "y": 200
       },
       "icon": "wlan-controller"
     },
@@ -451,15 +451,15 @@
     {
       "id": "server-dmz-01",
       "position": {
-        "x": -80,
-        "y": 360
+        "x": -160,
+        "y": 280
       },
       "icon": "server"
     },
     {
       "id": "server-admin-01",
       "position": {
-        "x": 260,
+        "x": 220,
         "y": 260
       },
       "icon": "server"
@@ -467,7 +467,7 @@
     {
       "id": "server-admin-02",
       "position": {
-        "x": 420,
+        "x": 460,
         "y": 260
       },
       "icon": "server"
@@ -507,7 +507,7 @@
     {
       "id": "server-hpc-01",
       "position": {
-        "x": 600,
+        "x": 1260,
         "y": 260
       },
       "icon": "server"
@@ -515,7 +515,7 @@
     {
       "id": "server-hpc-02",
       "position": {
-        "x": 720,
+        "x": 1380,
         "y": 260
       },
       "icon": "server"
@@ -523,7 +523,7 @@
     {
       "id": "server-hpc-jupyter",
       "position": {
-        "x": 660,
+        "x": 1320,
         "y": 360
       },
       "icon": "server"
@@ -531,7 +531,7 @@
     {
       "id": "server-storage-01",
       "position": {
-        "x": 920,
+        "x": 600,
         "y": 360
       },
       "icon": "server"
@@ -539,7 +539,7 @@
     {
       "id": "moodle-db",
       "position": {
-        "x": 1040,
+        "x": 720,
         "y": 360
       },
       "icon": "server"
@@ -547,7 +547,7 @@
     {
       "id": "server-student-01",
       "position": {
-        "x": 1240,
+        "x": 920,
         "y": 360
       },
       "icon": "server"
@@ -555,7 +555,7 @@
     {
       "id": "server-student-02",
       "position": {
-        "x": 1360,
+        "x": 1040,
         "y": 360
       },
       "icon": "server"
@@ -579,8 +579,8 @@
     {
       "id": "isp-router-01",
       "position": {
-        "x": -500,
-        "y": 600
+        "x": -260,
+        "y": 540
       },
       "icon": "router"
     },
@@ -627,8 +627,8 @@
     {
       "id": "border-router-01",
       "position": {
-        "x": -340,
-        "y": 560
+        "x": -160,
+        "y": 500
       },
       "icon": "router"
     },

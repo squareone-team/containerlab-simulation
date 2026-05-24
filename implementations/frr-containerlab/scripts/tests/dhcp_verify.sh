@@ -87,7 +87,7 @@ bond_dhcp_smoke "server-student-01" "192.168.10" "192.168.10.20" "192.168.10.10"
 bond_dhcp_smoke "server-hpc-01" "192.168.70" "192.168.70.20" "192.168.70.10" "192.168.70.1"
 
 # 8. Static reservations: infrastructure IPs are in config
-for HOST_IP in 192.168.50.20 192.168.50.30 192.168.50.40 192.168.50.50 192.168.50.60 192.168.50.70; do
+for HOST_IP in 192.168.50.20 192.168.50.30 192.168.50.40 192.168.50.60; do
   $C-dhcp-server grep -q "\"$HOST_IP\"" /etc/kea/kea-dhcp4.conf 2>/dev/null \
     && ok "dhcp-server: static reservation present for $HOST_IP" \
     || fail "dhcp-server: missing static reservation for $HOST_IP"

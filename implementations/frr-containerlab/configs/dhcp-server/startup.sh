@@ -145,12 +145,8 @@ cat > /etc/kea/kea-dhcp4.conf << 'EOF'
             "hostname": "dns-server" },
           { "hw-address": "00:00:00:00:50:28", "ip-address": "192.168.50.40",
             "hostname": "dhcp-server" },
-          { "hw-address": "00:00:00:00:50:32", "ip-address": "192.168.50.50",
-            "hostname": "zabbix-server" },
           { "hw-address": "00:00:00:00:50:3c", "ip-address": "192.168.50.60",
             "hostname": "prometheus" },
-          { "hw-address": "00:00:00:00:50:46", "ip-address": "192.168.50.70",
-            "hostname": "syslog-server" },
           { "hw-address": "00:00:00:00:50:0a", "ip-address": "192.168.50.10",
             "hostname": "server-admin-01" }
         ]

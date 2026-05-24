@@ -285,7 +285,7 @@ iptables -C INPUT -i "$OOB_IF" -p tcp --dport 22 -j DROP 2>/dev/null || iptables
 
 cat > /etc/rsyslog.conf << 'RSYSLOG'
 module(load="imuxsock")
-*.* @@192.168.50.70:514
+*.* @@172.20.20.70:514
 RSYSLOG
 
 /usr/sbin/rsyslogd
@@ -326,10 +326,6 @@ bridge vlan add vid 50 dev eth7 pvid untagged
 ip link set eth8 master br0
 bridge vlan add vid 50 dev eth8 pvid untagged
 
-# eth11 = snmp zabbix server
-ip link set eth11 master br0
-bridge vlan add vid 50 dev eth11 pvid untagged
-
 # eth12 = auth-server
 ip link set eth12 master br0
 bridge vlan add vid 50 dev eth12 pvid untagged
@@ -347,13 +343,6 @@ ip rule add to 192.168.60.0/24 lookup 10 prio 101 2>/dev/null || true
 # Actual forwarding is handled by the ip rule above
 ip route add 192.168.50.0/24 nhid 0 2>/dev/null || \
 ip route add 192.168.50.0/24 dev vlan50 2>/dev/null || true
-
-# Zabbix is single-homed on leaf-03:eth11. Advertise a host route so
-# underlay return traffic from monitored loopbacks does not ECMP to leaf-04.
-ip route add 192.168.50.50/32 dev vlan50 2>/dev/null || true
-# Keep the same host route local inside VRF-STAFF; otherwise "import vrf
-# default" can re-import the advertised /32 and steal direct replies.
-ip route add 192.168.50.50/32 dev vlan50 table 20 2>/dev/null || true
 
 ip route add 192.168.60.0/24 nhid 0 2>/dev/null || \
 ip route add 192.168.60.0/24 dev vlan60 2>/dev/null || true

@@ -31,7 +31,7 @@ TEMPLATE_CANDIDATES = (
 NODES = [
     {
         "name": "spine-01",
-        "ip": "10.1.0.1",
+        "ip": "172.20.20.11",
         "role": "spine",
         "asn": "65000",
         "x": 440,
@@ -51,7 +51,7 @@ NODES = [
     },
     {
         "name": "spine-02",
-        "ip": "10.1.0.2",
+        "ip": "172.20.20.12",
         "role": "spine",
         "asn": "65000",
         "x": 980,
@@ -71,7 +71,7 @@ NODES = [
     },
     {
         "name": "leaf-01",
-        "ip": "10.1.0.11",
+        "ip": "172.20.20.21",
         "role": "leaf",
         "asn": "65001",
         "pod": "border-student",
@@ -81,7 +81,7 @@ NODES = [
     },
     {
         "name": "leaf-02",
-        "ip": "10.1.0.12",
+        "ip": "172.20.20.22",
         "role": "leaf",
         "asn": "65001",
         "pod": "border-student",
@@ -91,7 +91,7 @@ NODES = [
     },
     {
         "name": "leaf-03",
-        "ip": "10.1.0.13",
+        "ip": "172.20.20.23",
         "role": "leaf",
         "asn": "65002",
         "pod": "admin-services",
@@ -101,7 +101,7 @@ NODES = [
     },
     {
         "name": "leaf-04",
-        "ip": "10.1.0.14",
+        "ip": "172.20.20.24",
         "role": "leaf",
         "asn": "65002",
         "pod": "admin-services",
@@ -111,7 +111,7 @@ NODES = [
     },
     {
         "name": "leaf-05",
-        "ip": "10.1.0.15",
+        "ip": "172.20.20.25",
         "role": "leaf",
         "asn": "65003",
         "pod": "hpc",
@@ -121,7 +121,7 @@ NODES = [
     },
     {
         "name": "leaf-06",
-        "ip": "10.1.0.16",
+        "ip": "172.20.20.26",
         "role": "leaf",
         "asn": "65003",
         "pod": "hpc",
@@ -131,7 +131,7 @@ NODES = [
     },
     {
         "name": "leaf-07",
-        "ip": "10.1.0.17",
+        "ip": "172.20.20.27",
         "role": "leaf",
         "asn": "65004",
         "pod": "storage",
@@ -141,7 +141,7 @@ NODES = [
     },
     {
         "name": "leaf-08",
-        "ip": "10.1.0.18",
+        "ip": "172.20.20.28",
         "role": "leaf",
         "asn": "65004",
         "pod": "storage",
@@ -151,7 +151,7 @@ NODES = [
     },
     {
         "name": "leaf-09",
-        "ip": "10.1.0.19",
+        "ip": "172.20.20.29",
         "role": "leaf",
         "asn": "65005",
         "pod": "student-access",
@@ -161,7 +161,7 @@ NODES = [
     },
     {
         "name": "leaf-10",
-        "ip": "10.1.0.20",
+        "ip": "172.20.20.30",
         "role": "leaf",
         "asn": "65005",
         "pod": "student-access",

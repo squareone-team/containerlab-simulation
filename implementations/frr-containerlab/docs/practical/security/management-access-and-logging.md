@@ -41,7 +41,7 @@ This page groups the practical checks for Ring 3, Ring 4, Ring 5, and Ring 6.
 
 ## Useful Notes
 
-- Central syslog is reachable only through same-VRF routing or the explicit Ring 1 TCP/514 log-export policy.
+- Central syslog uses the Containerlab management network (`172.20.20.70`) and has no fabric-facing leaf link.
 - `server-admin-01` is the safest default source for Ring 6 manual log injection.
 - OOB uses secondary `172.16.0.0/24` addresses on containerlab management `eth0`, so bastion/OOB debugging is mostly about SSH and addressing, not rendered topology links.
 

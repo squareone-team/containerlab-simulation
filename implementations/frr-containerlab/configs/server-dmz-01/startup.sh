@@ -61,7 +61,7 @@ nft -f /etc/nftables.conf
 
 cat > /etc/rsyslog.conf << 'RSYSLOG'
 module(load="imuxsock")
-*.* @@192.168.50.70:514
+*.* @@172.20.20.70:514
 RSYSLOG
 
 if command -v rsyslogd >/dev/null 2>&1; then

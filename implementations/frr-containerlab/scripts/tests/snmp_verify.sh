@@ -86,6 +86,7 @@ snmp_bgp_state() {
 echo ""
 echo "=== T4: SNMP + Zabbix Observability Verification ==="
 echo "    Zabbix UI: http://localhost:4000 | login Admin / zabbix"
+echo "    SNMP path : Containerlab management network (172.20.20.0/24)"
 echo ""
 
 echo "--- 1. Container and service health ---"
@@ -185,18 +186,18 @@ echo ""
 echo "--- 4. End-to-end SNMP polling from zabbix-server ---"
 
 TARGETS="
-spine-01 10.1.0.1 10
-spine-02 10.1.0.2 10
-leaf-01 10.1.0.11 2
-leaf-02 10.1.0.12 2
-leaf-03 10.1.0.13 2
-leaf-04 10.1.0.14 2
-leaf-05 10.1.0.15 2
-leaf-06 10.1.0.16 2
-leaf-07 10.1.0.17 2
-leaf-08 10.1.0.18 2
-leaf-09 10.1.0.19 2
-leaf-10 10.1.0.20 2
+spine-01 172.20.20.11 10
+spine-02 172.20.20.12 10
+leaf-01 172.20.20.21 2
+leaf-02 172.20.20.22 2
+leaf-03 172.20.20.23 2
+leaf-04 172.20.20.24 2
+leaf-05 172.20.20.25 2
+leaf-06 172.20.20.26 2
+leaf-07 172.20.20.27 2
+leaf-08 172.20.20.28 2
+leaf-09 172.20.20.29 2
+leaf-10 172.20.20.30 2
 "
 
 while read -r node ip minimum; do

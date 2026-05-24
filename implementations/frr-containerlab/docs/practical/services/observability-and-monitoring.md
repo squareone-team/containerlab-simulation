@@ -7,7 +7,7 @@ Use this page for SNMP, Zabbix, Prometheus, Grafana, and the fabric telemetry sc
 | Component | How to reach it | What it does |
 | --- | --- | --- |
 | Zabbix | `http://localhost:4000` | official web UI, login `Admin / zabbix`, provisioned `ESI Fabric NOC` dashboard |
-| `zabbix-server` | `192.168.50.50` | polls switch loopbacks with SNMP and runs local MariaDB |
+| `zabbix-server` | `172.20.20.50` on the management network | polls switch management IPs with SNMP and runs local MariaDB |
 | Prometheus | `http://localhost:9090` | scrapes fabric telemetry and Grafana metrics |
 | Grafana | `http://localhost:3000` | dashboards, login `squareone.admin / SquareOneGrafana#2026` |
 | `fabric-telemetry` | `fabric-telemetry:9342` inside the lab | serves generated telemetry from live `docker exec` lookups |
@@ -19,13 +19,13 @@ Use this page for SNMP, Zabbix, Prometheus, Grafana, and the fabric telemetry sc
 | `docker exec clab-esi-datacenter-leaf-03 pgrep snmpd` | confirms node SNMP agent is running | PID printed |
 | `docker exec clab-esi-datacenter-leaf-03 grep '^agentx' /etc/frr/frr.conf` | confirms FRR exposes AgentX | `agentx` line exists |
 | `docker exec clab-esi-datacenter-leaf-03 ls /var/agentx/master` | confirms AgentX socket exists | file is present |
-| `docker exec clab-esi-datacenter-zabbix-server snmpget -v2c -c esi-read 10.1.0.13 1.3.6.1.2.1.1.1.0` | basic end-to-end SNMP poll from Zabbix to a leaf | returns `STRING` data |
-| `docker exec clab-esi-datacenter-zabbix-server snmpwalk -v2c -c esi-read 10.1.0.1 1.3.6.1.2.1.15.3 | head` | checks BGP MIB via FRR AgentX on a spine | lines from `bgpPeerTable` |
+| `docker exec clab-esi-datacenter-zabbix-server snmpget -v2c -c esi-read 172.20.20.23 1.3.6.1.2.1.1.1.0` | basic end-to-end SNMP poll from Zabbix to a leaf over management | returns `STRING` data |
+| `docker exec clab-esi-datacenter-zabbix-server snmpwalk -v2c -c esi-read 172.20.20.11 1.3.6.1.2.1.15.3 | head` | checks BGP MIB via FRR AgentX on a spine over management | lines from `bgpPeerTable` |
 | `docker exec clab-esi-datacenter-zabbix-server mysql -u zabbix -pzabbix-lab-pass -h 127.0.0.1 -e 'SELECT 1;' zabbix` | confirms the local DB is healthy | query succeeds |
 | `docker exec clab-esi-datacenter-zabbix-server pgrep zabbix_server` | confirms the server process is alive | PID printed |
 | `curl -s http://localhost:4000/index.php` | confirms the Zabbix frontend is published to the host | Zabbix login HTML returned |
 
-After deploy, open `http://localhost:4000`, log in with `Admin / zabbix`, and open the `ESI Fabric NOC` dashboard. It is provisioned through the Zabbix API and includes the fabric host group, SNMP hosts for spine/leaf loopbacks, BGP peer-state checks, high-severity triggers, and an `ESI Datacenter Fabric` map.
+After deploy, open `http://localhost:4000`, log in with `Admin / zabbix`, and open the `ESI Fabric NOC` dashboard. It is provisioned through the Zabbix API and includes the fabric host group, SNMP hosts for spine/leaf management IPs, BGP peer-state checks, high-severity triggers, and an `ESI Datacenter Fabric` map.
 
 ## Prometheus, Grafana, And Fabric Telemetry
 

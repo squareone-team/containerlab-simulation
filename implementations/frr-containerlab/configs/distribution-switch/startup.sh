@@ -37,7 +37,6 @@ ip route replace 192.168.10.100/32 via 10.200.0.1 dev br-fw-campus
 ip route replace 192.168.50.20/32 via 10.200.0.1 dev br-fw-campus
 ip route replace 192.168.50.30/32 via 10.200.0.1 dev br-fw-campus
 ip route replace 192.168.50.40/32 via 10.200.0.1 dev br-fw-campus
-ip route replace 192.168.50.70/32 via 10.200.0.1 dev br-fw-campus
 # Use the campus SVI as the RADIUS client identity. The firewall transit stays a
 # routing link; policy and RADIUS client trust bind to the NAC gateway address.
 ip route replace 192.168.50.80/32 via 10.200.0.1 dev br-fw-campus src 192.168.110.1

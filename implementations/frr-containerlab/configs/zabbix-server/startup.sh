@@ -21,22 +21,12 @@ wait_for_iface() {
     return 1
 }
 
-if wait_for_iface eth1; then
-    ip addr add 192.168.50.50/24 dev eth1 2>/dev/null || true
-    ip link set eth1 up
-
-    # Gateway = leaf-03 VRF-STAFF SVI
-    ip route add default         via 192.168.50.1 dev eth1 2>/dev/null || true
-
-    # Explicit routes so Zabbix can reach loopbacks (10.1.0.x) once leaf-03
-    # leaks them into VRF-STAFF via "import vrf default" in frr.conf
-    ip route add 10.0.0.0/8     via 192.168.50.1 dev eth1 2>/dev/null || true
-    ip route add 172.16.0.0/12  via 192.168.50.1 dev eth1 2>/dev/null || true
-    ip route add 192.168.0.0/16 via 192.168.50.1 dev eth1 2>/dev/null || true
-
-    log "network OK — 192.168.50.50/24, GW 192.168.50.1"
+if wait_for_iface eth0; then
+    ip link set eth0 up
+    MGMT_IP="$(ip -4 -o addr show dev eth0 | awk '{print $4}' | cut -d/ -f1 | head -1)"
+    log "network OK — management eth0 ${MGMT_IP:-unassigned}"
 else
-    log "WARNING: eth1 never appeared"
+    log "WARNING: eth0 never appeared"
 fi
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -484,18 +474,18 @@ fi
 log "=== PHASE 9: SNMP reachability check ==="
 
 SWITCH_LOOPBACKS="
-10.1.0.1   spine-01
-10.1.0.2   spine-02
-10.1.0.11  leaf-01
-10.1.0.12  leaf-02
-10.1.0.13  leaf-03
-10.1.0.14  leaf-04
-10.1.0.15  leaf-05
-10.1.0.16  leaf-06
-10.1.0.17  leaf-07
-10.1.0.18  leaf-08
-10.1.0.19  leaf-09
-10.1.0.20  leaf-10
+172.20.20.11  spine-01
+172.20.20.12  spine-02
+172.20.20.21  leaf-01
+172.20.20.22  leaf-02
+172.20.20.23  leaf-03
+172.20.20.24  leaf-04
+172.20.20.25  leaf-05
+172.20.20.26  leaf-06
+172.20.20.27  leaf-07
+172.20.20.28  leaf-08
+172.20.20.29  leaf-09
+172.20.20.30  leaf-10
 "
 
 printf '%s\n' "$SWITCH_LOOPBACKS" | while IFS= read -r line; do
@@ -503,7 +493,7 @@ printf '%s\n' "$SWITCH_LOOPBACKS" | while IFS= read -r line; do
     IP=$(echo "$line"   | awk '{print $1}')
     NAME=$(echo "$line" | awk '{print $2}')
     if ! ping -c1 -W2 "$IP" > /dev/null 2>&1; then
-        log "PING  FAIL: $NAME ($IP) — route leak may not be active yet on leaf-03"
+        log "PING  FAIL: $NAME ($IP) — management network may not be ready yet"
         continue
     fi
     if snmpget -v2c -c esi-read -t3 -r1 "$IP" 1.3.6.1.2.1.1.1.0 > /dev/null 2>&1; then
@@ -514,11 +504,11 @@ printf '%s\n' "$SWITCH_LOOPBACKS" | while IFS= read -r line; do
 done
 
 log "=== READY ==="
-log "  zabbix-server : 192.168.50.50 | VRF-STAFF | eth1 -> leaf-03:eth11"
+log "  zabbix-server : 172.20.20.50 | management network | eth0"
 log "  Zabbix UI     : http://localhost:4000 | login Admin / zabbix"
 log "  MariaDB       : 127.0.0.1:3306 / db=zabbix"
 log "  SNMP community: esi-read (v2c)"
-log "  Targets       : spine-01/02, leaf-01..10 via loopbacks 10.1.0.x/32"
-log "  Route leak    : leaf-03 imports default VRF into VRF-STAFF"
+log "  Targets       : spine-01/02, leaf-01..10 via management IPs 172.20.20.x"
+log "  Fabric path   : no data-plane leaf link required for polling"
 
 tail -f /var/log/zabbix/zabbix_server.log 2>/dev/null || sleep infinity

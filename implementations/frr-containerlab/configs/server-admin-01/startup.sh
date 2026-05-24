@@ -377,7 +377,7 @@ log "Configuring remote syslog..."
 if command -v rsyslogd >/dev/null 2>&1; then
 	cat > /etc/rsyslog.conf << 'RSYSLOG'
 module(load="imuxsock")
-*.* @@192.168.50.70:514
+*.* @@172.20.20.70:514
 RSYSLOG
 
 	/usr/sbin/rsyslogd &
@@ -385,7 +385,7 @@ RSYSLOG
 elif command -v syslogd >/dev/null 2>&1; then
 	mkdir -p /var/log
 	touch /var/log/messages
-	syslogd -L -O /var/log/messages -R 192.168.50.70:514 &
+	syslogd -L -O /var/log/messages -R 172.20.20.70:514 &
 	log "syslogd started with remote forwarding"
 else
 	log "WARN: no syslog daemon found"

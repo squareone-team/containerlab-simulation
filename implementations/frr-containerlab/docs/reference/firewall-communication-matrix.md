@@ -25,7 +25,6 @@ topology context.
 - `internet_public_web`: `198.18.0.0/15`
 - `cluster_lms_staff`: `192.168.30.0/24`
 - `core_infra_dns`: `192.168.50.30`
-- `core_infra_syslog`: `192.168.50.70`
 - `vpn_gateway`: `198.51.100.20`
 - `moodle_frontend`: `198.51.100.30`
 - `moodle_db_storage`: `192.168.80.31`
@@ -45,8 +44,6 @@ topology context.
   - TCP/UDP: `6818-6830`
 - Pedagogy to LMS (Moodle policy)
   - TCP: `80, 443`
-- Pedagogy and campus access to centralized syslog
-  - TCP: `514`
 - Pedagogy and campus access to shared DHCP
   - UDP: `67, 68`
 - Campus access to simulated Internet web
@@ -57,8 +54,6 @@ topology context.
   - Moodle: TCP `80, 443, 8443` to `198.51.100.30`
   - SSH: TCP `22` to student/HPC targets
   - Jupyter: TCP `8080` to `192.168.70.30`
-- DMZ to centralized syslog
-  - TCP: `514` only, for one-way log export
 - Moodle frontend to Moodle database
   - Source: `198.51.100.30`
   - Destination: `192.168.80.31`

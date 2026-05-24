@@ -55,7 +55,7 @@ chmod 644 /root/.ssh/id_ed25519.pub /shared/bastion_ed25519.pub
 
 cat > /etc/rsyslog.conf << 'RSYSLOG'
 module(load="imuxsock")
-*.* @@192.168.50.70:514
+*.* @@172.20.20.70:514
 RSYSLOG
 
 /usr/sbin/rsyslogd

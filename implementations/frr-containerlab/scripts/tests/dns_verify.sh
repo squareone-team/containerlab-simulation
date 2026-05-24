@@ -199,8 +199,8 @@ chk "rsyslogd running on dns-server" \
     "[0-9]+"
 
 chk "rsyslog config uses TCP (@@) to syslog-server" \
-    "$C-dns-server grep '@@192.168.50.70:514' /etc/rsyslog.conf" \
-    "@@192.168.50.70:514"
+    "$C-dns-server grep '@@172.20.20.70:514' /etc/rsyslog.conf" \
+    "@@172.20.20.70:514"
 
 # ---------------------------------------------------------------------------
 # Summary

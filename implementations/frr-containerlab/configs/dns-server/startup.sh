@@ -173,6 +173,10 @@ view:
   # OOB / Bastion
   local-data: "bastion-01.esi.internal.     300 IN A 172.16.0.50"
   local-data: "bastion.esi.internal.        300 IN A 172.16.0.50"
+  local-data: "zabbix-server.esi.internal.  300 IN A 172.20.20.50"
+  local-data: "zabbix.esi.internal.         300 IN A 172.20.20.50"
+  local-data: "syslog-server.esi.internal.  300 IN A 172.20.20.70"
+  local-data: "syslog.esi.internal.         300 IN A 172.20.20.70"
   # CORE-INFRA (192.168.50.0/24)
   local-data: "ntp-server.esi.internal.     300 IN A 192.168.50.20"
   local-data: "ntp.esi.internal.            300 IN A 192.168.50.20"
@@ -180,11 +184,7 @@ view:
   local-data: "dns.esi.internal.            300 IN A 192.168.50.30"
   local-data: "dhcp-server.esi.internal.    300 IN A 192.168.50.40"
   local-data: "dhcp.esi.internal.           300 IN A 192.168.50.40"
-  local-data: "zabbix-server.esi.internal.  300 IN A 192.168.50.50"
-  local-data: "zabbix.esi.internal.         300 IN A 192.168.50.50"
   local-data: "prometheus.esi.internal.     300 IN A 192.168.50.60"
-  local-data: "syslog-server.esi.internal.  300 IN A 192.168.50.70"
-  local-data: "syslog.esi.internal.         300 IN A 192.168.50.70"
   # Storage pod
   local-data: "ftp-server.esi.internal.     300 IN A 192.168.80.10"
   local-data: "ftp.esi.internal.            300 IN A 192.168.80.10"
@@ -198,9 +198,9 @@ view:
   local-data-ptr: "192.168.50.20  ntp-server.esi.internal."
   local-data-ptr: "192.168.50.30  dns-server.esi.internal."
   local-data-ptr: "192.168.50.40  dhcp-server.esi.internal."
-  local-data-ptr: "192.168.50.50  zabbix-server.esi.internal."
   local-data-ptr: "192.168.50.60  prometheus.esi.internal."
-  local-data-ptr: "192.168.50.70  syslog-server.esi.internal."
+  local-data-ptr: "172.20.20.50   zabbix-server.esi.internal."
+  local-data-ptr: "172.20.20.70   syslog-server.esi.internal."
   local-zone: "1.10.in-addr.arpa." static
 # -----------------------------------------------------------------------
 # DMZ VIEW: NXDOMAIN for esi.internal
@@ -272,11 +272,11 @@ nft list ruleset | head -40
 # 6. rsyslog TCP/514 forwarding (Change 8)
 #    @@ = TCP (reliable); @ = UDP
 # ---------------------------------------------------------------------------
-log "Configuring rsyslog TCP/514 forwarding to 192.168.50.70..."
+log "Configuring rsyslog TCP/514 forwarding to 172.20.20.70 over management network..."
 
 if command -v rsyslogd > /dev/null 2>&1; then
     # Remove any prior syslog forward lines to avoid duplicates
-    grep -v "192.168.50.70" /etc/rsyslog.conf > /tmp/rsyslog_new.conf 2>/dev/null \
+    grep -Ev "192\\.168\\.50\\.70|172\\.20\\.20\\.70" /etc/rsyslog.conf > /tmp/rsyslog_new.conf 2>/dev/null \
         || cp /etc/rsyslog.conf /tmp/rsyslog_new.conf
 
     cat >> /tmp/rsyslog_new.conf << 'RSYSEOF'
@@ -284,7 +284,7 @@ if command -v rsyslogd > /dev/null 2>&1; then
 # THEME T4 - PROTOCOL EXTENSIONS - Zitouni
 # Change 8: TCP/514 preferred over UDP (@@ = TCP)
 # ======================================================
-*.* @@192.168.50.70:514
+*.* @@172.20.20.70:514
 RSYSEOF
 
     mv /tmp/rsyslog_new.conf /etc/rsyslog.conf
