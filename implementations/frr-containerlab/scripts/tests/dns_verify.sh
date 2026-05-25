@@ -112,27 +112,27 @@ info "PREREQ T3: student→DNS cross-VRF requires firewall — skipped until T3 
 echo ""
 echo "--- 4. DMZ view (NXDOMAIN enforcement - Change 7) ---"
 
-# Primary test: server-dmz-01 is in VRF-PUBLIC (198.51.100.0/24)
+# Primary test: public-web-server is in VRF-PUBLIC (198.51.100.0/24)
 chk "Change 7: DMZ view configured to refuse esi.internal" \
     "$C-dns-server grep -A20 'name.*dmz' /etc/unbound/unbound.conf" \
     "refuse"
 
-info "Change 7 live test (NXDOMAIN from server-dmz-01) requires firewall T3 — skipped"
+info "Change 7 live test (NXDOMAIN from public-web-server) requires firewall T3 — skipped"
 # chk "Change 7: DMZ gets NXDOMAIN for spine-01.esi.internal" \
-#     "$C-server-dmz-01 nslookup spine-01.esi.internal 192.168.50.30" \
+#     "$C-public-web-server nslookup spine-01.esi.internal 192.168.50.30" \
 #     "NXDOMAIN\|server can't find\|can.t find"
 
 # chk "Change 7: DMZ gets NXDOMAIN for dns-server.esi.internal" \
-#     "$C-server-dmz-01 nslookup dns-server.esi.internal 192.168.50.30" \
+#     "$C-public-web-server nslookup dns-server.esi.internal 192.168.50.30" \
 #     "NXDOMAIN\|server can't find\|can.t find"
 
 # chk "Change 7: DMZ gets NXDOMAIN for firewall-01.esi.internal" \
-#     "$C-server-dmz-01 nslookup firewall-01.esi.internal 192.168.50.30" \
+#     "$C-public-web-server nslookup firewall-01.esi.internal 192.168.50.30" \
 #     "NXDOMAIN\|server can't find\|can.t find"
 
 # Verify DMZ can still resolve public names (transparent for public DNS)
 info "Checking DMZ can resolve public DNS (google.com) — may fail if no upstream..."
-$C-server-dmz-01 nslookup google.com 192.168.50.30 2>/dev/null | grep -q "Address" \
+$C-public-web-server nslookup google.com 192.168.50.30 2>/dev/null | grep -q "Address" \
     && ok  "DMZ view: public DNS (google.com) resolves for VRF-PUBLIC" \
     || info "DMZ view: public DNS not reachable (expected in isolated lab — not a FAIL)"
 

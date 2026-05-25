@@ -4,7 +4,7 @@ set -u
 LAB="${LAB:-esi-datacenter}"
 CLAB_PREFIX="clab-${LAB}"
 
-AUTH_SERVER="${CLAB_PREFIX}-auth-server"
+AAA_SERVER="${CLAB_PREFIX}-aaa-server"
 CAMPUS_BP="${CLAB_PREFIX}-distribution-switch"
 CAMPUS_STUDENT="${CLAB_PREFIX}-student-01"
 CAMPUS_ADMIN="${CLAB_PREFIX}-admin-01"
@@ -212,7 +212,7 @@ expect_ssh_denied() {
 echo "=== Fabric Authentication and Authorization Validation ==="
 echo "Lab: ${LAB}"
 
-for node in "$AUTH_SERVER" "$CAMPUS_BP" "$CAMPUS_STUDENT" "$CAMPUS_ADMIN" "$GUEST_CLIENT" "$SERVER_STUDENT" "$SERVER_ADMIN" "$SERVER_HPC"; do
+for node in "$AAA_SERVER" "$CAMPUS_BP" "$CAMPUS_STUDENT" "$CAMPUS_ADMIN" "$GUEST_CLIENT" "$SERVER_STUDENT" "$SERVER_ADMIN" "$SERVER_HPC"; do
   if docker inspect "$node" >/dev/null 2>&1; then
     ok "$node exists"
   else
@@ -220,19 +220,19 @@ for node in "$AUTH_SERVER" "$CAMPUS_BP" "$CAMPUS_STUDENT" "$CAMPUS_ADMIN" "$GUES
   fi
 done
 
-if run_in "$AUTH_SERVER" "ldapsearch -x -H ldap://127.0.0.1:389 -b dc=esi,dc=internal '(uid=amine.kadri@esi.dz)' dn | grep -q 'uid=amine.kadri@esi.dz'"; then
+if run_in "$AAA_SERVER" "ldapsearch -x -H ldap://127.0.0.1:389 -b dc=esi,dc=internal '(uid=amine.kadri@esi.dz)' dn | grep -q 'uid=amine.kadri@esi.dz'"; then
   ok "OpenLDAP directory contains amine.kadri@esi.dz"
 else
   fail "OpenLDAP directory missing amine.kadri@esi.dz"
 fi
 
-if run_in "$AUTH_SERVER" "ldapsearch -x -H ldap://127.0.0.1:389 -b dc=esi,dc=internal '(uid=tati.youcef@esi.dz)' dn | grep -q 'uid=tati.youcef@esi.dz'"; then
+if run_in "$AAA_SERVER" "ldapsearch -x -H ldap://127.0.0.1:389 -b dc=esi,dc=internal '(uid=tati.youcef@esi.dz)' dn | grep -q 'uid=tati.youcef@esi.dz'"; then
   ok "OpenLDAP directory contains tati.youcef@esi.dz"
 else
   fail "OpenLDAP directory missing tati.youcef@esi.dz"
 fi
 
-if run_in "$AUTH_SERVER" "ldapsearch -x -H ldap://127.0.0.1:389 -b dc=esi,dc=internal '(cn=squareone-admins)' memberUid | grep -q 'memberUid: squareone.admin@esi.dz'"; then
+if run_in "$AAA_SERVER" "ldapsearch -x -H ldap://127.0.0.1:389 -b dc=esi,dc=internal '(cn=squareone-admins)' memberUid | grep -q 'memberUid: squareone.admin@esi.dz'"; then
   ok "OpenLDAP directory contains SquareOne admin group"
 else
   fail "OpenLDAP directory missing SquareOne admin group"
@@ -270,8 +270,8 @@ expect_runtime_absent "$SERVER_ADMIN" "192.168.110.32" "admin server no longer h
 expect_runtime_rule "$SERVER_STUDENT" "ip saddr 198.51.100.20 tcp dport 22" "student server accepts only VPN gateway NAT source for VPN SSH"
 expect_runtime_rule "$SERVER_HPC" "ip saddr 198.51.100.20 tcp dport 22" "HPC server accepts only VPN gateway NAT source for VPN SSH"
 expect_runtime_absent "$SERVER_ADMIN" "198.51.100.20" "admin server does not accept VPN gateway SSH source"
-expect_runtime_rule "$AUTH_SERVER" "ip saddr { 192.168.110.1, 198.51.100.20 } udp dport 1812" "auth server accepts RADIUS only from NAC gateway and VPN gateway"
-expect_runtime_absent "$AUTH_SERVER" "10.200.0.2" "auth server does not trust campus transit /30 as RADIUS client"
+expect_runtime_rule "$AAA_SERVER" "ip saddr { 192.168.110.1, 198.51.100.20 } udp dport 1812" "auth server accepts RADIUS only from NAC gateway and VPN gateway"
+expect_runtime_absent "$AAA_SERVER" "10.200.0.2" "auth server does not trust campus transit /30 as RADIUS client"
 
 if run_in "$CAMPUS_BP" "ip route get ${AUTH_IP} | grep -q 'src ${NAC_GATEWAY_IP}'"; then
   ok "distribution-switch uses NAC gateway source for RADIUS"
@@ -320,14 +320,14 @@ expect_ssh_success "admin identity can access server-admin through TACACS+ autho
 expect_ssh_denied "wrong password is rejected by LDAP-backed TACACS+" \
   "$CAMPUS_ADMIN" squareone.admin WrongPassword "$HPC_TARGET"
 
-if run_in "$AUTH_SERVER" "tail -n 80 /var/log/esi-tacacs.log 2>/dev/null | grep -q '\"encrypted_body\": true' && ! tail -n 80 /var/log/esi-tacacs.log 2>/dev/null | grep -q '\"encrypted_body\": false'"; then
+if run_in "$AAA_SERVER" "tail -n 80 /var/log/esi-tacacs.log 2>/dev/null | grep -q '\"encrypted_body\": true' && ! tail -n 80 /var/log/esi-tacacs.log 2>/dev/null | grep -q '\"encrypted_body\": false'"; then
   ok "TACACS+ exchanges use encrypted packet bodies"
 else
   fail "TACACS+ exchanges did not prove encrypted packet bodies"
 fi
 
 info "Recent TACACS+ decisions:"
-docker exec "$AUTH_SERVER" sh -lc "tail -n 20 /var/log/esi-tacacs.log 2>/dev/null || true"
+docker exec "$AAA_SERVER" sh -lc "tail -n 20 /var/log/esi-tacacs.log 2>/dev/null || true"
 
 nac_logout "$CAMPUS_STUDENT" "student NAC logout accepted"
 nac_logout "$CAMPUS_ADMIN" "admin NAC logout accepted"

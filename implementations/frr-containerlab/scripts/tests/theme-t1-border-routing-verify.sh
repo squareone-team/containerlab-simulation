@@ -252,7 +252,7 @@ PY
 echo "=== ESI Theme T1 Verification (Border Routing & Internet) ==="
 
 echo
-for node in distribution-switch guest-01 internet-router-01 internet-web-01 internet-client-01 server-dmz-01 leaf-01 leaf-02 border-router-01 firewall-01 firewall-02 isp-router-01; do
+for node in distribution-switch guest-01 internet-router-01 internet-web-01 internet-client-01 public-web-server leaf-01 leaf-02 border-router-01 firewall-01 firewall-02 isp-router-01; do
   check_container "$node"
 done
 
@@ -273,7 +273,7 @@ cmd_match "firewalls are multihomed to both border leafs" \
   "^4$"
 
 cmd_no_match "topology hides OOB switch fan-out links" \
-  "grep -n 'oob-sw' ${LAB_ROOT}/esi-datacenter.clab.yml" \
+  "awk 'f{print NR \":\" $0} /^  links:/{f=1}' ${LAB_ROOT}/esi-datacenter.clab.yml | grep -E 'oob-sw'" \
   "oob-sw"
 
 # ---------------------------------------------------------------------------
@@ -446,26 +446,26 @@ else
   ok "unauthenticated campus client cannot reach internet-web-01"
 fi
 
-test_banner "unauthenticated campus client cannot reach server-dmz-01"
+test_banner "unauthenticated campus client cannot reach public-web-server"
 info "command: $C-guest-01 timeout 4 nc -z -w2 198.51.100.10 80"
 if $C-guest-01 timeout 4 nc -z -w2 198.51.100.10 80 >/dev/null 2>&1; then
-  fail "unauthenticated campus client cannot reach server-dmz-01"
+  fail "unauthenticated campus client cannot reach public-web-server"
 else
-  ok "unauthenticated campus client cannot reach server-dmz-01"
+  ok "unauthenticated campus client cannot reach public-web-server"
 fi
 
 echo
-ping_with_retry "internet-client-01 can reach server-dmz-01 (198.51.100.10)" \
+ping_with_retry "internet-client-01 can reach public-web-server (198.51.100.10)" \
   "$C-internet-client-01 ping -c2 -W2 198.51.100.10" \
   "2 (packets )?received"
 
 echo
 echo "[TEST] DMZ endpoint uses non-RFC1918 addressing"
-OUT=$($C-server-dmz-01 ip -4 -o addr show dev eth1 2>/dev/null)
+OUT=$($C-public-web-server ip -4 -o addr show dev eth1 2>/dev/null)
 if echo "$OUT" | grep -Eq "198\.51\.100\.10/24"; then
-  ok "server-dmz-01 uses public/testnet address space"
+  ok "public-web-server uses public/testnet address space"
 else
-  fail "server-dmz-01 is not using expected public/testnet address"
+  fail "public-web-server is not using expected public/testnet address"
   echo "$OUT" | sed 's/^/    /'
 fi
 

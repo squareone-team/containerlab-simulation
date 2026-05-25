@@ -85,7 +85,7 @@ interfaces:
     mtu: "{{ mtu_fabric }}"
 
   Ethernet7:
-    description: "server-dmz-01 eth2 [VLAN 100 PUBLIC — secondary]"
+    description: "public-web-server eth2 [VLAN 100 PUBLIC — secondary]"
     type: access
     access_vlan: 100
     mtu: "{{ mtu_host }}"
@@ -235,7 +235,7 @@ host_ports:
     mtu: "{{ mtu_fabric }}"
 
   - interface: Ethernet7
-    description: "server-dmz-01 eth2 | secondary [VLAN 100]"
+    description: "public-web-server eth2 | secondary [VLAN 100]"
     mode: access
     vlan: 100
     mtu: 9000

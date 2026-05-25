@@ -13,10 +13,10 @@ bash implementations/frr-containerlab/scripts/tests/browser_pov_validation.sh
 ## LDAP And AAA Health
 
 ```bash
-docker exec clab-esi-datacenter-auth-server ldapsearch -x -H ldap://127.0.0.1:389 -b dc=esi,dc=internal '(uid=amine.kadri@esi.dz)' dn
-docker exec clab-esi-datacenter-auth-server ldapsearch -x -H ldap://127.0.0.1:389 -b dc=esi,dc=internal '(cn=squareone-admins)' memberUid
-docker exec clab-esi-datacenter-auth-server tail -n 20 /var/log/esi-radius.log
-docker exec clab-esi-datacenter-auth-server tail -n 20 /var/log/esi-tacacs.log
+docker exec clab-esi-datacenter-aaa-server ldapsearch -x -H ldap://127.0.0.1:389 -b dc=esi,dc=internal '(uid=amine.kadri@esi.dz)' dn
+docker exec clab-esi-datacenter-aaa-server ldapsearch -x -H ldap://127.0.0.1:389 -b dc=esi,dc=internal '(cn=squareone-admins)' memberUid
+docker exec clab-esi-datacenter-aaa-server tail -n 20 /var/log/esi-radius.log
+docker exec clab-esi-datacenter-aaa-server tail -n 20 /var/log/esi-tacacs.log
 ```
 
 Good signs:

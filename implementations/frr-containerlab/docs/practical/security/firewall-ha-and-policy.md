@@ -73,7 +73,7 @@ docker exec clab-esi-datacenter-server-admin-01 grep -Fqx 'RING1_DROP' /tmp/ring
 
 ```bash
 docker exec clab-esi-datacenter-server-admin-01 sh -lc "pkill nc >/dev/null 2>&1 || true; rm -f /tmp/ring1-admin-9102.log; nohup nc -l -p 9102 >/tmp/ring1-admin-9102.log 2>&1 </dev/null &"
-docker exec clab-esi-datacenter-server-dmz-01 sh -lc "printf 'RING1_DMZ\n' | nc -w 3 192.168.50.10 9102 >/dev/null 2>&1 || true"
+docker exec clab-esi-datacenter-public-web-server sh -lc "printf 'RING1_DMZ\n' | nc -w 3 192.168.50.10 9102 >/dev/null 2>&1 || true"
 docker exec clab-esi-datacenter-server-admin-01 grep -Fqx 'RING1_DMZ' /tmp/ring1-admin-9102.log && echo unexpected-delivery || echo blocked
 ```
 

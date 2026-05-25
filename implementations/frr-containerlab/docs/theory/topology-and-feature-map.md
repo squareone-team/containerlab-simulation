@@ -7,13 +7,13 @@ This page is the shortest high-level map of what exists in `frr-containerlab` an
 | Block | Nodes | Why it exists |
 | --- | --- | --- |
 | Fabric core | `spine-01`, `spine-02` | eBGP underlay, EVPN reflection, reachability between all leaf pairs |
-| Border and public edge | `leaf-01`, `leaf-02`, `isp-router-01..04`, `internet-router-01..02`, `internet-client-*`, `internet-web-01`, `server-dmz-01`, `moodle` | Internet edge, default-route intake, DMZ, Moodle frontend, campus service insertion, orientation path |
+| Border and public edge | `leaf-01`, `leaf-02`, `isp-router-01..04`, `internet-router-01..02`, `internet-client-*`, `internet-web-01`, `public-web-server`, `moodle` | Internet edge, default-route intake, DMZ, Moodle frontend, campus service insertion, orientation path |
 | Admin and service pod | `leaf-03`, `leaf-04`, `server-admin-*`, `dns-server`, `dhcp-server`, `ntp-server` | Shared services, staff workloads, route-leak point for core tooling |
 | HPC pod | `leaf-05`, `leaf-06`, `server-hpc-*` | Staff VRF compute workloads |
 | Storage pod | `leaf-07`, `leaf-08`, `server-storage-01`, `moodle-db` | Shared storage services and storage-backed Moodle database |
 | Student pod | `leaf-09`, `leaf-10`, `server-student-*` | Pedagogy VRF workloads, DHCP relay, dual-homing |
 | Security and management | `firewall-01`, `firewall-02`, `bastion-01`, `syslog-server` | Ring 1 HA firewall, Ring 4 OOB SSH over containerlab management, Ring 6 central logging over management |
-| Identity and access | `auth-server`, `distribution-switch`, `vpn-gateway` | LDAP directory, TACACS+/RADIUS services, campus NAC edge, and remote access VPN |
+| Identity and access | `aaa-server`, `distribution-switch`, `vpn-gateway` | LDAP directory, TACACS+/RADIUS services, campus NAC edge, and remote access VPN |
 | Campus edge | `distribution-switch`, `student-01`, `admin-01`, `guest-01`, `vpn-client-01`, `wifi-controller` | Campus test subnet, NAC role separation, fabric-attached browser clients, WiFi management micro-VRF |
 | Observability | `fabric-telemetry`, `prometheus`, `grafana`, `zabbix-server` | Metrics, alerts, dashboards, SNMP polling |
 
@@ -44,7 +44,7 @@ This page is the shortest high-level map of what exists in `frr-containerlab` an
 | Ring 4 bastion SSH | `bastion-01`, OOB addresses on `eth0`, SSH hardening in nodes | bastion can SSH to `172.16.0.x`; non-bastion should not |
 | Ring 5 host micro-segmentation | host startup scripts using `nftables` | workloads accept only the service ports they own |
 | Ring 6 central logging | `syslog-server`, rsyslog config on nodes | `logger` from a node appears on syslog server over management |
-| Identity and access | `auth-server`, `distribution-switch`, `vpn-gateway`, TACACS+/RADIUS scripts | `tail /var/log/esi-tacacs.log` on auth-server and `nft list set inet campus_nac campus_students` on distribution-switch |
+| Identity and access | `aaa-server`, `distribution-switch`, `vpn-gateway`, TACACS+/RADIUS scripts | `tail /var/log/esi-tacacs.log` on aaa-server and `nft list set inet campus_nac campus_students` on distribution-switch |
 | Moodle LMS | `moodle`, `moodle-db`, DNS `moodle.esi.dz` | `wget -qO- http://moodle.esi.dz/` from an authenticated campus client |
 | SNMP and Zabbix | node `snmpd` + FRR `agentx`, `zabbix-server` | `snmpget` from `zabbix-server` to `172.20.20.x` |
 | Prometheus/Grafana/fabric telemetry | `configs/prometheus`, `configs/grafana`, telemetry scraper script | `curl http://localhost:9090/api/v1/targets` |

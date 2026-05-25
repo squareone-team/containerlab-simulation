@@ -58,7 +58,7 @@ This reference lists the stable lab addresses. DNS records are hosted on `dns-se
 | dns-server | `192.168.50.30/24` | `dns-server.esi.internal`, `dns.esi.internal` |
 | dhcp-server | `192.168.50.40/24` | `dhcp-server.esi.internal`, `dhcp.esi.internal` |
 | prometheus | `192.168.50.60/24` | `prometheus.esi.internal` |
-| auth-server | `192.168.50.80/24` | none |
+| aaa-server | `192.168.50.80/24` | none |
 
 ## OOB Management
 

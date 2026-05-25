@@ -326,7 +326,7 @@ bridge vlan add vid 50 dev eth7 pvid untagged
 ip link set eth8 master br0
 bridge vlan add vid 50 dev eth8 pvid untagged
 
-# eth12 = auth-server
+# eth12 = aaa-server
 ip link set eth12 master br0
 bridge vlan add vid 50 dev eth12 pvid untagged
 ip link set eth12 up
