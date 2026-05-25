@@ -2,9 +2,9 @@
   "freeTextAnnotations": [
     {
       "id": "spine-title",
-      "text": "SPINE CORE",
+      "text": "SPINE LAYER",
       "position": {
-        "x": 587.1536186823398,
+        "x": 578.2285769938069,
         "y": -415.4032266111641
       },
       "fontSize": 32,
@@ -17,12 +17,12 @@
     },
     {
       "id": "pod1-title",
-      "text": "POD 1: EDGE / BORDER",
+      "text": "POD 1: EDGE",
       "position": {
-        "x": -129.8555688117268,
-        "y": -29.93330455657294
+        "x": -121.21872628326349,
+        "y": -55.84383214196288
       },
-      "fontSize": 20,
+      "fontSize": 32,
       "fontColor": "#0d4260",
       "fontWeight": "bold",
       "fontStyle": "normal",
@@ -32,12 +32,12 @@
     },
     {
       "id": "pod2-title",
-      "text": "POD 2: CORE POD",
+      "text": "POD 2: CORE",
       "position": {
-        "x": 268.48878193208037,
-        "y": -29.921550047738847
+        "x": 262.0111500357329,
+        "y": -56.9116829491867
       },
-      "fontSize": 20,
+      "fontSize": 32,
       "fontColor": "#0d4260",
       "fontWeight": "bold",
       "fontStyle": "normal",
@@ -47,12 +47,12 @@
     },
     {
       "id": "pod3-title",
-      "text": "POD 3: STORAGE POD",
+      "text": "POD 3: STORAGE",
       "position": {
-        "x": 572.1211351878366,
-        "y": -27.124929328178503
+        "x": 554.8761619371077,
+        "y": -56.22582168878347
       },
-      "fontSize": 20,
+      "fontSize": 32,
       "fontColor": "#0d4260",
       "backgroundColor": "transparent",
       "fontWeight": "bold",
@@ -63,12 +63,12 @@
     },
     {
       "id": "pod4-title",
-      "text": "POD 4: COMPUTE POD",
+      "text": "POD 4: COMPUTE",
       "position": {
-        "x": 900.7195777270397,
-        "y": -25.89004775872127
+        "x": 882.3967936481401,
+        "y": -60.37999426017902
       },
-      "fontSize": 20,
+      "fontSize": 32,
       "fontColor": "#0d4260",
       "fontWeight": "bold",
       "fontStyle": "normal",
@@ -78,17 +78,17 @@
     },
     {
       "id": "pod5-title",
-      "text": "POD 5: ULTRA COMPUTE POD",
+      "text": "POD 5: ULTRA \nCOMPUTE",
       "position": {
-        "x": 1207.3179642606788,
-        "y": -29.07283670770215
+        "x": 1221.0952799647825,
+        "y": -61.21208570251062
       },
-      "fontSize": 20,
+      "fontSize": 32,
       "fontColor": "#0d4260",
       "fontWeight": "bold",
       "fontStyle": "normal",
       "textDecoration": "none",
-      "textAlign": "left",
+      "textAlign": "center",
       "fontFamily": "monospace"
     },
     {
@@ -204,7 +204,7 @@
         "x": 1192.8449399948704,
         "y": 31.76196036181176
       },
-      "width": 300,
+      "width": 431,
       "height": 420,
       "fillColor": "#ffffff",
       "fillOpacity": 0.2,
@@ -362,7 +362,7 @@
     {
       "id": "leaf-05",
       "position": {
-        "x": 1260,
+        "x": 1320,
         "y": 100
       },
       "icon": "layer-3-switch"
@@ -370,7 +370,7 @@
     {
       "id": "leaf-06",
       "position": {
-        "x": 1380,
+        "x": 1440,
         "y": 100
       },
       "icon": "layer-3-switch"
@@ -410,7 +410,7 @@
     {
       "id": "firewall-01",
       "position": {
-        "x": -100,
+        "x": -40,
         "y": 360
       },
       "icon": "firewall-1"
@@ -418,7 +418,7 @@
     {
       "id": "firewall-02",
       "position": {
-        "x": 40,
+        "x": 100,
         "y": 360
       },
       "icon": "firewall-1"
@@ -426,7 +426,7 @@
     {
       "id": "vpn-gateway",
       "position": {
-        "x": -200,
+        "x": -180,
         "y": 100
       },
       "icon": "wireguard-vpn-gateway",
@@ -435,7 +435,7 @@
     {
       "id": "wifi-controller",
       "position": {
-        "x": -200,
+        "x": -180,
         "y": 200
       },
       "icon": "wlan-controller"
@@ -443,8 +443,8 @@
     {
       "id": "moodle",
       "position": {
-        "x": -200,
-        "y": 300
+        "x": -180,
+        "y": 280
       },
       "icon": "moodle-server"
     },
@@ -452,7 +452,7 @@
       "id": "bac-server",
       "position": {
         "x": 100,
-        "y": 300
+        "y": 200
       },
       "icon": "server-2"
     },
@@ -515,7 +515,7 @@
     {
       "id": "server-hpc-02",
       "position": {
-        "x": 1380,
+        "x": 1520,
         "y": 260
       },
       "icon": "server-2"
@@ -523,7 +523,7 @@
     {
       "id": "server-hpc-jupyter",
       "position": {
-        "x": 1320,
+        "x": 1380,
         "y": 360
       },
       "icon": "jupyter-server"
@@ -739,8 +739,8 @@
     {
       "id": "public-web-server",
       "position": {
-        "x": 120,
-        "y": 200
+        "x": -160,
+        "y": 360
       },
       "icon": "server-2",
       "iconCornerRadius": 0
