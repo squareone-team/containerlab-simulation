@@ -273,7 +273,7 @@ cmd_match "firewalls are multihomed to both border leafs" \
   "^4$"
 
 cmd_no_match "topology hides OOB switch fan-out links" \
-  "grep -n 'oob-sw' ${LAB_ROOT}/esi-datacenter.clab.yml" \
+  "awk 'f{print NR \":\" $0} /^  links:/{f=1}' ${LAB_ROOT}/esi-datacenter.clab.yml | grep -E 'oob-sw'" \
   "oob-sw"
 
 # ---------------------------------------------------------------------------
