@@ -22,7 +22,6 @@ Thumbs.db
 *.swp
 *.swo
 *~
-*.pdf
 *full.md
 debug/
 
