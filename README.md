@@ -4,7 +4,7 @@
 
 A production-grade data center redesign for École Nationale Supérieure d'Informatique (ESI Algiers), covering network architecture, ContainerLab simulation, Ansible automation on Arista EOS, and full security/QoS modeling. Built as a functional lab that runs in ContainerLab with Docker.
 
-📄 [Architecture Report](docs/Architecture-Overview.pdf) · 📎 [Appendices](docs/Appendices.pdf)
+For architecture documentation, see the **[architecture-specification](https://github.com/square-one/architecture-specification)** repository.
 
 ---
 
