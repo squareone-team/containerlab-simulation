@@ -1,28 +1,13 @@
-# ESI Data Center — Network Architecture & Simulation
+# ESI Data Center — Network Architecture Simulation
+A data center network redesign for École Nationale Supérieure d'Informatique (ESI Algiers), covering network architecture, ContainerLab simulation, Ansible automation on Arista EOS, and security/QoS modeling. It runs as a working lab in ContainerLab with Docker.
 
-> **Academic project** | ESI Algiers — Systems, Infrastructure & Networks (SIQ) | 2CS | 2025–2026  
-
-A production-grade data center redesign for École Nationale Supérieure d'Informatique (ESI Algiers), covering network architecture, ContainerLab simulation, Ansible automation on Arista EOS, and full security/QoS modeling. Built as a functional lab that runs in ContainerLab with Docker.
-
-For architecture documentation, see the **[architecture-specification](https://github.com/squareone-team/architecture-specification)** repository.
-
----
-
+For architecture documentation, see the [architecture-specification](https://github.com/squareone-team/architecture-specification) repository.
 ## Architecture Overview
+The fabric is a two-tier Clos (Spine-Leaf) topology: 2 Spines, 5 Leaf pairs (10 production Leaves), 1 OOB switch, with redundant Layer 3 uplinks from every Leaf to both Spines. No Leaf-to-Leaf links; Layer 2 switching is confined within each pod boundary.
 
-The fabric is a **two-tier Clos (Spine-Leaf)** topology — 2 Spines, 5 Leaf pairs (10 production Leaves), 1 OOB switch — with redundant Layer 3 uplinks from every Leaf to both Spines. No Leaf-to-Leaf links; Layer 2 switching is confined within each pod boundary.
+Spines run AS 65000. Each pod pairs two Leaves under its own AS: Edge Pod (L01/L02, AS 65001), Core Pod (L03/L04, AS 65002), Storage Pod (L05/L06, AS 65003), Compute Pod (L07/L08, AS 65004), Ultra Compute Pod (L09/L10, AS 65005). Every Leaf pair connects to both Spines.
 
-```
-                        ┌────────┐   ┌────────┐
-                        │ Spine01│   │ Spine02│   AS 65000
-                        └───┬────┘   └────┬───┘
-          ┌──────────────┬──┴──┬──────────┴──┬──────────────┐
-        L01/L02        L03/L04  L05/L06     L07/L08       L09/L10
-        Edge Pod       Core Pod  Storage Pod  Compute Pod  Ultra Compute Pod
-        AS 65001       AS 65002  AS 65003     AS 65004     AS 65005
-```
-
-**Five production pods** serve distinct workload profiles:
+Five production pods serve distinct workload profiles:
 
 | Pod | Leaves | Sub. Ratio | Role |
 |-----|--------|-----------|------|
@@ -31,11 +16,7 @@ The fabric is a **two-tier Clos (Spine-Leaf)** topology — 2 Spines, 5 Leaf pai
 | Storage | L05/L06 | 1:1–1.5:1 | Ceph RBD/CephFS/RGW cluster |
 | Compute | L07/L08 | 4:1 | OpenStack/KVM multi-tenant VMs |
 | Ultra Compute | L09/L10 | 1:1 | Bare-metal GPU/HPC with 100 Gb/s + RDMA |
-
----
-
 ## Protocol Stack
-
 | Layer | Technology |
 |-------|-----------|
 | Macro-segmentation | 5 VRFs (one per communication domain), one L3VNI per domain |
@@ -44,12 +25,8 @@ The fabric is a **two-tier Clos (Spine-Leaf)** topology — 2 Spines, 5 Leaf pai
 | Underlay control | eBGP with BFD (min-rx/min-tx 100 ms, multiplier 3 → 300 ms detection) |
 | Physical underlay | Two-tier Clos; /31 P2P links; 100G Spine↔Edge/Ultra Compute; 25G standard uplinks |
 
-Key design points: symmetric IRB with anycast gateways, next-hop-unchanged on Spines so VXLAN tunnels terminate on Leaf VTEPs, head-end replication (no PIM), ESI multihoming with LACP (no MLAG peer-link).
-
----
-
+Design points: symmetric IRB with anycast gateways, next-hop-unchanged on Spines so VXLAN tunnels terminate on Leaf VTEPs, head-end replication (no PIM), ESI multihoming with LACP (no MLAG peer-link).
 ## Macro-Segmentation — 5 Communication Domains
-
 Security is enforced at the routing layer via VRF isolation. A missing route is a stronger guarantee than a firewall rule.
 
 | Domain | L3VNI | Segments | Intent |
@@ -61,11 +38,7 @@ Security is enforced at the routing layer via VRF isolation. A missing route is 
 | Public | 50000 | DMZ-WEB (10100) | Internet-facing; no RFC1918 routes imported |
 
 All authorized cross-domain traffic hairpins through the Edge Pod HA firewall pair for stateful Layer 7 inspection.
-
----
-
 ## Security Model — 5 Defense Rings
-
 | Ring | Scope | Implementation |
 |------|-------|---------------|
 | Ring 1 — Perimeter | North-south + authorized cross-domain | HA firewall pair (nftables), stateful Layer 7, all denied flows logged |
@@ -75,11 +48,7 @@ All authorized cross-domain traffic hairpins through the Edge Pod HA firewall pa
 | Ring 5 — Host Micro-Segmentation | Per-server | nftables; INPUT DROP by default; ESTABLISHED/RELATED allowed; role-specific service exceptions |
 
 Supporting controls: Suricata IDS on Edge mirror feed, centralized syslog (90 days + 1-year RGW archive), Chrony NTP (sub-1s skew target), OpenLDAP + TACACS+ + FreeRADIUS auth stack.
-
----
-
 ## Quality of Service
-
 Pod-aware 8-class DiffServ model. DSCP is set at Leaf ingress and preserved across VXLAN encapsulation (`tos inherit` on VXLAN interfaces). Spines schedule already-marked traffic; no re-marking in transit.
 
 | Prio | Class | DSCP | Treatment | Min BW |
@@ -94,12 +63,8 @@ Pod-aware 8-class DiffServ model. DSCP is set at Leaf ingress and preserved acro
 | 8 | Best Effort | DF | Residual | — |
 
 RoCEv2 transport uses ECN + DCQCN as the primary congestion signal; PFC (802.1Qbb) is scoped to Ultra Compute Pod (L09/L10) only to avoid fabric-wide head-of-line blocking.
-
----
-
 ## Services Simulated in ContainerLab
-
-The `frr-containerlab` implementation runs a full lab topology with functional services:
+The `frr-containerlab` implementation runs a full lab topology with working services:
 
 - **Fabric**: 2 FRR Spines + 10 FRR Leaves with full eBGP underlay and EVPN/VXLAN overlay
 - **Infrastructure**: NTP (Chrony), DNS (Unbound), DHCP relay, AAA (TACACS+ + OpenLDAP + FreeRADIUS)
@@ -110,11 +75,7 @@ The `frr-containerlab` implementation runs a full lab topology with functional s
 - **Automation**: Ansible/AWX control node
 
 Demo endpoints (post-deploy): NAC portal at `https://192.168.110.1:8443/` · VPN enrollment at `https://198.51.100.20:8448/` · Moodle at `http://moodle.esi.dz/`
-
----
-
 ## Repository Layout
-
 ```
 datacenter-containerlab-esi/
 ├── implementations/
@@ -138,13 +99,11 @@ datacenter-containerlab-esi/
 │           └── group_vars/host_vars/   # Per-pod and per-node variables
 └── scripts/                            # Cross-implementation utilities
 ```
-
----
-
 ## Quick Start (FRR ContainerLab)
-
-**Prerequisites:** Docker, ContainerLab
-
+### Prerequisites
+- Docker
+- ContainerLab
+### Build Instructions
 ```bash
 git clone https://github.com/squareone-team/datacenter-containerlab-esi.git
 cd datacenter-containerlab-esi/implementations/frr-containerlab
@@ -166,13 +125,9 @@ sudo containerlab inspect -t esi-datacenter.clab.yml
 sudo containerlab destroy -t esi-datacenter.clab.yml --cleanup
 ```
 
-**Monitoring:** Grafana at `http://localhost:3000` · Prometheus at `http://localhost:9090`
-
----
-
+Output: Grafana at `http://localhost:3000`, Prometheus at `http://localhost:9090`.
 ## Validation
-
-The lab includes a comprehensive test suite covering all security rings and operational scenarios:
+The lab includes a test suite covering all security rings and operational scenarios:
 
 ```bash
 # Core fabric
@@ -196,13 +151,9 @@ bash scripts/resiliancy/simulate_node_down.sh --node leaf-01
 bash scripts/tests/resilience_postcheck.sh
 bash scripts/resiliancy/simulate_node_down.sh --node leaf-01 --restore
 ```
-
----
-
 ## Ansible Automation (Arista EOS)
-
-The `arista-ansible` implementation automates Arista EOS device configuration across the full fabric:
-
+The `arista-ansible` implementation automates Arista EOS device configuration across the full fabric.
+### Build Instructions
 ```bash
 cd implementations/arista-ansible/ansible
 
@@ -219,11 +170,5 @@ ansible-playbook playbooks/fabric-overlay.yml -i hosts.yml
 ansible-playbook playbooks/validate-fabric.yml -i hosts.yml
 ```
 
-Roles: `arista-common` (base config), `arista-underlay` (eBGP + BFD), `arista-evpn` (VXLAN, VRFs, ESI LAGs).  
+Roles: `arista-common` (base config), `arista-underlay` (eBGP + BFD), `arista-evpn` (VXLAN, VRFs, ESI LAGs).
 AWX support: `awx-ee/` contains the Execution Environment Dockerfile for AWX/Tower deployment.
-
----
-
----
-
-*ESI Algiers · Algeria · 2025–2026*
